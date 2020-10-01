@@ -5,4 +5,4 @@ Instructions on how to use this package:
 
 * Create a virtual environment:
 	-open your current working directory in the terminal
-	-type *virtualenv --version*
+	-type `virtualenv --version`
