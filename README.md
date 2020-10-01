@@ -11,4 +11,4 @@ After cloning this repository follow these steps (this is for Windows, but it sh
 4. activate the virtual environment by typing `[env]\Scripts\activate`
 
 * **install pyECB extension:**
-1. follow the instructions in `.\pyECB_gmaxwell\pyECB_original\README.md`
+1. follow the instructions in `.\pyECB_gmaxwell\pyECB_original\README.md` (within your virtual environment!!)
