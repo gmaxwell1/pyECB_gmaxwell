@@ -15,23 +15,24 @@ Date: 29.09.2020
 import math
 import numpy as np
 
+
 # Compute magnetic field vector in cartesian coordinates from given angles in polar coordinates
-def computeMagneticFieldVector(theta, phi, magnitude):
+def computeMagneticFieldVector(magnitude, theta, phi):
 
     x = math.sin(math.radians(phi)) * math.cos(math.radians(theta))
     y = math.sin(math.radians(phi)) * math.sin(math.radians(theta))
     z = math.cos(math.radians(phi))
 
-    unitVector = np.array(([x], [y], [z]))
+    unitVector = np.array((x, y, z))
     unitVector = unitVector / np.linalg.norm(unitVector)
-    print('Requested magnetic field direction: \n ', unitVector)
-    print('Requested magnetic flux density [mT]:  \n', magnitude)
+    #print('Requested magnetic field direction: ({},{},{})'.format(unitVector[0],unitVector[1],unitVector[2]))
+    #print('Requested magnetic flux density: {} mT'.format(magnitude))
 
     return unitVector * magnitude
      
 # Compute coil currents (in mA) required to generate the desired magnetic field vector
 # actuation matrix from simulations so far
-def computeCoilCurrents(B_fieldVector, windings):
+def computeCoilCurrents(B_fieldVector, windings, resistance):
 
     actMatrix = np.zeros((3, 3))
     actMatrix[0, 0] = 0.051343
@@ -51,27 +52,27 @@ def computeCoilCurrents(B_fieldVector, windings):
     currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
     currVector = ((currVector_amp_turns / windings))  # in milliamps
 
-    power = ((current_vector[0] ** 2) + (current_vector[1] ** 2) + (current_vector[2] ** 2)) * self.resistance
-    print('Power [W]: ', power)
+    power = ((currVector[0] ** 2) + (currVector[1] ** 2) + (currVector[2] ** 2)) * resistance
+    #print('Power [W]: ', power)
 
     currVector = currVector * 1000  # in milliamps
     currVector = np.rint(currVector)  # round to nearest milliamp
 
-    print('Current vector [mA]: \n', currVector)
+    # print('Current vector [mA]: \n', currVector)
 
     return currVector
 
 # Rotate a vector around an axis (axis defined by angles omega and psi), rotation around axis given by eta
-def rotationMatrix(unitVector, omega, psi, eta):
+def rotationMatrix(inVector, omega, psi, eta):
     
     a_x = math.sin(math.radians(psi)) * math.cos(math.radians(omega))
     a_y = math.sin(math.radians(psi)) * math.sin(math.radians(omega))
     a_z = math.cos(math.radians(psi))
 
     a_unit = np.array(([a_x], [a_y], [a_z]))
-    a_unit = a_unit / np.linalg.norm(a_unit)
+    #a_unit = a_unit / np.linalg.norm(a_unit)
 
-    # print('Axis of rotation (Cartesian) : \n ', a_unit)
+    #print('Axis of rotation (Cartesian) : \n ', a_unit)
 
     rot_matrix = np.zeros((3, 3))
     rot_matrix[0, 0] = math.cos(math.radians(eta)) + ((a_unit[0] ** 2) * (1 - math.cos(math.radians(eta))))
@@ -89,5 +90,28 @@ def rotationMatrix(unitVector, omega, psi, eta):
     rot_matrix[1, 2] = a_unit[1] * a_unit[2] * (1 - math.cos(math.radians(eta))) - a_unit[0] * math.sin(
         math.radians(eta))
     rot_matrix[2, 2] = math.cos(math.radians(eta)) + ((a_unit[2] ** 2) * (1 - math.cos(math.radians(eta))))
+
+    #print('Rotation Matrix:')
+    #print('\t{}\t{}\t{}'.format(rot_matrix[0,0], rot_matrix[1,0], rot_matrix[2,0]))
+    #print('\t{}\t{}\t{}'.format(rot_matrix[0,1], rot_matrix[1,1], rot_matrix[2,1]))
+    #print('\t{}\t{}\t{}'.format(rot_matrix[0,2], rot_matrix[1,2], rot_matrix[2,2]))
     # self.magnetic_field_unit = rot_matrix.dot(self.magnetic_field_unit)
-    B_fieldVector = rot_matrix.dot(B_fieldVector)
+    return rot_matrix.dot(inVector)
+
+
+if __name__ == '__main__':
+    # ------------------------Testing area--------------------------
+	#
+	# test the transformation functions
+    
+    B1 = computeMagneticFieldVector(theta=0, phi=0, magnitude=30)
+    currents1 = computeCoilCurrents(B1, 508, 0.416)
+    print(currents1.tolist())
+
+    B2 = rotationMatrix(B1,90,90,90)
+    currents2 = computeCoilCurrents(B2, 508, 0.416)
+
+    print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
+          .format(B1[0],B1[1],B1[2],currents1[0],currents1[1],currents1[2]))
+    print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
+          .format(B2[0],B2[1],B2[2],currents2[0],currents2[1],currents2[2]))
