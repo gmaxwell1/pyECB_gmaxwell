@@ -1,5 +1,5 @@
 # pyECB_gmaxwell
-A Python wrapper based on the pyECB extention
+A Python wrapper based on the pyECB extention (by Denis von Arx, @dvarx)
 
 ## Instructions on how to use this package:
 
