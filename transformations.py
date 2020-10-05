@@ -104,14 +104,9 @@ if __name__ == '__main__':
 	#
 	# test the transformation functions
     
-    B1 = computeMagneticFieldVector(theta=0, phi=0, magnitude=30)
+    B1 = computeMagneticFieldVector(theta=50, phi=40, magnitude=10)
     currents1 = computeCoilCurrents(B1, 508, 0.416)
-    print(currents1.tolist())
-
-    B2 = rotationMatrix(B1,90,90,90)
-    currents2 = computeCoilCurrents(B2, 508, 0.416)
-
+    
     print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
           .format(B1[0],B1[1],B1[2],currents1[0],currents1[1],currents1[2]))
-    print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
-          .format(B2[0],B2[1],B2[2],currents2[0],currents2[1],currents2[2]))
+
