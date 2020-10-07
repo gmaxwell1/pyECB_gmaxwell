@@ -26,7 +26,7 @@ import csv
 import transformations as tr
 from main_comm import *
 from measurements import *
-
+from modules.analysis_tools import generate_plots
 
 ##########  Current parameters ##########
 
@@ -168,8 +168,7 @@ def MainMenu(initialized):
                                 inp1 = input('configuration (z or x-y direction, acceptable inputs: z, xy) = ')
                                 inp2 = input('starting current in mA = ')
                                 inp3 = input('ending current in mA = ')
-                                inp4 = input('duration per step: ')
-                                inp5 = input('# of steps: ')
+                                inp4 = input('# of steps: ')
 
                                 try:
                                         config = inp1
@@ -187,17 +186,13 @@ def MainMenu(initialized):
                                         print('expected numerical value, defaulting to 1')
                                         end_val = 1
                                 try:
-                                        duration = int(inp4)
-                                except:
-                                        print('expected numerical value, defaulting to 0')
-                                        duration = 0
-                                try:
-                                        steps = int(inp5)
+                                        steps = int(inp4)
                                 except:
                                         print('expected numerical value, defaulting to 1')
-                                        steps = 1
+                                        duration = 1
+
                                         
-                                sweepCurrents(config, start_val, end_val, duration, steps)
+                                sweepCurrents(config, start_val, end_val, steps)
 
                         elif c1 == 'c':
                                 getCurrents()
@@ -321,15 +316,14 @@ def runCurrents(*coils, t=0, direct=b'1'):
                 return
 
 
-##########  ramps magnetic field from start_magn to finish_magn in a specified ##########
-#           number of steps and over a specified duration
-#           Args:
-#           -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
-#           -start/finish_magn: field range
-#           -duration: time over which to ramp the field 
-#           -steps: number of steps
-
 def rampVectorField(theta, phi, start_mag, finish_mag, duration, steps):
+        ##########  ramps magnetic field from start_magn to finish_magn in a specified ##########
+        #           number of steps and over a specified duration
+        #           Args:
+        #           -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
+        #           -start/finish_magn: field range
+        #           -duration: time over which to ramp the field 
+        #           -steps: number of steps
 
         delta_b = (finish_mag - start_mag) / (steps - 1)
         print(delta_b)
@@ -345,22 +339,26 @@ def rampVectorField(theta, phi, start_mag, finish_mag, duration, steps):
                 magnitude = magnitude + delta_b
 
 
-##########  sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning ##########
-#            we have either a z field or an x-y-plane field, measures magnetic field 
-#            and stores the measured values in various arrays
-#           Args:
-#           -config: 'z' or 'xy'
-#           -start/end_val: current to start and end with, mA
-#           -steps: number of steps
-
 def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
-        # initialization of 
-        all_curr_steps = np.linspace(start_val, end_val, steps)
-        mean_values = []
-        stdd_values = []
-        expected_fields =[]
-        current_direction = np.ndarray(3)
+        '''
+        sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning ##########
+        we have either a z field or an x-y-plane field, measures magnetic field 
+        and stores the measured values in various arrays
+        
+        Args:
+                -config: 'z' or 'xy'
+                -start/end_val: current to start and end with, mA
+                -steps: number of steps
+        '''
 
+        # initialization of all arrays
+        all_curr_steps = np.linspace(start_val, end_val, steps)
+        mean_values = np.zeros((steps, 3))
+        stdd_values = np.zeros((steps, 3))
+        expected_fields = np.zeros((steps, 3))
+        directory = ''
+
+        current_direction = np.ndarray(3)
         if config == 'z':
                 current_direction[0] = 1
                 current_direction[1] = 1
@@ -377,15 +375,25 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         #iterate through all possible steps
         for i in range(steps):
                 for k in range(3):
-                        desCurrents[k] = current_direction[k] * all_curr_steps[k]
-
+                        desCurrents[k] = current_direction[k] * all_curr_steps[i]
+                B_expected = tr.computeMagField(current_direction * all_curr_steps[i], windings)
                 setCurrents(desCurrents, currDirectParam)
-
+                sleep(0.8)
                 # collect measured and expected magnetic field (of the specified sensor in measurements)
+                print('measurement nr. ', i)
                 mean_data, std_data, directory = measure() # see measurements.py for more details
                 mean_values[i] = mean_data
                 stdd_values[i] = std_data
                 expected_fields[i] = B_expected
+
+                sleep(0.2)
+        
+        disableCurrents()
+
+        # plotting section
+        saveDataPoints((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, directory)
+        generate_plots((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, flag_xaxis='I', flags_yaxis='pma', directory=directory, height_per_plot=3)
+        
 
 
 

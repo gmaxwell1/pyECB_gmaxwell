@@ -26,20 +26,20 @@ from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angl
 from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
 from modules.serial_reader import get_new_data_set
 
+
 __all__ = [
         'measure',
-        'makePlots'
+        'makePlots',
+        'saveDataPoints'
         ]
 
 ########## set measurement parameters and folder name ##########
 
 N = 50  # number of measurements per sensor for averaging 
 specific_sensor = 55
-folder_name = 'first_characterization_prototype_along_z' # can be changed if necessary
-data_filename_postfix = 'B_vs_I_along_z'    # 'B_vs_I_in_plane'
 
 ########## initialize sensor ##########
-port_sensor = 'COM4'
+port_sensor = 'COM3'
 
 # # initialize actuators
 # init_pos = np.array([8.544, 4.256, 4.0])
@@ -58,36 +58,42 @@ port_sensor = 'COM4'
 #                   standard deviation in each averaged measurment 
 #                   directory where the data will be saved to
 
-def measure():
+def measure(folder_name='first_characterization_prototype_along_z'):
 
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2)  as cube: 
         # measure field with all sensors
         mean_data, std_data, _, directory = get_new_mean_data_set(N, filename=folder_name, cube=cube, 
                                                                         no_enter=True, on_stage=True)
+
     # see .\modules\calibrate_cube.py for more details on this function
     return mean_data[specific_sensor-1,:], std_data[specific_sensor-1,:], directory
 
 
+def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
+        # 'B_vs_I_in_plane'
+        # save the results
+        df = pd.DataFrame({ 'I [A]': I, 
+                            'mean Bx [mT]': mean_data[:,0],
+                            'mean By [mT]': mean_data[:,1],
+                            'mean Bz [mT]': mean_data[:,2],
+                            'std Bx [mT]': std_data[:,0],
+                            'std By [mT]': std_data[:,1],
+                            'std Bz [mT]': std_data[:,2],
+                            'expected Bx [mT]': expected_fields[:,0],
+                            'expected By [mT]': expected_fields[:,1],
+                            'expected Bz [mT]': expected_fields[:,2]})
+
+        now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+        output_file_name = '{}_{}.csv'.format(now, data_filename_postfix) 
+        file_path = os.path.join(directory, output_file_name)
+        df.to_csv(file_path, index=False, header=True)
+
+
+
 # make plots of the data collected (most likely from the function 'measure')
 def makePlots(I, mean_data, std_data, expected_fields):
-    # save the results
-    df = pd.DataFrame({ 'I [A]': I, 
-                        'mean Bx [mT]': mean_data[:,0],
-                        'mean By [mT]': mean_data[:,1],
-                        'mean Bz [mT]': mean_data[:,2],
-                        'std Bx [mT]': std_data[:,0],
-                        'std By [mT]': std_data[:,1],
-                        'std Bz [mT]': std_data[:,2],
-                        'expected Bx [mT]': expected_fields[:,0],
-                        'expected By [mT]': expected_fields[:,1],
-                        'expected Bz [mT]': expected_fields[:,2]})
-
-    now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
-    output_file_name = '{}_{}.csv'.format(now, data_filename_postfix) 
-    file_path = os.path.join(directory, output_file_name)
-    df.to_csv(file_path, index=False, header=True)
-
+    
     #%%
     # create a simple plot
     fig, axs = plt.subplots(3,1, sharex=True)
