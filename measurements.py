@@ -33,32 +33,24 @@ __all__ = [
         'saveDataPoints'
         ]
 
-########## set measurement parameters and folder name ##########
-
-N = 50  # number of measurements per sensor for averaging 
-specific_sensor = 55
-
-########## initialize sensor ##########
+########## sensor cube port ##########
 port_sensor = 'COM3'
 
-# # initialize actuators
-# init_pos = np.array([8.544, 4.256, 4.0])
-# COM_ports = ['COM7','COM6','COM5']
-# CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports = COM_ports)
 
-# # manually adjust z 
-# z_offset = 4.0
-# CC_Z.move_absolute(z_offset)
-
-
-########## starts communication with hall sensor cube, measures the ##########
-#          magnetic field with the specified sensor (change specific_sensor 
-#          variable if necessary) 
-#          returns: mean measurement data (averaged over N measurements)
-#                   standard deviation in each averaged measurment 
-#                   directory where the data will be saved to
-
-def measure(folder_name='first_characterization_prototype_along_z'):
+def measure(folder_name='z_field_meas_set_1', specific_sensor = 55, N = 50):
+    """
+    starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary) 
+    Args:
+    -folder_name: folder where measurements will be stored
+    -specific_sensor: sensor from which data will be fetched
+    -N: number of data points collected for each average
+          
+    Returns: 
+    -mean measurement data of 'specific_sensor' (averaged over N measurements)
+    -standard deviation in each averaged measurment
+    (where mean, std and abs(std/mean) are returned as ndarrays of shape (1, 3) for the 3 field directions)
+    -directory where the data will be saved to
+    """
 
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2)  as cube: 
@@ -71,8 +63,16 @@ def measure(folder_name='first_characterization_prototype_along_z'):
 
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
-        # 'B_vs_I_in_plane'
-        # save the results
+    """
+    Saves input data points to a .csv file
+    Args:
+    - I, mean_values, std_values, expected_values are ndarrays of shape (#measurements, 3), 
+    containing applied current, experimentally estimated/expected mean values and standard deviations 
+    for x,y,z-directions.
+    - directory: valid path of directory where the image should be saved
+    - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
+
+    """
         df = pd.DataFrame({ 'I [A]': I, 
                             'mean Bx [mT]': mean_data[:,0],
                             'mean By [mT]': mean_data[:,1],

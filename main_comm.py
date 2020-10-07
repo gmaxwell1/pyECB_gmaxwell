@@ -56,11 +56,14 @@ ECB_CURRENTS_ENABLED = False
 # overCurrent = 0
 
 
-##########  Error messages from ECB, see ECB_API documentation (no exceptions needed): ##########
+##########  Error messages from ECB, Error messages from ECB, see ECB_API documentation (no exceptions needed): ##########
 #           ..\ECB_820_Pantec\Pantec_API\pantec_tftp\ecb_api_20150203\doxygen\html     
 
 def _chk(msg):
-    """Check for errors from the C library."""
+    """
+    Check for errors from the C library, see ECB_API documentation (no exceptions needed):
+           ..\ECB_820_Pantec\Pantec_API\pantec_tftp\ecb_api_20150203\doxygen\html    
+    """
     if msg:
         if msg == 0:
             print("Succesful")
@@ -109,27 +112,35 @@ def _chk(msg):
             See DCx_User_and_SDK_Manual.pdf for details".format(msg))
 
 
-##########  Set maximum current value on each ECB channel ##########
-
 def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
+    """
+    Open a connection with the ECB on port ECB_PORT.
+    Args:
+    -IPAddress: IP address of the ECB. Should always be 192.168.237.47, unless the configuration was changed.
+    -port: port on which TCP connection is opened. Should always be 7070, unless the configuration was changed.
+
+    Returns: error code iff an error occurs
+    """
     ECB_ERR = initECBapi(IPAddress, port)
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
 
-    return ECB_ERR
-
-
-##########  Set maximum current value on each ECB channel ##########
 
 def closeConnection():
+    """
+    Close the connection with the ECB.
+    """
     exitECBapi()
 
 
-##########  Enable current controllers ##########
-
 def enableCurrents():
+    """
+    Enable current controllers.
+
+    Returns: error code iff an error occurs, otherwise True (whether ECB currents are enabled)
+    """
     ECB_ERR = enableECBCurrents()
 
     if ECB_ERR != 0:
@@ -140,9 +151,12 @@ def enableCurrents():
     return ECB_CURRENTS_ENABLED
 
 
-##########  Disable current controllers ##########
-
 def disableCurrents():
+    """
+    Disable current controllers.
+
+    Returns: error code iff an error occurs, otherwise False (whether ECB currents are enabled)
+    """
     ECB_ERR = disableECBCurrents()
 
     if ECB_ERR != 0:
@@ -153,10 +167,14 @@ def disableCurrents():
     return ECB_CURRENTS_ENABLED
 
 
-##########  Set maximum current value on each ECB channel ##########
-
 def setMaxCurrent(maxValue=19000):
+    """
+    Set maximum current values for each ECB channel, as long as they are under the threshold specified in the API source code.
+    Args:
+    -maxValue
 
+    Returns: error code iff an error occurs
+    """
     if maxValue < 19800:
         ECB_ERR = setMaxCurrent(maxValue)
         if ECB_ERR != 0:
@@ -167,11 +185,17 @@ def setMaxCurrent(maxValue=19000):
         print("specified current was too high")
 
 
-##########  Get current values from each ECB channel, print them to the console ##########
-#
-#           returns: error code if an error occurs
-
 def setCurrents(desCurrents=[0,0,0,0,0,0,0,0], direct=b'0'):
+    """
+    Set current values for each ECB channel
+    Args:
+    -desCurrents: list of length 8 containing int values, where the '0th' value is the desired current on channel 1 (units of mA),
+    the '1st' is the desired current on channel 2 and so on.
+    -direct: if 1, the existing ECB buffer will be cleared and desCurrents will be directly applied.
+    If 0, the desired currents will be appended to the buffer.
+
+    Returns: error code iff an error occurs
+    """
     ECB_ERR = setDesCurrents(desCurrents, direct)
     
     if ECB_ERR != 0:
@@ -179,12 +203,12 @@ def setCurrents(desCurrents=[0,0,0,0,0,0,0,0], direct=b'0'):
         return ECB_ERR
 
 
-##########  Get current values from each ECB channel, print them to the console ##########
-#
-#           returns: a list of all the currents or error code
-
 def getCurrents():
+    """
+    Get current values from each ECB channel, print them to the console
 
+    Returns: a list of all the currents or error code
+    """
     (ECB_ERR, result) = getActCurrents()
 
     if ECB_ERR != 0:
@@ -199,12 +223,12 @@ def getCurrents():
     return result
 
 
-##########  Get temperature values from each sensor, print them to the console ##########
-#
-#           returns: a tuple with all of the values of interest if no error occurs
-#                    otherwise an error code is returned
-
 def getTemps():
+    """
+    Get temperature values from each sensor, print them to the console
+
+    returns: a tuple with all of the values of interest if no error occurs otherwise an error code is returned
+    """
     (ECB_ERR, result, hall_list, currents_list, coil_status) = getCoilValues()
     
     if ECB_ERR != 0:
@@ -219,12 +243,12 @@ def getTemps():
     return (result, hall_list, currents_list, coil_status)
 
 
-##########  Get temperature values from each sensor, print them to the console ##########
-#
-#           returns: a tuple with all of the values of interest if there is no error
-#                    otherwise an error code is returned
-
 def getStatus():
+    """
+    Get ECB status (Number)
+
+    returns: status, or error code iff there is an error
+    """
     (ECB_ERR, status) = getECBStatus()
     
     if ECB_ERR != 0:

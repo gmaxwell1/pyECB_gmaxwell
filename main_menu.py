@@ -340,16 +340,15 @@ def rampVectorField(theta, phi, start_mag, finish_mag, duration, steps):
 
 
 def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
-        '''
-        sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning ##########
-        we have either a z field or an x-y-plane field, measures magnetic field 
+        """
+        sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
         and stores the measured values in various arrays
         
         Args:
-                -config: 'z' or 'xy'
-                -start/end_val: current to start and end with, mA
-                -steps: number of steps
-        '''
+        -config: 'z' or 'xy'
+        -start/end_val: current to start and end with, mA
+        -steps: number of steps
+        """
 
         # initialization of all arrays
         all_curr_steps = np.linspace(start_val, end_val, steps)
