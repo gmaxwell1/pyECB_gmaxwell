@@ -196,7 +196,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
         else:
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
                                     linestyle='', marker='.', capsize = 2, label = 'measured @ ~ 3.5 mm')
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', label = 'simulation @ ~ 3 mm')
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', label = 'simulation @ 3 mm')
             axs[i].legend()
 
     # add a Delta at the front of each label if differences should be plotted
