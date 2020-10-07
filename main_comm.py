@@ -44,7 +44,6 @@ ECB_PORT = "7070"
 ##########  ECB state values (mostly unnecessary) ##########
 
 # ECB_CONNECTED = False
-ECB_INIT = False
 ECB_ERR = 0
 # Max current on any coil in [mA] (default value)
 ECB_MAX_CURR = 19800
@@ -118,17 +117,14 @@ def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
-    
-    ECB_INIT = True
 
-    return ECB_INIT
+    return ECB_ERR
 
 
 ##########  Set maximum current value on each ECB channel ##########
 
 def closeConnection():
     exitECBapi()
-    ECB_INIT = False
 
 
 ##########  Enable current controllers ##########
@@ -141,6 +137,7 @@ def enableCurrents():
         return ECB_ERR
 
     ECB_CURRENTS_ENABLED = True
+    return ECB_CURRENTS_ENABLED
 
 
 ##########  Disable current controllers ##########
@@ -153,12 +150,12 @@ def disableCurrents():
         return ECB_ERR
 
     ECB_CURRENTS_ENABLED = False
-
+    return ECB_CURRENTS_ENABLED
 
 
 ##########  Set maximum current value on each ECB channel ##########
 
-def setMaxCurrent(maxValue):
+def setMaxCurrent(maxValue=19000):
 
     if maxValue < 19800:
         ECB_ERR = setMaxCurrent(maxValue)
@@ -174,7 +171,7 @@ def setMaxCurrent(maxValue):
 #
 #           returns: error code if an error occurs
 
-def setCurrents(desCurrents, direct):
+def setCurrents(desCurrents=[0,0,0,0,0,0,0,0], direct=b'0'):
     ECB_ERR = setDesCurrents(desCurrents, direct)
     
     if ECB_ERR != 0:
