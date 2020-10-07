@@ -72,8 +72,8 @@ def extract_raw_data_from_file(filepath):
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I', flags_yaxis = 'zma',
-                        plot_delta_sim = False,directory= None, data_filename_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_plot_values=False, save_image = True):
+                        plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
+                        height_per_plot = 2, save_image = True):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
     
@@ -105,8 +105,6 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     - height_per_plot: height of each plot in inches. Default for several plots is 2.
     The usual height of a single plot is 4.
     - save_image: flag to save or not save the image
-    - save_plot_values: flag to save or not save the data that are plotted to an additional file, 
-    including the estimated errors  
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -215,16 +213,17 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     # further adjustments
     plt.tight_layout()
 
-    # set the directory name and current datetime if something should be saved
-    if save_image or save_plot_values:
+    # save image
+    if save_image :
+        # set the directory name and current datetime if not passed as argument
         if directory is None:
             directory = os.getcwd()
         now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
 
-    # save the figure
-    if save_image:
         output_file_name = '{}_{}.png'.format(now, data_filename_postfix) 
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi = 300)
     
     fig.show()
+
+    return x_vals, plot_mean_data, plot_std_data, plot_expected_data
