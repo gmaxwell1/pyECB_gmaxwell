@@ -62,18 +62,30 @@ def estimate_std_inplane(mean_values, std_values):
 def extract_raw_data_from_file(filepath):
     """
     Extract current, mean and std values of measured magnetic field and expected magnetic field from file.
+
+    Also checks whether the current is provided as single float value or as vector
     """
+    # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
-    I = raw_data[:,0]
-    mean_data_specific_sensor = raw_data[:,1:4]
-    std_data_specific_sensor = raw_data[:,4:7]
-    expected_fields = raw_data[:,7:10]
+
+    # current can be single-valued or a vector, differentiate these cases
+    dimension_I = len(raw_data[0]) - 9
+    if dimension_I == 1 :
+        I = raw_data[:,0]
+        mean_data_specific_sensor = raw_data[:,1:4]
+        std_data_specific_sensor = raw_data[:,4:7]
+        expected_fields = raw_data[:,7:10]
+    else:
+        I = raw_data[:,0:3]
+        mean_data_specific_sensor = raw_data[:,3:6]
+        std_data_specific_sensor = raw_data[:,6:9]
+        expected_fields = raw_data[:,9:12]
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
-def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I', flags_yaxis = 'zma',
+def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
                         plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_image = True):
+                        height_per_plot = 2, save_image = True, distance=3.0):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
     
@@ -85,11 +97,11 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     containing applied current, experimentally estimated/expected mean values and standard deviations 
     for x,y,z-directions.
     - flag_xaxis (string): Switch between the following quantities displayed on the x-axis:
-        - 'I' for current, 
-        - 'P' for power, 
-        - 'B' for magnitude of magnetic field.
+        - 'I1', 'I2', 'I3' for currents in coils 1,2,3 
+        - 'P' for power
+        - 'B' for magnitude of magnetic field
     All axes share the same x-axis, and only the lowest plot has a label and ticks (currently)! 
-    If invalid (other than the listed letters) flags are passed, the default 'I' is assumed.
+    If invalid (other than the listed letters) flags are passed, the default 'I1' is assumed.
     - flag_yaxis: string containing the letters as flags, where valid letters are mentioned below.
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     a plot is generated with the according quantity plotted on the y-axis. The plots are generated
@@ -105,6 +117,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     - height_per_plot: height of each plot in inches. Default for several plots is 2.
     The usual height of a single plot is 4.
     - save_image: flag to save or not save the image
+    - distance is the distance between sensor and tip, which is added as plot label 
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -174,16 +187,21 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
 
     # plot current ('I'), power ('P') or magnitude of magnetic field ('B') on xaxis, depending on flag_xaxis
     if flag_xaxis == 'P':
-        R = 0.47    # resistance [Ohm] of each coil]
-        x_vals = R * I**2
-        x_vals *= 3 # multiply by the number of coils to get overall power
+        R = 0.47    # resistance [Ohm] of each coil
+        x_vals = R * np.sum(I**2, axis=1)  # sum over all three coils
         axs[-1].set_xlabel('$P$ [W]')
     elif flag_xaxis == 'B':
         x_vals = mean_magnitudes
         axs[-1].set_xlabel('$|B|$ [mT]')
+    elif flag_xaxis == 'I2':
+        x_vals = I[:,1]
+        axs[-1].set_xlabel('$I_2$ [A]')
+    elif flag_xaxis == 'I3':
+        x_vals = I[:,2]
+        axs[-1].set_xlabel('$I_3$ [A]')
     else:
-        x_vals = I
-        axs[-1].set_xlabel('$I$ [A]')
+        x_vals = I[:,0]
+        axs[-1].set_xlabel('$I_1$ [A]')
 
     # actual plotting 
     for i in range(len(axs)):
@@ -192,11 +210,14 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
         # plot either both measured and expected values or only the differences between both. 
         if plot_delta_sim:
             axs[i].errorbar(x_vals, plot_expected_data[i]-plot_mean_data[i], yerr=plot_std_data[i],
-                                linestyle='', marker='.', capsize = 2, label = '$\\Delta$ = simulation-measurements')
+                                linestyle='', marker='.', capsize = 2, 
+                                label = '$\\Delta$ = simulation-measurements')
         else:
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
-                                    linestyle='', marker='.', capsize = 2, label = 'measured @ ~ 3.5 mm')
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', label = 'simulation @ 3 mm')
+                                    linestyle='', marker='.', capsize = 2, 
+                                    label = 'measured @ {:.1f} mm'.format(distance))
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', 
+                                    label = 'simulation @ 3 mm')
             axs[i].legend()
 
     # add a Delta at the front of each label if differences should be plotted
@@ -227,3 +248,55 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     fig.show()
 
     return x_vals, plot_mean_data, plot_std_data, plot_expected_data
+
+
+def sigmoid(x, k, a):
+    """
+    Sigmoid function with growth rate k and maximum value a, rescaled such that center point is at origin.
+    """
+    return a * (1 - np.exp(-k*x)) / (1 + np.exp(-k*x))
+
+def abs_sigmoid(x, k, a):
+    """
+    Return absolute value of sigmoid function with growth rate k and maximum value a, 
+    rescaled such that center point is at origin.
+    """
+    return np.abs(sigmoid(x, k, a))
+
+def coth(x):
+    """Return cosh(x)/sinh(x)"""
+    return np.cosh(x) / np.sinh(x)
+
+def brillouin_fct(x, J, a): 
+    """
+    Implement the Brillouin function, which is used to describe paramagnet. 
+    """
+    s = 1/(2*J)
+    return a * ((1+s)* coth((1+s)*x) - s * coth(s*x))
+
+def abs_brillouin_fct(x, J, a): 
+    """
+    Implement the absolute value of Brillouin function, which is used to describe paramagnet. 
+    """
+    return np.abs(brillouin_fct(x, J, a))
+
+def lin_and_const(x, x_kink, a):
+    """
+    Implement a function that raises linearly as a*x until |x|= x_kink and remains constant afterwards.
+
+    Note that x_kink >= 0 is required.
+    """
+    try:
+        len(x)
+    except TypeError:
+        return a*x if np.abs(x) <= x_kink else a*x_kink*np.sign(x)
+    else:
+        return np.array([a*x[i] if np.abs(x[i]) <= x_kink else a*x_kink*np.sign(x[i]) for i in range(len(x))])
+
+def abs_lin_and_const(x, x_kink, a):
+    """
+    Implement a function that raises linearly as |a*x| until |x|= x_kink and remains constant afterwards.
+
+    Note that x_kink >= 0 is required and that the returned value is >= 0.
+    """
+    return abs(lin_and_const(x, x_kink, a))
