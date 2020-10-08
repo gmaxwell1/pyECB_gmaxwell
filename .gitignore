@@ -1,5 +1,6 @@
 # Data from measurements
 data_sets/
+test_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
