@@ -39,23 +39,24 @@ windings = 508  # windings per coil
 resistance = 0.47  # resistance per coil
 
 
-##########  Main menu for ECB/Vector magnet operation ##########
-#           an arbitrary magnitude     
-#           Args:
-#           -magnitude: of the B-field, in [mT]
-#           -theta: angle between desired field direction and z axis
-#           -phi: azimuthal angle (measured from the x axis)
-#           -t: time for which the magnetic field should be activated (if not 0)
-#           -direct: current direct parameter (can usually be left alone)
-
 def MainMenu(initialized):
+        """
+        Main menu for ECB/Vector magnet operation an arbitrary magnitude   
+
+        Args:
+        -magnitude: of the B-field, in [mT]
+        -theta: angle between desired field direction and z axis
+        -phi: azimuthal angle (measured from the x axis)
+        -t: time for which the magnetic field should be activated (if not 0)
+        -direct: current direct parameter (can usually be left alone)
+        """
 
         # is there a connection?
         if initialized == 0:
                 c1 = '0'
                 while c1 != 'x':
                         print('--------- Main Menu ---------')
-                        print('[x] to exit\n[0]: set currents manually on 3 channels (in mA)')
+                        print('[x] to exit \n[0]: set currents manually on 3 channels (in mA)')
                         print('[1]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
                         print('[2]: ramp magnetic field (specify polar and azimuthal angles, magnitude range)')
                         print('[3]: sweep multiple current values and make measurment with cube')
@@ -200,24 +201,27 @@ def MainMenu(initialized):
                                 print(getStatus())
                         elif c1 == 'r':
                                 print(np.random.randint(1,7))
-                
-                demagnetizeCoils()
+
+                c1 = input('Demagnetize coils? [y/n]\t')
+                if c1 == 'y':
+                        demagnetizeCoils()
 
         else:
                 print('not connected')
                 return
 
 
-##########  generate a magnetic field in an arbitrary direction and ##########
-#           an arbitrary magnitude     
-#           Args:
-#           -magnitude: of the B-field, in [mT]
-#           -theta: angle between desired field direction and z axis
-#           -phi: azimuthal angle (measured from the x axis)
-#           -t: time for which the magnetic field should be activated (if not 0)
-#           -direct: current direct parameter (can usually be left alone)
-
 def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
+        """  
+        generate a magnetic field in an arbitrary direction and an arbitrary magnitude
+
+        Args:
+        -magnitude: of the B-field, in [mT]
+        -theta: angle between desired field direction and z axis
+        -phi: azimuthal angle (measured from the x axis)
+        -t: time for which the magnetic field should be activated (if not 0)
+        -direct: current direct parameter (can usually be left alone)
+        """
 
         B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
         I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
@@ -264,14 +268,15 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                 return
 
 
-##########  run arbitrary currents (less than maximum current) on each channel ##########
-#           Args:
-#           -coils: current values in [mA]
-#           -t: time for which the magnetic field should be activated (if not 0)
-#           -direct: current direct parameter (can usually be left alone)
-
 def runCurrents(*coils, t=0, direct=b'1'):
+        """
+        run arbitrary currents (less than maximum current) on each channel 
 
+        Args:
+        -coils: current values in [mA]
+        -t: time for which the magnetic field should be activated (if not 0)
+        -direct: current direct parameter (can usually be left alone)
+        """
         currDirectParam = direct
         # copy the computed current values (mA) into the desCurrents list (first 3 positions)
         # cast to int
@@ -317,14 +322,15 @@ def runCurrents(*coils, t=0, direct=b'1'):
 
 
 def rampVectorField(theta, phi, start_mag, finish_mag, duration, steps):
-        ##########  ramps magnetic field from start_magn to finish_magn in a specified ##########
-        #           number of steps and over a specified duration
-        #           Args:
-        #           -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
-        #           -start/finish_magn: field range
-        #           -duration: time over which to ramp the field 
-        #           -steps: number of steps
+        """  
+        ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration
 
+        Args:
+        -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
+        -start/finish_magn: field range
+        -duration: time over which to ramp the field 
+        -steps: number of steps
+        """
         delta_b = (finish_mag - start_mag) / (steps - 1)
         print(delta_b)
         delta_t = duration / steps
@@ -392,26 +398,22 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         # plotting section
         saveDataPoints((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, directory)
         generate_plots((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, flag_xaxis='I', flags_yaxis='pma', directory=directory, height_per_plot=3)
+
+
+def demagnetizeCoils(stepSize = 100, amplitude = 1500, dt = 0.5, direct = b'1'):
+        """
+        Try to minimize residual flux in cores by running square wave shaped (positive-negative) currents on each coil.
         
-
-
-
-##########  run arbitrary currents (less than maximum current) on each channel ##########
-#           Args:
-#           -coils: current values in [mA]
-#           -t: time for which the magnetic field should be activated (if not 0)
-#           -direct: current direct parameter (can usually be left alone)
-
-def demagnetizeCoils():
-
-        currDirectParam = b'1'
-        
-        stepSize = 100
-        amplitude = 1500
-        dt = 0.5
+        Args:
+        -stepSize: amount by which to reduce amplitude every period
+        -amplitude: Amplitude of square wave
+        -dt: half period of pulse
+        -direct: see ECB API documentation
+        """
+        currDirectParam = direct
 
         enableCurrents()
-        print('demagnitizing coils')
+        print('demagnetizing coils')
         while amplitude > 0:
                 desCurrents = [amplitude] * 8
                 setCurrents(desCurrents, currDirectParam)
