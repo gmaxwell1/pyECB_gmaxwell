@@ -248,3 +248,55 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     fig.show()
 
     return x_vals, plot_mean_data, plot_std_data, plot_expected_data
+
+
+def sigmoid(x, k, a):
+    """
+    Sigmoid function with growth rate k and maximum value a, rescaled such that center point is at origin.
+    """
+    return a * (1 - np.exp(-k*x)) / (1 + np.exp(-k*x))
+
+def abs_sigmoid(x, k, a):
+    """
+    Return absolute value of sigmoid function with growth rate k and maximum value a, 
+    rescaled such that center point is at origin.
+    """
+    return np.abs(sigmoid(x, k, a))
+
+def coth(x):
+    """Return cosh(x)/sinh(x)"""
+    return np.cosh(x) / np.sinh(x)
+
+def brillouin_fct(x, J, a): 
+    """
+    Implement the Brillouin function, which is used to describe paramagnet. 
+    """
+    s = 1/(2*J)
+    return a * ((1+s)* coth((1+s)*x) - s * coth(s*x))
+
+def abs_brillouin_fct(x, J, a): 
+    """
+    Implement the absolute value of Brillouin function, which is used to describe paramagnet. 
+    """
+    return np.abs(brillouin_fct(x, J, a))
+
+def lin_and_const(x, x_kink, a):
+    """
+    Implement a function that raises linearly as a*x until |x|= x_kink and remains constant afterwards.
+
+    Note that x_kink >= 0 is required.
+    """
+    try:
+        len(x)
+    except TypeError:
+        return a*x if np.abs(x) <= x_kink else a*x_kink*np.sign(x)
+    else:
+        return np.array([a*x[i] if np.abs(x[i]) <= x_kink else a*x_kink*np.sign(x[i]) for i in range(len(x))])
+
+def abs_lin_and_const(x, x_kink, a):
+    """
+    Implement a function that raises linearly as |a*x| until |x|= x_kink and remains constant afterwards.
+
+    Note that x_kink >= 0 is required and that the returned value is >= 0.
+    """
+    return abs(lin_and_const(x, x_kink, a))
