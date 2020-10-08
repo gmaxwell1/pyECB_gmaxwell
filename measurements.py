@@ -73,21 +73,21 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
-        df = pd.DataFrame({ 'I [A]': I, 
-                            'mean Bx [mT]': mean_data[:,0],
-                            'mean By [mT]': mean_data[:,1],
-                            'mean Bz [mT]': mean_data[:,2],
-                            'std Bx [mT]': std_data[:,0],
-                            'std By [mT]': std_data[:,1],
-                            'std Bz [mT]': std_data[:,2],
-                            'expected Bx [mT]': expected_fields[:,0],
-                            'expected By [mT]': expected_fields[:,1],
-                            'expected Bz [mT]': expected_fields[:,2]})
+    df = pd.DataFrame({ 'I [A]': I, 
+                        'mean Bx [mT]': mean_data[:,0],
+                        'mean By [mT]': mean_data[:,1],
+                        'mean Bz [mT]': mean_data[:,2],
+                        'std Bx [mT]': std_data[:,0],
+                        'std By [mT]': std_data[:,1],
+                        'std Bz [mT]': std_data[:,2],
+                        'expected Bx [mT]': expected_fields[:,0],
+                        'expected By [mT]': expected_fields[:,1],
+                        'expected Bz [mT]': expected_fields[:,2]})
 
-        now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
-        output_file_name = '{}_{}.csv'.format(now, data_filename_postfix) 
-        file_path = os.path.join(directory, output_file_name)
-        df.to_csv(file_path, index=False, header=True)
+    now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+    output_file_name = '{}_{}.csv'.format(now, data_filename_postfix) 
+    file_path = os.path.join(directory, output_file_name)
+    df.to_csv(file_path, index=False, header=True)
 
 
 

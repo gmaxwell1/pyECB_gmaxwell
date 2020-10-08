@@ -119,13 +119,15 @@ def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
     -IPAddress: IP address of the ECB. Should always be 192.168.237.47, unless the configuration was changed.
     -port: port on which TCP connection is opened. Should always be 7070, unless the configuration was changed.
 
-    Returns: error code iff an error occurs
+    Returns: ECB error code
     """
     ECB_ERR = initECBapi(IPAddress, port)
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
+
+    return ECB_ERR
 
 
 def closeConnection():
@@ -260,14 +262,14 @@ def getStatus():
 
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
-    initECBapi(ECB_ADDRESS, ECB_PORT)
+    print(initECBapi(ECB_ADDRESS, ECB_PORT))
     #enableECBCurrents()
     #generateMagField(magnitude=60,theta=0,phi=0)
     #setDesCurrents([2232,2232,2232,0,0,0,0,0], currDirectParam)
 
     #getCurrents()
-
+    print(getStatus())
     #pollCurrents(100,10)
-    #sleep(10)
+    sleep(10)
     #disableECBCurrents()
     exitECBapi()
