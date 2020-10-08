@@ -14,7 +14,7 @@ import sys
 # from scipy.optimize import root
 
 from modules.serial_reader import get_new_data_set
-from modules.conexcc_control import all_ready, save_in_dir, setup#, get_coords, correct_reset 
+from modules.conexcc_control import all_ready, save_in_dir, setup #, get_coords, correct_reset 
 from conexcc.conexcc_class import *
 from modules.plot_hall_cube import plot_set, plot_angle, plot_angle_spherical
 
@@ -47,7 +47,7 @@ def check_validity(min_val, max_val, CC1:ConexCC):
 
 
 def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None, 
-                            num_prec = 10.0, sampling_size = 10):
+                            num_prec = 10.0, sampling_size = 10, verbose=False):
     """
     Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z. 
 
@@ -67,6 +67,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
       NOTE: num_prec >= 2 is required to not raise errors, > 2 to not get trapped in while-loop!
     - sampling_size: Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
+    - verbose: switching on/off print-statements for displaying progress
 
     Returns: xpos, ypos, xmax/num_prec
     - xpos, ypos: 
@@ -97,56 +98,66 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
     xrang=xmax-xmin
     yrang=ymax-ymin
     while ((xrang/num_prec) >= min_step_size): 
-        print('\nstep size: {}'.format(xrang/num_prec))
+        if verbose:
+            print('\nstep size: {}'.format(xrang/num_prec))
 
         # sweep along x-axis and measure B_y field component
-        print("Now sweeping x: ")
+        if verbose:
+            print("Now sweeping x: ")
         fsx=[]
         for i in range(int(num_prec + 1)): 
-            print('Position {}: {}'.format(i, (xrang/num_prec * i + xmin)))
             CC1.move_absolute(xrang/num_prec * i + xmin)
             all_ready(CC1, CC2=CC2)
             fsx.append(av_single_sens(cube, specific_sensor, sampling_size)[1])
-            print('Field at position {}: {}'.format(i, fsx[-1]))
+
+            if verbose:
+                print('Position {}: {}'.format(i, (xrang/num_prec * i + xmin)))
+                print('Field at position {}: {}'.format(i, fsx[-1]))
 
         # move to x-position with smallest (absolute value of) B_y
         fminx=np.argmin(abs(np.asarray(fsx)))
         xpos=(xmin+(xrang/num_prec)*fminx)
-        print('Now moving to position {}: {}'.format(fminx, xpos))
         CC1.move_absolute(xpos)
         all_ready(CC1, CC2=CC2)
+        if verbose:
+            print('Now moving to position {}: {}'.format(fminx, xpos))
 
         # update xmin, xmax as the x-position with smallest B_y +- one stepsize
         xmin=xpos-(xrang/num_prec)
         xmax=xpos+(xrang/num_prec)
         xmin, xmax = check_validity(xmin, xmax, CC1)
         xrang=xmax-xmin 
-        print('New xmin: {} new xmax: {} new xrang: {}'.format(xmin, xmax, xrang))
+        if verbose:
+            print('New xmin: {} new xmax: {} new xrang: {}'.format(xmin, xmax, xrang))
         
 
         # sweep along y-axis and measure B_x field component
-        print("Now sweeping y: ")
+        if verbose:
+            print("Now sweeping y: ")
         fsy=[]
         for i in range(int(num_prec + 1)):
-            print('Position {}: {}'.format(i, (yrang/num_prec * i + ymin)))
             CC2.move_absolute(yrang/num_prec * i + ymin)
             all_ready(CC1, CC2=CC2)
             fsy.append(av_single_sens(cube, specific_sensor, sampling_size)[0])
-            print('Field at position {}: {}'.format(i, fsy[-1]))
+            if verbose:
+                print('Position {}: {}'.format(i, (yrang/num_prec * i + ymin)))
+                print('Field at position {}: {}'.format(i, fsy[-1]))
 
         # move to x-position with smallest (absolute value of) B_x
-        fminy=np.argmin(abs(np.asarray(fsy)))
-        ypos=(ymin+(yrang/num_prec)*fminy)
-        print('Now moving to position {}: {}'.format(fminy, ypos))
+        fminy = np.argmin(abs(np.asarray(fsy)))
+        ypos = (ymin+(yrang/num_prec)*fminy)
         CC2.move_absolute(ypos)
         all_ready(CC1, CC2=CC2)
+        if verbose:
+            print('Now moving to position {}: {}'.format(fminy, ypos))
 
         # update ymin, ymax as the y-position with smallest B_x +- one stepsize
-        ymin=ypos-(yrang/num_prec)
-        ymax=ypos+(yrang/num_prec)
+        ymin = ypos-(yrang/num_prec)
+        ymax = ypos+(yrang/num_prec)
         ymin, ymax = check_validity(ymin, ymax, CC2)
-        yrang=ymax-ymin
-        print('New ymin: {}  new ymax: {} new yrang: {}'.format(ymin, ymax, yrang))
+        yrang = ymax-ymin
+        if verbose:
+            print('New ymin: {}  new ymax: {} new yrang: {}'.format(ymin, ymax, yrang))
 
     return xpos, ypos, xrang/num_prec
 
@@ -187,7 +198,8 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts = 10):
     return np.mean(field_samples, axis=0)
 
 
-def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sensor=54, lower_limit = 0, upper_limit = 10):
+def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sensor=54, lower_limit = 0, 
+                        upper_limit = 10, verbose=True):
     """
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
 
@@ -198,15 +210,18 @@ def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sens
     - min_step_size: stop searching for minimum of B-field along xy-plane once the step size is smaller than this value.
     - specific_sensor: number of sensor that is used when searching the center position. 
     - lower_limit, upper_limit: minimum (maximum) value of x and y that is considered when searching for the center position.
+    - verbose: switching on/off print-statements for displaying progress
 
     Return:
     - x0 = [xpos, ypos]: ndarray containing the position of the minimum in-plane field
     - f0: measured B-field vector at x0
     """
-    print("\nTrying to find center axis using sensor # {} ...\n".format(specific_sensor))
+    if verbose:
+        print("\nTrying to find center axis using sensor # {} ...\n".format(specific_sensor))
 
     xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size, 
-                                        xlim = [lower_limit, upper_limit], ylim = [lower_limit, upper_limit])
+                                        xlim = [lower_limit, upper_limit], ylim = [lower_limit, upper_limit],
+                                        verbose=verbose)
     x0 = np.array([xpos, ypos])
     f0 = av_single_sens(cube, specific_sensor, N)
 
@@ -220,7 +235,7 @@ def angle_wrt_z(vec):
     return np.arccos(vec[2]/mag)
 
 def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, eps=0.5, 
-                    max_number_trials = 100, spherical = True):
+                    max_number_trials = 100, spherical = True, verbose=True):
     """
     Compare measured to desired angle in a while-loop. 
     Leave the loop when the difference between both angles is less than eps degrees 
@@ -238,6 +253,7 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
     - eps: acceptable difference in angle
     - max_number_trials: to avoid an infinite while-loop, a maximum number of trials can be set.
     - spherical: flag to switch on spherical plot, else 'normal' 3d plot is shown.
+    - verbose: switching on/off print-statements for displaying progress
     Return 0 
     """
     diff=5*eps
@@ -251,11 +267,14 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
         elif visual_feedback:
             plot_angle(vec) 
         i += 1
-        print("\r Angle to z axis: {:.2f} °; Difference to desired angle ({:.2f} °) is {:.2f} °".format(np.degrees(ang), desired, diff))
-    print("Calibration of angle successfull!")
+        if verbose:
+            print("\r Angle to z axis: {:.2f} °; Difference to desired angle ({:.2f} °) is {:.2f} °".format(np.degrees(ang), desired, diff))
+    if verbose:
+        print("Calibration of angle successfull!")
     return 0
 
-def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=False, omit_64 = False):
+def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=False, omit_64 = False, 
+                            verbose=False):
     """
     Estimate field vectors N-times with all sensors and calculate mean, std and abs(std/mean) as vectors for each sensor.
     
@@ -270,6 +289,7 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
 	  from the sensor. If False, continue measuring and write a "'Read Failure', 0,0,0,0"-line to file. 
 	  If True, the measurement is stopped entirely and the output file is deleted. 
     - omit_64: if True, sensor #64 will be omitted, else all 64 sensors are considered.
+    - verbose: switching on/off print-statements for displaying progress
 
     Return:
     - if on_stage=True: mean_data, std_data, perc_data, directory 
@@ -281,12 +301,12 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
         resp=1
         path=''
         while resp==1:
-            resp, directory, csvfile = get_new_data_set(measure_runs = N, filename=filename, cube=cube, 
-                                                            no_enter=no_enter, on_stage=on_stage, omit_64=omit_64)
+            resp, directory, csvfile = get_new_data_set(measure_runs = N, filename=filename, cube=cube, verbose=verbose,
+                                                    no_enter=no_enter, on_stage=on_stage, omit_64=omit_64)
             path = os.path.join(directory,csvfile)
     else:
         path = get_new_data_set(measure_runs = N, filename=filename, cube=cube, no_enter=no_enter, 
-                                    on_stage=on_stage, omit_64=omit_64)
+                                    on_stage=on_stage, omit_64=omit_64, verbose=verbose)
     
     # import the measurement data from csv file 
     dataD = pd.read_csv(path)
@@ -317,6 +337,7 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
             if (data[i+k*number_sensors,:].dtype == 'float64'):
                 sensor_i_data[k,:] = data[i+k*number_sensors,:]
             else:
+                # print this message in any case!
                 print("could not convert data properly! wrong data type: ", data[i+k*number_sensors,:].dtype)
                 sensor_i_data[k,:] = 0
         x_mean[i] = np.mean(sensor_i_data[:, 2])
@@ -345,10 +366,12 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
     perc_data[:,2] = z_perc
 
     if on_stage:
-        print("Aquired Mean Data Set: Done!")
+        if verbose:
+            print("Aquired Mean Data Set: Done!")
         return mean_data, std_data, perc_data, directory
     else:
-        print("Saving...")
+        if verbose:
+            print("Saving...")
         cwd = os.getcwd() 
         directory = cwd + '\\' + str(N) + "_means\\"
         save_in_dir(mean_data, directory, "autosave")

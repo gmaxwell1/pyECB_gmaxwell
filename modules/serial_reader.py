@@ -32,7 +32,7 @@ def open_port(numport = '4', baudrate = 256000, timeout = 2):
 		return 
 
 
-def ensure_dir_exists(directory, access_rights = 0o755, purpose_text = ''):
+def ensure_dir_exists(directory, access_rights = 0o755, purpose_text = '', verbose=False):
 	"""
 	Ensure that the directory exists and create the respective folders if it doesn't.
 
@@ -46,15 +46,18 @@ def ensure_dir_exists(directory, access_rights = 0o755, purpose_text = ''):
 	"""
 	try:
 		os.mkdir(directory, access_rights)
-		print('Created directory {}: {}'.format(purpose_text, os.path.split(directory)[1]))
 		os.chmod(directory, access_rights)
+		if verbose:
+			print('Created directory {}: {}'.format(purpose_text, os.path.split(directory)[1]))
 	except FileExistsError:
-		print('Folder already exists, no new folder created.')
+		if verbose:
+			print('Folder already exists, no new folder created.')
 	except Exception as e:
-		print('Failed to create new directory due to {} error'.format(e))
+		if verbose:
+			print('Failed to create new directory due to {} error'.format(e))
 
 def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fname_postfix='data_sets', 
-						runtimelimit_per_run=5, filename=None, cube: serial.Serial= None, 
+						runtimelimit_per_run=5, filename=None, cube: serial.Serial= None, verbose=False,
 						no_enter=False, on_stage=False, specific_sensor=None, omit_64 = False):
 	"""
 	Read data from cube with 64 Hall sensors and either return (if specific sensor chosen) 
@@ -80,6 +83,7 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 	- specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube. 
 	  If this argument is provided, only the output of this sensor will be considered. 
 	  All remaining sensors are neglected
+	- verbose: switching on/off print-statements for displaying progress
 
 	Return (several possibilities):
 	- if specific_sensor=None and 
@@ -115,7 +119,8 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 					return B_field # note that only a single measurement run is performed here!
 			except:
 				continue
-		print("Unable to read sensor ", specific_sensor, " during ", measure_runs*runtimelimit_per_run, "s")
+		if verbose:
+			print("Unable to read sensor ", specific_sensor, " during ", measure_runs*runtimelimit_per_run, "s")
 		return 1
 
 	# consider all sensors now
@@ -149,11 +154,12 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 		cwd = os.getcwd()
 		work_dir = os.path.join(cwd, fname_postfix)
 		access_rights = 0o755
-		ensure_dir_exists(work_dir, purpose_text = 'to save data', access_rights=access_rights)
+		ensure_dir_exists(work_dir, purpose_text = 'to save data', access_rights=access_rights, verbose=verbose)
 
 		if filename is not None:
 			work_dir = os.path.join(work_dir, filename)
-			ensure_dir_exists(work_dir, purpose_text = 'for specific measurement run', access_rights=access_rights)
+			ensure_dir_exists(work_dir, purpose_text = 'for specific measurement run', 
+										access_rights=access_rights, verbose=verbose)
 			
 		os.chmod(work_dir, access_rights)
 		now = datetime.now().strftime("%y_%m_%d_%H-%M-%S") # Jona used "%d_%m_%y_%H-%M-%S"
@@ -170,7 +176,8 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 			#os.chmod(work_dir + output_file_name+'\\', access_rights)
 			f.write('Measurement Time (s), Sensor Number, X-Axis (mT), Y-Axis (mT), Z-Axis (mT)\r\n') #header line
 			
-			print('Test output:', cube.readline()) # first line is typically incomplete, hence trash
+			if verbose:
+				print('Test output:', cube.readline()) # first line is typically incomplete, hence trash
 			# Actually not needed, but still nice to check that everything is working:
 			# the first line can certainly be split. If the first entry is not a number, 
 			# the comparison raises exception. if length less than 4 nothing is returned anyway
@@ -228,11 +235,10 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 		# delete the measurement file if an error occured
 		if failure:
 			os.remove(os.path.join(work_dir, output_file_name))
+			
 
-		#calibration parameters from data sheet
-
-		#POSTPROCESSING
-		print('Number of finished runs: {}\n'.format(finished_runs))
+		if verbose:
+			print('Number of finished runs: {}\n'.format(finished_runs))
 		if not on_stage:
 			return str(work_dir+output_file_name)
 		else:
