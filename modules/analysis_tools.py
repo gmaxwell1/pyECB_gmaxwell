@@ -83,7 +83,7 @@ def extract_raw_data_from_file(filepath):
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
-def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I', flags_yaxis = 'zma',
+def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
                         plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
                         height_per_plot = 2, save_image = True, distance=3.0):
     """
@@ -97,11 +97,11 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     containing applied current, experimentally estimated/expected mean values and standard deviations 
     for x,y,z-directions.
     - flag_xaxis (string): Switch between the following quantities displayed on the x-axis:
-        - 'I' for current, 
-        - 'P' for power, 
-        - 'B' for magnitude of magnetic field.
+        - 'I1', 'I2', 'I3' for currents in coils 1,2,3 
+        - 'P' for power
+        - 'B' for magnitude of magnetic field
     All axes share the same x-axis, and only the lowest plot has a label and ticks (currently)! 
-    If invalid (other than the listed letters) flags are passed, the default 'I' is assumed.
+    If invalid (other than the listed letters) flags are passed, the default 'I1' is assumed.
     - flag_yaxis: string containing the letters as flags, where valid letters are mentioned below.
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     a plot is generated with the according quantity plotted on the y-axis. The plots are generated
@@ -187,16 +187,21 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
 
     # plot current ('I'), power ('P') or magnitude of magnetic field ('B') on xaxis, depending on flag_xaxis
     if flag_xaxis == 'P':
-        R = 0.47    # resistance [Ohm] of each coil]
-        x_vals = R * I**2
-        x_vals *= 3 # multiply by the number of coils to get overall power
+        R = 0.47    # resistance [Ohm] of each coil
+        x_vals = R * np.sum(I**2, axis=1)  # sum over all three coils
         axs[-1].set_xlabel('$P$ [W]')
     elif flag_xaxis == 'B':
         x_vals = mean_magnitudes
         axs[-1].set_xlabel('$|B|$ [mT]')
+    elif flag_xaxis == 'I2':
+        x_vals = I[:,1]
+        axs[-1].set_xlabel('$I_2$ [A]')
+    elif flag_xaxis == 'I3':
+        x_vals = I[:,2]
+        axs[-1].set_xlabel('$I_3$ [A]')
     else:
-        x_vals = I
-        axs[-1].set_xlabel('$I$ [A]')
+        x_vals = I[:,0]
+        axs[-1].set_xlabel('$I_1$ [A]')
 
     # actual plotting 
     for i in range(len(axs)):
