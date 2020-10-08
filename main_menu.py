@@ -159,7 +159,7 @@ def MainMenu(initialized):
                                 inp2 = input('Angle to x axis in deg = ')
                                 inp3 = input('starting magnitude in mT = ')
                                 inp4 = input('ending magnitude in mT = ')
-                                inp5 = input('measure B-field values?: ')
+                                inp5 = input('measure B-field values? (y or n): ')
                                 inp6 = input('# of steps: ')
 
                                 try:
@@ -181,17 +181,15 @@ def MainMenu(initialized):
                                         end_mag = int(inp4)
                                 except:
                                         print('expected numerical value')
-                                        end_mag = 0
+                                        end_mag = 1
                                 try:
-                                        measure = int(inp5)
-                                except:
-                                        print('expected numerical value')
-                                        measure = 0
+                                        measure = inp5
+
                                 try:
                                         steps = int(inp6)
                                 except:
                                         print('expected numerical value')
-                                        steps = 0
+                                        steps = 1
                                         
                                 rampVectorField(theta, phi, start_mag, end_mag, measure,steps)
 
@@ -385,7 +383,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, measureflag, steps):
         Args:
         -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
         -start/finish_magn: (desired) field range
-        -measureflag: (1=yes, anything else=no) measure the field values over time and save/plot them
+        -measureflag: (n=no, anything else=yes) measure the field values over time and save/plot them
         -steps: number of steps
         """
 
@@ -403,14 +401,14 @@ def rampVectorField(theta, phi, start_mag, finish_mag, measureflag, steps):
         for i in range(steps):
                 # compute the currents theoretically needed to achieve an arbitrary magnetic field
                 B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
-                I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+                I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
                 expected_fields[i] = B_expected
 
                 for k in range(3):
                         desCurrents[k] = I_vector[k]
                 setCurrents(desCurrents, currDirectParam)
                 sleep(0.8)
-                if measureflag:
+                if measureflag != 'n':
                         print('measurement nr. ', i+1)
                         # collect measured magnetic field (of the specified sensor in measurements)
                         mean_data, std_data, directory = measure(sub_dirname=folder)
