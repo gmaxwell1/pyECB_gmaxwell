@@ -242,6 +242,8 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
                 print('invalid input!')
                 return
 
+        folder = newMeasurementFolder()
+
         enableCurrents()
         #iterate through all possible steps
         for i in range(steps):
@@ -252,7 +254,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
                 sleep(0.8)
                 # collect measured and expected magnetic field (of the specified sensor in measurements)
                 print('measurement nr. ', i+1)
-                mean_data, std_data, directory = measure() # see measurements.py for more details
+                mean_data, std_data, directory = measure(sub_dirname=folder) # see measurements.py for more details
                 mean_values[i] = mean_data
                 stdd_values[i] = std_data
                 expected_fields[i] = B_expected
