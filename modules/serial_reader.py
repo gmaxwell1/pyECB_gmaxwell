@@ -49,16 +49,21 @@ def ensure_dir_exists(directory, access_rights = 0o755, purpose_text = '', verbo
 		os.chmod(directory, access_rights)
 		if verbose:
 			print('Created directory {}: {}'.format(purpose_text, os.path.split(directory)[1]))
+
 	except FileExistsError:
 		if verbose:
 			print('Folder already exists, no new folder created.')
-	except Exception as e:
-		if verbose:
-			print('Failed to create new directory due to {} error'.format(e))
 
-def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fname_postfix='data_sets', 
-						runtimelimit_per_run=5, filename=None, cube: serial.Serial= None, verbose=False,
-						no_enter=False, on_stage=False, specific_sensor=None, omit_64 = False):
+	except Exception as e:
+		# if verbose:
+		# this is important and should always be printed - gmaxwell, 8.10.2020
+		print('Failed to create new directory due to {} error'.format(e))
+
+
+
+def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fname_postfix='measured', runtimelimit_per_run=5,
+						dirname='data_sets', sub_dirname=None, cube: serial.Serial= None, verbose=False, no_enter=False,
+						on_stage=False, specific_sensor=None, omit_64 = False):
 	"""
 	Read data from cube with 64 Hall sensors and either return (if specific sensor chosen) 
 	or write the estimated B-field to an output csv-file (specific_sensor=None,  default).
@@ -70,10 +75,13 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 	  In this mode, it is not necessary to provide `cube`, `numport` and `measure_runs` parameters
 	- numport (string): The COM port number of the sensor/serial device
 	- measure_runs: INTEGER! Number of samples per fuction call per sensor
-	- fname_postfix (string): postfix of data file (csv)
 	- runtimelimit_per_run (float): in seconds, waiting time for sensor before error message 
 	  per measurment run
-	- filename: name of folder where data files are stored
+
+	- dirname: name of folder where data is stored in general. Can be left alone unless you need a new main data folder.
+	- sub_dirname: name of folder where measured data files are stored. Make sure to always set this specifically!
+	- fname_postfix (string): postfix of data file (csv).
+
 	- cube: instance of serial.Serial class, representing the magnetic field sensor
 	- no_enter (bool): if True, measurement starts automatically, else the user is asked to press enter to start.
 	  This flag only matters if specific_sensor == None!
@@ -83,6 +91,7 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 	- specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube. 
 	  If this argument is provided, only the output of this sensor will be considered. 
 	  All remaining sensors are neglected
+
 	- verbose: switching on/off print-statements for displaying progress
 
 	Return (several possibilities):
@@ -150,14 +159,14 @@ def get_new_data_set(interactive=False, numport='4', measure_runs = int(1), fnam
 		elif cube is None:
 			cube = open_port(numport=numport)
 
-		# create a subfolder called fname_postfix, if it already exists print a message
+		# create a subfolder called dirname, if it already exists print a message -gmaxwell, 8.10.2020
 		cwd = os.getcwd()
-		work_dir = os.path.join(cwd, fname_postfix)
+		work_dir = os.path.join(cwd, dirname)
 		access_rights = 0o755
 		ensure_dir_exists(work_dir, purpose_text = 'to save data', access_rights=access_rights, verbose=verbose)
-
-		if filename is not None:
-			work_dir = os.path.join(work_dir, filename)
+		# if specified, create subfolder to store data from this measurement run -gmaxwell, 8.10.2020
+		if sub_dirname is not None:
+			work_dir = os.path.join(work_dir, sub_dirname)
 			ensure_dir_exists(work_dir, purpose_text = 'for specific measurement run', 
 										access_rights=access_rights, verbose=verbose)
 			

@@ -161,6 +161,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
 
     return xpos, ypos, xrang/num_prec
 
+
 def av_single_sens(cube, specific_sensor, N, max_number_attempts = 10):
     """
     Measure magnetic field vector N times using a specific sensor and return mean values.
@@ -229,12 +230,14 @@ def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sens
 
     return x0, f0
 
+
 def angle_wrt_z(vec):
     """
     Return angle (radian) of vector with respect to z axis.
     """
     mag = norm(vec)
     return np.arccos(vec[2]/mag)
+
 
 def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, eps=0.5, 
                     max_number_trials = 100, spherical = True, verbose=True):
@@ -275,7 +278,8 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
         print("Calibration of angle successfull!")
     return 0
 
-def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=False, omit_64 = False, 
+
+def get_new_mean_data_set(N, dirname=None, cube=None, no_enter=False, on_stage=False, omit_64 = False, 
                             verbose=False):
     """
     Estimate field vectors N-times with all sensors and calculate mean, std and abs(std/mean) as vectors for each sensor.
@@ -285,7 +289,7 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
     Args: 
     - N: number of times all 64 (or 63) sensor are read out in series
     - cube: instance of serial.Serial class, representing the magnetic field sensor.
-    - filename: name of folder where data files are stored
+    - dirname: name of folder where data files are stored
     - no_enter (bool): if True, measurement starts automatically, else the user is asked to press enter to start.
     - on_stage (bool): flag used to set the action upon occurence an error when reading a measurement outcome 
 	  from the sensor. If False, continue measuring and write a "'Read Failure', 0,0,0,0"-line to file. 
@@ -303,7 +307,7 @@ def get_new_mean_data_set(N, filename=None, cube=None, no_enter=False, on_stage=
         resp=1
         path=''
         while resp==1:
-            resp, directory, csvfile = get_new_data_set(measure_runs = N, filename=filename, cube=cube, verbose=verbose,
+            resp, directory, csvfile = get_new_data_set(measure_runs = N, sub_dirname=dirname, cube=cube, verbose=verbose,
                                                     no_enter=no_enter, on_stage=on_stage, omit_64=omit_64)
             path = os.path.join(directory,csvfile)
     else:
