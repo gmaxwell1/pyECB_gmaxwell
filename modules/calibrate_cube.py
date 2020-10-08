@@ -111,8 +111,8 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
             fsx.append(av_single_sens(cube, specific_sensor, sampling_size)[1])
 
             if verbose:
-                print('Position {}: {}'.format(i, (xrang/num_prec * i + xmin)))
-                print('Field at position {}: {}'.format(i, fsx[-1]))
+                print('Position {}: {:.5f}'.format(i, (xrang/num_prec * i + xmin)))
+                print('Field at position {}: {:.3f}'.format(i, fsx[-1]))
 
         # move to x-position with smallest (absolute value of) B_y
         fminx=np.argmin(abs(np.asarray(fsx)))
@@ -120,7 +120,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
         CC1.move_absolute(xpos)
         all_ready(CC1, CC2=CC2)
         if verbose:
-            print('Now moving to position {}: {}'.format(fminx, xpos))
+            print('Now moving to position {}: {:.5f}'.format(fminx, xpos))
 
         # update xmin, xmax as the x-position with smallest B_y +- one stepsize
         xmin=xpos-(xrang/num_prec)
@@ -128,7 +128,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
         xmin, xmax = check_validity(xmin, xmax, CC1)
         xrang=xmax-xmin 
         if verbose:
-            print('New xmin: {} new xmax: {} new xrang: {}'.format(xmin, xmax, xrang))
+            print('New xmin: {:.5f} new xmax: {:.5f} new xrang: {:.5f}'.format(xmin, xmax, xrang))
         
 
         # sweep along y-axis and measure B_x field component
@@ -140,8 +140,8 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
             all_ready(CC1, CC2=CC2)
             fsy.append(av_single_sens(cube, specific_sensor, sampling_size)[0])
             if verbose:
-                print('Position {}: {}'.format(i, (yrang/num_prec * i + ymin)))
-                print('Field at position {}: {}'.format(i, fsy[-1]))
+                print('Position {}: {:.5f}'.format(i, (yrang/num_prec * i + ymin)))
+                print('Field at position {}: {:.3f}'.format(i, fsy[-1]))
 
         # move to x-position with smallest (absolute value of) B_x
         fminy = np.argmin(abs(np.asarray(fsy)))
@@ -149,7 +149,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
         CC2.move_absolute(ypos)
         all_ready(CC1, CC2=CC2)
         if verbose:
-            print('Now moving to position {}: {}'.format(fminy, ypos))
+            print('Now moving to position {}: {:.5f}'.format(fminy, ypos))
 
         # update ymin, ymax as the y-position with smallest B_x +- one stepsize
         ymin = ypos-(yrang/num_prec)
@@ -157,7 +157,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
         ymin, ymax = check_validity(ymin, ymax, CC2)
         yrang = ymax-ymin
         if verbose:
-            print('New ymin: {}  new ymax: {} new yrang: {}'.format(ymin, ymax, yrang))
+            print('New ymin: {:.5f}  new ymax: {:.5f} new yrang: {:.5f}'.format(ymin, ymax, yrang))
 
     return xpos, ypos, xrang/num_prec
 

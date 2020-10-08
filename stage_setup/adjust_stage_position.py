@@ -38,16 +38,16 @@ port_sensor = 'COM4'
 
 #%%
 # manually adjust z 
-z_offset = 3.2
+z_offset = 2.5
 CC_Z.move_absolute(z_offset)
 
 #%%
 # set the bounds for x and y that are used during the calibration process
 limits_x = [8.0, 9.2]
-limits_y = [2.8, 4.5]
+limits_y = [3.2, 4.2]
 
 # set minimum set size, i.e. the precision of the calibration process
-min_step_size = 5e-3
+min_step_size = 1e-3
 
 #%%
 # establish permanent connection to calibration cube: open serial port; baud rate = 256000
