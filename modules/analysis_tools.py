@@ -62,18 +62,30 @@ def estimate_std_inplane(mean_values, std_values):
 def extract_raw_data_from_file(filepath):
     """
     Extract current, mean and std values of measured magnetic field and expected magnetic field from file.
+
+    Also checks whether the current is provided as single float value or as vector
     """
+    # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
-    I = raw_data[:,0]
-    mean_data_specific_sensor = raw_data[:,1:4]
-    std_data_specific_sensor = raw_data[:,4:7]
-    expected_fields = raw_data[:,7:10]
+
+    # current can be single-valued or a vector, differentiate these cases
+    dimension_I = len(raw_data[0]) - 9
+    if dimension_I == 1 :
+        I = raw_data[:,0]
+        mean_data_specific_sensor = raw_data[:,1:4]
+        std_data_specific_sensor = raw_data[:,4:7]
+        expected_fields = raw_data[:,7:10]
+    else:
+        I = raw_data[:,0:3]
+        mean_data_specific_sensor = raw_data[:,3:6]
+        std_data_specific_sensor = raw_data[:,6:9]
+        expected_fields = raw_data[:,9:12]
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I', flags_yaxis = 'zma',
                         plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_image = True):
+                        height_per_plot = 2, save_image = True, distance=3.0):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
     
@@ -105,6 +117,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
     - height_per_plot: height of each plot in inches. Default for several plots is 2.
     The usual height of a single plot is 4.
     - save_image: flag to save or not save the image
+    - distance is the distance between sensor and tip, which is added as plot label 
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -192,11 +205,14 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I'
         # plot either both measured and expected values or only the differences between both. 
         if plot_delta_sim:
             axs[i].errorbar(x_vals, plot_expected_data[i]-plot_mean_data[i], yerr=plot_std_data[i],
-                                linestyle='', marker='.', capsize = 2, label = '$\\Delta$ = simulation-measurements')
+                                linestyle='', marker='.', capsize = 2, 
+                                label = '$\\Delta$ = simulation-measurements')
         else:
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
-                                    linestyle='', marker='.', capsize = 2, label = 'measured @ ~ 3.5 mm')
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', label = 'simulation @ 3 mm')
+                                    linestyle='', marker='.', capsize = 2, 
+                                    label = 'measured @ {:.1f} mm'.format(distance))
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', 
+                                    label = 'simulation @ 3 mm')
             axs[i].legend()
 
     # add a Delta at the front of each label if differences should be plotted
