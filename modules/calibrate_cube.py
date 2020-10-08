@@ -279,7 +279,7 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
     return 0
 
 
-def get_new_mean_data_set(N, dirname=None, cube=None, no_enter=False, on_stage=False, omit_64 = False, 
+def get_new_mean_data_set(N, sub_dirname=None, cube=None, no_enter=False, on_stage=False, omit_64 = False, 
                             verbose=False):
     """
     Estimate field vectors N-times with all sensors and calculate mean, std and abs(std/mean) as vectors for each sensor.
@@ -289,7 +289,7 @@ def get_new_mean_data_set(N, dirname=None, cube=None, no_enter=False, on_stage=F
     Args: 
     - N: number of times all 64 (or 63) sensor are read out in series
     - cube: instance of serial.Serial class, representing the magnetic field sensor.
-    - dirname: name of folder where data files are stored
+    - sub_dirname: name of folder where data files are stored
     - no_enter (bool): if True, measurement starts automatically, else the user is asked to press enter to start.
     - on_stage (bool): flag used to set the action upon occurence an error when reading a measurement outcome 
 	  from the sensor. If False, continue measuring and write a "'Read Failure', 0,0,0,0"-line to file. 
@@ -307,11 +307,11 @@ def get_new_mean_data_set(N, dirname=None, cube=None, no_enter=False, on_stage=F
         resp=1
         path=''
         while resp==1:
-            resp, directory, csvfile = get_new_data_set(measure_runs = N, sub_dirname=dirname, cube=cube, verbose=verbose,
+            resp, directory, csvfile = get_new_data_set(measure_runs = N, sub_dirname=sub_dirname, cube=cube, verbose=verbose,
                                                     no_enter=no_enter, on_stage=on_stage, omit_64=omit_64)
             path = os.path.join(directory,csvfile)
     else:
-        path = get_new_data_set(measure_runs = N, filename=filename, cube=cube, no_enter=no_enter, 
+        path = get_new_data_set(measure_runs = N, sub_dirname=sub_dirname, cube=cube, no_enter=no_enter, 
                                     on_stage=on_stage, omit_64=omit_64, verbose=verbose)
     
     # import the measurement data from csv file 

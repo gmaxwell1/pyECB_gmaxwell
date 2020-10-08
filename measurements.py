@@ -24,10 +24,11 @@ from datetime import datetime
 from modules.conexcc_control import *
 from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
 from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
-from modules.serial_reader import get_new_data_set
+from modules.serial_reader import get_new_data_set, ensure_dir_exists
 
 
 __all__ = [
+        'newMeasurementFolder',
         'measure',
         'makePlots',
         'saveDataPoints'
@@ -36,12 +37,28 @@ __all__ = [
 ########## sensor cube port ##########
 port_sensor = 'COM3'
 
+def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas', verbose=False):
+    """
+    This function is supposed to create a new subdirectory to store data for a measurement run.
+    """
+    index = 1
+    cwd = os.getcwd()
+    sub_dirname = sub_dir_base + '_' + str(index)
+    dataDir = os.path.join(cwd, defaultDataDir, sub_dirname)
+    # iterate though postfixes until a new directory name is found
+    while ensure_dir_exists(dataDir, verbose=verbose):
+        index = index + 1
+        sub_dirname = sub_dir_base + '_' + str(index)
+        dataDir = os.path.join(cwd, defaultDataDir, sub_dirname)
+    
+    return sub_dirname
 
-def measure(folder_name='z_field_meas_set_1', specific_sensor = 55, N = 50):
+
+def measure(sub_dirname='z_field_meas_set', specific_sensor = 55, N = 50):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary) 
     Args:
-    -folder_name: folder where measurements will be stored
+    -subdirname: folder where measurements will be stored
     -specific_sensor: sensor from which data will be fetched
     -N: number of data points collected for each average
           
@@ -55,7 +72,7 @@ def measure(folder_name='z_field_meas_set_1', specific_sensor = 55, N = 50):
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2)  as cube: 
         # measure field with all sensors
-        mean_data, std_data, _, directory = get_new_mean_data_set(N, filename=folder_name, cube=cube, 
+        mean_data, std_data, _, directory = get_new_mean_data_set(N, sub_dirname=sub_dirname, cube=cube, 
                                                                         no_enter=True, on_stage=True)
 
     # see .\modules\calibrate_cube.py for more details on this function
@@ -73,16 +90,31 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
-    df = pd.DataFrame({ 'I [A]': I, 
-                        'mean Bx [mT]': mean_data[:,0],
-                        'mean By [mT]': mean_data[:,1],
-                        'mean Bz [mT]': mean_data[:,2],
-                        'std Bx [mT]': std_data[:,0],
-                        'std By [mT]': std_data[:,1],
-                        'std Bz [mT]': std_data[:,2],
-                        'expected Bx [mT]': expected_fields[:,0],
-                        'expected By [mT]': expected_fields[:,1],
-                        'expected Bz [mT]': expected_fields[:,2]})
+    if len(I[0,:]) != 3:
+        df = pd.DataFrame({ 'I (all Channels) [A]': I,
+                            'mean Bx [mT]': mean_data[:,0],
+                            'mean By [mT]': mean_data[:,1],
+                            'mean Bz [mT]': mean_data[:,2],
+                            'std Bx [mT]': std_data[:,0],
+                            'std By [mT]': std_data[:,1],
+                            'std Bz [mT]': std_data[:,2],
+                            'expected Bx [mT]': expected_fields[:,0],
+                            'expected By [mT]': expected_fields[:,1],
+                            'expected Bz [mT]': expected_fields[:,2]})
+    # depending on which function in main_menu.py was used to measure
+    else:
+        df = pd.DataFrame({ 'channel 1 [A]': I[:,0],
+                            'channel 2 [A]': I[:,1],
+                            'channel 3 [A]': I[:,2],
+                            'mean Bx [mT]': mean_data[:,0],
+                            'mean By [mT]': mean_data[:,1],
+                            'mean Bz [mT]': mean_data[:,2],
+                            'std Bx [mT]': std_data[:,0],
+                            'std By [mT]': std_data[:,1],
+                            'std Bz [mT]': std_data[:,2],
+                            'expected Bx [mT]': expected_fields[:,0],
+                            'expected By [mT]': expected_fields[:,1],
+                            'expected Bz [mT]': expected_fields[:,2]})
 
     now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
     output_file_name = '{}_{}.csv'.format(now, data_filename_postfix) 
@@ -138,3 +170,6 @@ def makePlots(I, mean_data, std_data, expected_fields):
     file_path = os.path.join(directory, output_file_name)
     fig.savefig(file_path, dpi = 300)
 
+if __name__ == '__main__':
+    a = newMeasurementFolder(verbose=True)
+    print(a)

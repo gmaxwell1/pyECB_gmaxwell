@@ -55,7 +55,7 @@ def MainMenu(initialized):
         if initialized == 0:
                 c1 = '0'
                 while c1 != 'x':
-                        print('--------- Main Menu ---------')
+                        print('\t--------- Main Menu ---------')
                         print('[x] to exit')
                         print('[0]: sweep multiple current values and make measurment with cube')
                         print('[1]: set currents manually on 3 channels (in mA)')
@@ -159,7 +159,7 @@ def MainMenu(initialized):
                                 inp2 = input('Angle to x axis in deg = ')
                                 inp3 = input('starting magnitude in mT = ')
                                 inp4 = input('ending magnitude in mT = ')
-                                inp5 = input('duration of ramp (at least 10s is recommended): ')
+                                inp5 = input('measure B-field values?: ')
                                 inp6 = input('# of steps: ')
 
                                 try:
@@ -183,17 +183,17 @@ def MainMenu(initialized):
                                         print('expected numerical value')
                                         end_mag = 0
                                 try:
-                                        duration = int(inp5)
+                                        measure = int(inp5)
                                 except:
                                         print('expected numerical value')
-                                        duration = 0
+                                        measure = 0
                                 try:
                                         steps = int(inp6)
                                 except:
                                         print('expected numerical value')
                                         steps = 0
                                         
-                                rampVectorField(theta, phi, start_mag, end_mag, duration, steps)
+                                rampVectorField(theta, phi, start_mag, end_mag, measure,steps)
 
                         elif c1 == 'c':
                                 getCurrents()
@@ -251,13 +251,13 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
                 setCurrents(desCurrents, currDirectParam)
                 sleep(0.8)
                 # collect measured and expected magnetic field (of the specified sensor in measurements)
-                print('measurement nr. ', i)
+                print('measurement nr. ', i+1)
                 mean_data, std_data, directory = measure() # see measurements.py for more details
                 mean_values[i] = mean_data
                 stdd_values[i] = std_data
                 expected_fields[i] = B_expected
 
-                sleep(0.2)
+                sleep(0.1)
         
         disableCurrents()
 
@@ -376,29 +376,50 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                 return
 
 
-def rampVectorField(theta, phi, start_mag, finish_mag, duration, steps):
+def rampVectorField(theta, phi, start_mag, finish_mag, measureflag, steps):
         """  
-        ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration
+        ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
 
         Args:
         -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
-        -start/finish_magn: field range
-        -duration: time over which to ramp the field 
+        -start/finish_magn: (desired) field range
+        -measureflag: (1=yes, anything else=no) measure the field values over time and save/plot them
         -steps: number of steps
         """
-        delta_b = (finish_mag - start_mag) / (steps - 1)
-        print(delta_b)
-        delta_t = duration / steps
-        print(delta_t)
-        magnitude = start_mag
 
+        magnitudes = np.linspace(start_mag, finish_mag, steps)
+        mean_values = np.zeros((steps, 3))
+        stdd_values = np.zeros((steps, 3))
+        expected_fields = np.zeros((steps, 3))
+        all_curr_steps = np.zeros((steps, 3))
+        directory = ''
+
+        folder = newMeasurementFolder()
+
+        enableCurrents()
+        #iterate through all possible steps
         for i in range(steps):
-                print('Step: ', i+1)
-                print('Magnitude: {} mT'.format(magnitude))
+                # compute the currents theoretically needed to achieve an arbitrary magnetic field
+                B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
+                I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+                expected_fields[i] = B_expected
 
-                generateMagneticField(magnitude, theta, phi, delta_t, b'1')
-                magnitude = magnitude + delta_b
+                for k in range(3):
+                        desCurrents[k] = I_vector[k]
+                setCurrents(desCurrents, currDirectParam)
+                sleep(0.8)
+                if measureflag:
+                        print('measurement nr. ', i+1)
+                        # collect measured magnetic field (of the specified sensor in measurements)
+                        mean_data, std_data, directory = measure(sub_dirname=folder)
+                        mean_values[i] = mean_data
+                        stdd_values[i] = std_data
 
+                sleep(0.1)
+        
+        disableCurrents()
+        # plotting section
+        saveDataPoints((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, directory)
 
 def demagnetizeCoils(stepSize = 100, amplitude = 1500, dt = 0.5, direct = b'1'):
         """
