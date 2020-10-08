@@ -97,13 +97,13 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
     # if min/max remain between allowed limits, the procedudure should converge (?)
     xrang=xmax-xmin
     yrang=ymax-ymin
-    while ((xrang/num_prec) >= min_step_size): 
+    while ((xrang/num_prec) >= min_step_size) or ((yrang/num_prec) >= min_step_size): 
         if verbose:
-            print('\nstep size: {}'.format(xrang/num_prec))
+            print('\nstep size (x): {:.5f}\nstep size (y): {:.5f}'.format(xrang/num_prec, yrang/num_prec))
 
         # sweep along x-axis and measure B_y field component
         if verbose:
-            print("Now sweeping x: ")
+            print("\nNow sweeping x: ")
         fsx=[]
         for i in range(int(num_prec + 1)): 
             CC1.move_absolute(xrang/num_prec * i + xmin)
@@ -133,7 +133,7 @@ def search(CC1:ConexCC, CC2:ConexCC, cube, specific_sensor, min_step_size=5*1e-3
 
         # sweep along y-axis and measure B_x field component
         if verbose:
-            print("Now sweeping y: ")
+            print("\nNow sweeping y: ")
         fsy=[]
         for i in range(int(num_prec + 1)):
             CC2.move_absolute(yrang/num_prec * i + ymin)
@@ -198,8 +198,8 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts = 10):
     return np.mean(field_samples, axis=0)
 
 
-def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sensor=54, lower_limit = 0, 
-                        upper_limit = 10, verbose=True):
+def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sensor=54, limits_x = [0,10], 
+                        limits_y = [0,10], verbose=True):
     """
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
 
@@ -207,9 +207,11 @@ def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sens
     - CC1, CC2 are instances of conexcc_class for x and y axis
     - cube: instance of serial.Serial class, representing the magnetic field sensor.
     - N: number of estimates of B-field used for average
-    - min_step_size: stop searching for minimum of B-field along xy-plane once the step size is smaller than this value.
+    - min_step_size: stop searching for minimum of B-field along xy-plane 
+    once the step size is smaller than this value.
     - specific_sensor: number of sensor that is used when searching the center position. 
-    - lower_limit, upper_limit: minimum (maximum) value of x and y that is considered when searching for the center position.
+    - limits_x, limits_x: array of length 2 with minimum and maximum values of x (y) that are considered 
+    when searching for the center position.
     - verbose: switching on/off print-statements for displaying progress
 
     Return:
@@ -220,7 +222,7 @@ def find_center_axis(CC1, CC2, cube, N = 10, min_step_size=5*1e-3, specific_sens
         print("\nTrying to find center axis using sensor # {} ...\n".format(specific_sensor))
 
     xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size, 
-                                        xlim = [lower_limit, upper_limit], ylim = [lower_limit, upper_limit],
+                                        xlim = limits_x, ylim = limits_y,
                                         verbose=verbose)
     x0 = np.array([xpos, ypos])
     f0 = av_single_sens(cube, specific_sensor, N)

@@ -216,9 +216,9 @@ def setup(reset_position, COM_ports = ['COM7', 'COM6', 'COM5'], verbose = False)
     if verbose:
         print("==========================")
         print("Establishing connection...")
-    CC_X = ConexCC(com_port = COM_ports[0], velocity=0.4, set_axis='x')
-    CC_Y = ConexCC(com_port = COM_ports[1], velocity=0.4, set_axis='y')
-    CC_Z = ConexCC(com_port = COM_ports[2], velocity=0.4, set_axis='z')
+    CC_X = ConexCC(com_port = COM_ports[0], velocity=0.4, set_axis='x', verbose=verbose)
+    CC_Y = ConexCC(com_port = COM_ports[1], velocity=0.4, set_axis='y', verbose=verbose)
+    CC_Z = ConexCC(com_port = COM_ports[2], velocity=0.4, set_axis='z', verbose=verbose)
 
     # try to achieve READY state for all controllers
     all_ready(CC_X, CC2=CC_Y, CC3=CC_Z, verbose=verbose)

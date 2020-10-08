@@ -42,7 +42,7 @@ class ConexCC:
         else:
             if verbose:
                 print('ConexCC: Successfully connected to %s' % com_port)
-            self.read_velocity()
+            self.read_velocity(verbose=verbose)
             self.set_velocity(velocity, verbose=verbose)
             self.set_homing_velocity(velocity, verbose=verbose)
             self.read_limits(verbose=verbose)
@@ -145,14 +145,15 @@ class ConexCC:
                 print('Current Position = %.3f' % resp)
         return resp
 
-    def read_velocity(self):
+    def read_velocity(self, verbose=False):
         err_str = ''
         resp = 0
         res, resp, err_str = self.driver.VA_Get(DEV, resp, err_str)
-        if res != 0 or err_str != '':
-            print('Oops: Current Velocity: result=%d,response=%.2f,errString=\'%s\'' % (res, resp, err_str))
-        else:
-            print('Current Velocity = %.3f' % resp)
+        if verbose:
+            if res != 0 or err_str != '':
+                print('Oops: Current Velocity: result=%d,response=%.2f,errString=\'%s\'' % (res, resp, err_str))
+            else:
+                print('Current Velocity = %.3f' % resp)
 
     def read_cur_vel(self, verbose=False):
         """
