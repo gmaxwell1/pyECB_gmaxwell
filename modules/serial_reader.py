@@ -241,7 +241,15 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
                     # The following messages should be fine again
                     if 'invalid literal for int() with base 10:' == e.args[0][:39]:
                         print('This was the previous error')
-                    pass
+                        pass
+                    else:
+                        print(e)
+                        print('current output from sensor: {}'.format(
+                            [data[i].decode('ascii') for i in range(len(data))]))
+                        print("Have to restart measurement at this position.")
+                        f.write('failure')
+                        failure = True
+                        return 1, str(work_dir), str(output_file_name)
                 except Exception as e:
                     if not on_stage:
                         print('Line failed.')
