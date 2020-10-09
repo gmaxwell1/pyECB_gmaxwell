@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from datetime import datetime
 
 
@@ -113,8 +114,75 @@ def extract_raw_data_from_file(filepath):
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
+def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_image = True, 
+                        show_labels=True, ylim=None, xlim=None, image_name_postfix='I_vs_B'):
+    """
+    Generate plot of the currents in all three coils vs the magnetude of the magnetic field.
+
+    Args:   
+    - I, mean_values, std_values, expected_values are ndarrays of shape (#measurements, 3), 
+    containing applied current, experimentally estimated/expected mean values and standard deviations 
+    for x,y,z-directions.
+    - directory: valid path of directory where the image should be saved
+    - save_image (bool): flag to save or not save the image
+    - show_labels (bool): flag to switch on/off labels of plots
+    - ylim: tuple containing (ymin, ymax). If None, the default limits are taken
+    - xlim: tuple containing (xmin, xmax). If None, the default limits are taken
+    - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
+    """
+    # typically, the measurements range from negative to positive direction of B-field
+    # for uniqueness, filter out the first half of all measurements and only keep rest
+    number_data = I.shape[0]
+    I = I[number_data//2 + 1:,:]
+    mean_values = mean_values[number_data//2 + 1:,:]
+    std_values = std_values[number_data//2 + 1:,:]
+    expected_values = expected_values[number_data//2 + 1:,:]
+
+    # calculate magnitudes of measured and expected magnetic field and their standard deviations
+    mean_magnitudes = np.linalg.norm(mean_values, axis=1)
+    mean_std_magnitudes = estimate_std_magnitude(mean_values, std_values)
+    expected_magnitudes = np.linalg.norm(expected_values, axis=1)
+
+    # initialize colorbar to have measurement and simulation data in a similar color for each coil
+    cmap = cm.get_cmap('tab20')
+
+    # generate plots
+    fig, ax = plt.subplots()
+    for i in range(3):
+        ax.errorbar(mean_magnitudes, I[:,i], xerr=mean_std_magnitudes, label = '$I_{}$ measured'.format(i+1),
+                        linestyle='', marker='.', capsize = 2, color = cmap(i*0.1))
+        ax.plot(expected_magnitudes, I[:,i], linestyle='--', label = '$I_{}$ simulation'.format(i+1),
+                        color = cmap(i*0.1+0.05))
+    
+    # set labels of axes
+    ax.set_ylabel('$I$ [A]')
+    ax.set_xlabel('$|B|$ [mT]')
+
+    # show legend if desired
+    if show_labels:
+        ax.legend()
+
+    # set axis limits
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+
+    # save image
+    if save_image:
+        # set the directory name and current datetime if not passed as argument
+        if directory is None:
+            directory = os.getcwd()
+        now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+
+        output_file_name = '{}_{}.png'.format(now, image_name_postfix)
+        file_path = os.path.join(directory, output_file_name)
+        fig.savefig(file_path, dpi=300)
+
+    fig.show()
+
+
+
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
-                        plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
+                        plot_delta_sim = False, directory= None, image_name_postfix = 'B_vs_I', 
                         height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
                         ylim_field_abs = None, ylim_field_z = None, show_labels=True):
     """
@@ -145,15 +213,15 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     - plot_delta_sim: If False, both the measured and expected values are plotted. 
     If True, the difference between simulation and measurement is plotted.
     - directory: valid path of directory where the image should be saved
-    - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
+    - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
     - height_per_plot: height of each plot in inches. Default for several plots is 2.
     The usual height of a single plot is 4.
-    - save_image: flag to save or not save the image
-    - distance is the distance between sensor and tip [mm], which is added as plot label 
+    - save_image (bool): flag to save or not save the image
+    - distance (float): distance between sensor and tip [mm], which is added as plot label 
     - xlim: tuple containing (xmin, xmax) of plots. If None, the default limits are taken
     - ylim_field_abs, ylim_field_z: tuple containing (ymin, ymax) for the plots of magnetic field,
     where '_abs' indicates magnitudes (only positive) and '_z' indicates the field along z (positive and negative)
-    - show_labels: bool flag to switch on/off labels of plots
+    - show_labels (bool): flag to switch on/off labels of plots
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -263,7 +331,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
                                     linestyle='', marker='.', capsize = 2, 
                                     label = 'measured @ {:.1f} mm'.format(distance))
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', 
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
                                     label = 'simulation @ 3 mm')
             if show_labels:
                 axs[i].legend()
@@ -304,7 +372,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             directory = os.getcwd()
         now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
 
-        output_file_name = '{}_{}.png'.format(now, data_filename_postfix)
+        output_file_name = '{}_{}.png'.format(now, image_name_postfix)
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi=300)
 
