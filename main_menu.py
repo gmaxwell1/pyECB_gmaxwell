@@ -326,15 +326,16 @@ def runCurrents(*coils, t=0, direct=b'1'):
 
 
 def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
-    """  
+    """
     generate a magnetic field in an arbitrary direction and an arbitrary magnitude
 
+
     Args:
-    -magnitude: of the B-field, in [mT]
-    -theta: angle between desired field direction and z axis
-    -phi: azimuthal angle (measured from the x axis)
-    -t: time for which the magnetic field should be activated (if not 0)
-    -direct: current direct parameter (can usually be left alone)
+        magnitude (float): of the B-field, in [mT]
+        theta (float): angle between desired field direction and z axis
+        phi (float): azimuthal angle (measured from the x axis)
+        t (int, optional): Time for which the magnetic field should be activated (if not 0). Defaults to 0.
+        direct (bytes, optional): Current direct parameter. Defaults to b'1'.
     """
 
     B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
@@ -384,15 +385,16 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
 
 
 def rampVectorField(theta, phi, start_mag, finish_mag, steps):
-    """  
-    Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
+    """  Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
     Measure the magnetic field values, save them to a file.
 
+
     Args:
-    -theta & phi: give the direction of the magnetic field (theta: angle between field vector and z axis; phi: angle between 
-    field vector projection on xy plane and x axis)
-    -start/finish_magn: (desired) field range
-    -steps: number of steps
+        theta (float): Give the direction of the magnetic field. Angle between field vector and z axis
+        phi (float): angle between field vector projection on xy plane and x axis
+        start_mag (float): Magnitude in mT
+        finish_mag (float): Magnitude in mT, finish_mag > start_mag must hold!!!
+        steps (int): number of measurement steps
     """
 
     magnitudes = np.linspace(start_mag, finish_mag, steps)
@@ -434,14 +436,14 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
 
 
 def demagnetizeCoils(stepSize=100, amplitude=1500, dt=0.5, direct=b'1'):
-    """
+    """    
     Try to minimize residual flux in cores by running square wave shaped (positive-negative) currents on each coil.
 
     Args:
-    -stepSize: amount by which to reduce amplitude every period
-    -amplitude: Amplitude of square wave
-    -dt: half period of pulse
-    -direct: see ECB API documentation
+        stepSize (int, optional): Amount by which to reduce amplitude every period. Defaults to 100.
+        amplitude (int, optional): Amplitude of 'square wave'. Defaults to 1500.
+        dt (float, optional): Half period of pulse. Defaults to 0.5.
+        direct (bytes, optional): See ECB API documentation for description. Defaults to b'1'.
     """
     currDirectParam = direct
 
