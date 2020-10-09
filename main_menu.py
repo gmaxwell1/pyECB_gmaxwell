@@ -230,9 +230,29 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         current_direction[0] = 1
         current_direction[1] = 1
         current_direction[2] = 1
-    elif config == 'xy':
+    elif config == 'xy0':
         current_direction[0] = 1
         current_direction[1] = 0
+        current_direction[2] = -1
+    elif config == 'xy1':
+        current_direction[0] = 1
+        current_direction[1] = -1
+        current_direction[2] = 0
+    elif config == 'xy2':
+        current_direction[0] = -1
+        current_direction[1] = 1
+        current_direction[2] = 0
+    elif config == 'xy3':
+        current_direction[0] = -1
+        current_direction[1] = 0
+        current_direction[2] = 1
+    elif config == 'xy4':
+        current_direction[0] = 0
+        current_direction[1] = -1
+        current_direction[2] = 1
+    elif config == 'xy5':
+        current_direction[0] = 0
+        current_direction[1] = 1
         current_direction[2] = -1
     else:
         print('invalid input!')

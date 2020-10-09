@@ -93,22 +93,24 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
-    if len(I[0, :]) != 3:
+    try:
+        if len(I[0]) == 3:
+            # depending on which function in main_menu.py was used to measure
+            df = pd.DataFrame({'channel 1 [A]': I[:, 0],
+                            'channel 2 [A]': I[:, 1],
+                            'channel 3 [A]': I[:, 2],
+                            'mean Bx [mT]': mean_data[:, 0],
+                            'mean By [mT]': mean_data[:, 1],
+                            'mean Bz [mT]': mean_data[:, 2],
+                            'std Bx [mT]': std_data[:, 0],
+                            'std By [mT]': std_data[:, 1],
+                            'std Bz [mT]': std_data[:, 2],
+                            'expected Bx [mT]': expected_fields[:, 0],
+                            'expected By [mT]': expected_fields[:, 1],
+                            'expected Bz [mT]': expected_fields[:, 2]})
+
+    except:
         df = pd.DataFrame({'I (all Channels) [A]': I,
-                           'mean Bx [mT]': mean_data[:, 0],
-                           'mean By [mT]': mean_data[:, 1],
-                           'mean Bz [mT]': mean_data[:, 2],
-                           'std Bx [mT]': std_data[:, 0],
-                           'std By [mT]': std_data[:, 1],
-                           'std Bz [mT]': std_data[:, 2],
-                           'expected Bx [mT]': expected_fields[:, 0],
-                           'expected By [mT]': expected_fields[:, 1],
-                           'expected Bz [mT]': expected_fields[:, 2]})
-    # depending on which function in main_menu.py was used to measure
-    else:
-        df = pd.DataFrame({'channel 1 [A]': I[:, 0],
-                           'channel 2 [A]': I[:, 1],
-                           'channel 3 [A]': I[:, 2],
                            'mean Bx [mT]': mean_data[:, 0],
                            'mean By [mT]': mean_data[:, 1],
                            'mean Bz [mT]': mean_data[:, 2],
@@ -176,5 +178,7 @@ def makePlots(I, mean_data, std_data, expected_fields):
 
 
 if __name__ == '__main__':
-    a = newMeasurementFolder(verbose=True)
-    print(a)
+    I = np.linspace(0,11,111)
+    mean_data = np.zeros((111,3))
+    dir = 'C:\\Users\\Magnebotix\\Desktop\\Qzabre_Vector_Magnet\\1_Version_1_Vector_Magnet\\2_ECB_Control_Code\\ECB_Main_Comm_Measurement\\data_sets\\45_-45_field_meas_1'
+    saveDataPoints(I,mean_data, mean_data, mean_data, dir)
