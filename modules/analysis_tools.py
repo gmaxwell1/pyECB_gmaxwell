@@ -115,9 +115,11 @@ def extract_raw_data_from_file(filepath):
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
 def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_image = True, 
-                        show_labels=True, ylim=None, xlim=None, image_name_postfix='I_vs_B'):
+                        show_labels=True, ylim=None, xlim=None, image_name_postfix='I_vs_B',
+                        remove_first_half=True):
     """
     Generate plot of the currents in all three coils vs the magnetude of the magnetic field.
+
 
     Args:   
     - I, mean_values, std_values, expected_values are ndarrays of shape (#measurements, 3), 
@@ -129,14 +131,18 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
     - ylim: tuple containing (ymin, ymax). If None, the default limits are taken
     - xlim: tuple containing (xmin, xmax). If None, the default limits are taken
     - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
+    - remove_first_half (bool): ignore first half of all input data arrays, 
+    which would correspond to a magnetic field pointing towards the negative direction
+    compared to the desired direction
     """
-    # typically, the measurements range from negative to positive direction of B-field
-    # for uniqueness, filter out the first half of all measurements and only keep rest
-    number_data = I.shape[0]
-    I = I[number_data//2 + 1:,:]
-    mean_values = mean_values[number_data//2 + 1:,:]
-    std_values = std_values[number_data//2 + 1:,:]
-    expected_values = expected_values[number_data//2 + 1:,:]
+    if remove_first_half:
+        # if measurements range from negative to positive direction of B-field
+        # filter out the first half of all measurements and only keep rest for uniqueness
+        number_data = I.shape[0]
+        I = I[number_data//2 + 1:,:]
+        mean_values = mean_values[number_data//2 + 1:,:]
+        std_values = std_values[number_data//2 + 1:,:]
+        expected_values = expected_values[number_data//2 + 1:,:]
 
     # calculate magnitudes of measured and expected magnetic field and their standard deviations
     mean_magnitudes = np.linalg.norm(mean_values, axis=1)
@@ -184,7 +190,7 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
                         plot_delta_sim = False, directory= None, image_name_postfix = 'B_vs_I', 
                         height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
-                        ylim_field_abs = None, ylim_field_z = None, show_labels=True):
+                        ylim_field_abs = None, ylim_field_z = None, show_labels=True, remove_first_half=True):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
 
@@ -222,6 +228,9 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     - ylim_field_abs, ylim_field_z: tuple containing (ymin, ymax) for the plots of magnetic field,
     where '_abs' indicates magnitudes (only positive) and '_z' indicates the field along z (positive and negative)
     - show_labels (bool): flag to switch on/off labels of plots
+    - remove_first_half (bool): ignore first half of all input data arrays, 
+    which would correspond to a magnetic field pointing towards the negative direction
+    compared to the desired direction
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -234,6 +243,15 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     Else, if plot_delta_sim==True, plot_mean_data is the difference between expected and measured data, 
     i.e. plot_mean_data = plot_expected_data - (measurement data).   
     """
+    if remove_first_half:
+        # if measurements range from negative to positive direction of B-field
+        # filter out the first half of all measurements and only keep rest for uniqueness
+        number_data = I.shape[0]
+        I = I[number_data//2 + 1:,:]
+        mean_values = mean_values[number_data//2 + 1:,:]
+        std_values = std_values[number_data//2 + 1:,:]
+        expected_values = expected_values[number_data//2 + 1:,:]
+
     # if an empty string is passed as flags_yaxis, set it to 'm'
     if len(flags_yaxis) == 0:
         flags_yaxis = 'm'
