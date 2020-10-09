@@ -390,7 +390,7 @@ def plot_angle_spherical(vec):
     # normalize vector and estimate angles
     vecn = vec / norm(vec)
     theta = np.arccos(vec[2]/norm(vec))
-    phi = np.arctan(vec[1] / vec[0])
+    phi = np.arctan2(vec[1], vec[0])
 
     fig = plt.figure(figsize=plt.figaspect(1.))
     ax = fig.add_subplot(111, projection='3d')
