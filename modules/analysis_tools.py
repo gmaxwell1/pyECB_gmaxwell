@@ -256,9 +256,6 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     if len(flags_yaxis) == 0:
         flags_yaxis = 'm'
 
-    if len(I.shape) == 1:
-        I = np.rashape((len(I), 1))
-
     # create a simple plot with as many axes as letters in plots_yaxis
     number_plots = len(flags_yaxis)
     fig, axs = plt.subplots(number_plots, 1, sharex=True)
