@@ -235,11 +235,16 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
                             f.write('{},{},{},{},{}\n'.format(meas_time, int(data[0]),
                                                               float(data[1]), float(data[2]), float(data[3])))
                             sens_num_to_read += 1
+                except ValueError as e:
+                    # this is a normal error during the first readout of a run,
+                    # when only an incomplete message is received from the sensor.
+                    # The following messages should be fine again
+                    if 'invalid literal for int() with base 10:' == e.args[0][:39]:
+                        print('This was the previous error')
+                    pass
                 except Exception as e:
                     if not on_stage:
                         print('Line failed.')
-                        print('current output from sensor: {}'.format(
-                            [data[i].decode('ascii') for i in range(len(data))]))
                         print(e)
                         # this line appears several times during the measurement and we are not sure why.
                         # just ignore it, if it appears only a couple of times (5-10 times max per one run of 120s)
@@ -247,6 +252,8 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
                             'Read Failure', 0, 0, 0, 0) + '\r\n')
                     else:
                         print(e)
+                        print('current output from sensor: {}'.format(
+                            [data[i].decode('ascii') for i in range(len(data))]))
                         print("Have to restart measurement at this position.")
                         f.write('failure')
                         failure = True

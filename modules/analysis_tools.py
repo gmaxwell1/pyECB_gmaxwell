@@ -187,7 +187,7 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
 
 
 
-def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
+def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zmt',
                         plot_delta_sim = False, directory= None, image_name_postfix = 'B_vs_I', 
                         height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
                         ylim_field_abs = None, ylim_field_z = None, show_labels=True, remove_first_half=True):
@@ -255,6 +255,9 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     # if an empty string is passed as flags_yaxis, set it to 'm'
     if len(flags_yaxis) == 0:
         flags_yaxis = 'm'
+
+    if len(I.shape) == 1:
+        I = np.rashape((len(I), 1))
 
     # create a simple plot with as many axes as letters in plots_yaxis
     number_plots = len(flags_yaxis)
