@@ -284,8 +284,8 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         elif flags_yaxis[i] == 'f':
             # if the angle is plotted on one of the axes, set the limits to (-5, 365)
             if not plot_delta_sim:
-                axs[i].set_ylim((-10,370))
-                axs[i].yaxis.set_ticks(np.arange(0, 420, 60))
+                axs[i].set_ylim((-190,190))
+                axs[i].yaxis.set_ticks(np.arange(-180, 240, 60))
         elif flags_yaxis[i] == 'z':
             axs[i].set_ylim(ylim_field_z)
         else:
