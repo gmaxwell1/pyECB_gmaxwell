@@ -8,19 +8,18 @@ a GUI for the best user experience.
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
-Based on code by Moritz Reinders
 
-Date: 07.10.2020
+Date: 09.10.2020
 """
 ########## Standard library imports ##########
 import numpy as np
 import math
-from time import time,sleep
-from datetime import datetime
-import sys
-from os import getcwd, path
-from pathlib import Path
-import csv
+from time import time, sleep
+# from datetime import datetime
+# import sys
+# from os import getcwd, path
+# from pathlib import Path
+# import csv
 
 ########## local imports ##########
 import transformations as tr
@@ -40,419 +39,429 @@ resistance = 0.47  # resistance per coil
 
 
 def MainMenu(initialized):
-        """
-        Main menu for ECB/Vector magnet operation an arbitrary magnitude   
+    """
+    Main menu for ECB/Vector magnet operation an arbitrary magnitude   
 
-        Args:
-        -magnitude: of the B-field, in [mT]
-        -theta: angle between desired field direction and z axis
-        -phi: azimuthal angle (measured from the x axis)
-        -t: time for which the magnetic field should be activated (if not 0)
-        -direct: current direct parameter (can usually be left alone)
-        """
+    Args:
+    -magnitude: of the B-field, in [mT]
+    -theta: angle between desired field direction and z axis
+    -phi: azimuthal angle (measured from the x axis)
+    -t: time for which the magnetic field should be activated (if not 0)
+    -direct: current direct parameter (can usually be left alone)
+    """
 
-        # is there a connection?
-        if initialized == 0:
-                c1 = '0'
-                while c1 != 'x':
-                        print('\t--------- Main Menu ---------')
-                        print('[x] to exit')
-                        print('[0]: sweep multiple current values and make measurment with cube')
-                        print('[1]: set currents manually on 3 channels (in mA)')
-                        print('[2]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
-                        print('[3]: ramp magnetic field (specify polar and azimuthal angles, magnitude range)')
-                        print('[c]: get currents\n[s]: get ECB status\n[r] roll a die')
+    # is there a connection?
+    if initialized == 0:
+        c1 = '0'
+        while c1 != 'x':
+            print('\t--------- Main Menu ---------')
+            print('[x] to exit')
+            print('[0]: sweep multiple current values and make measurment with cube')
+            print('[1]: set currents manually on 3 channels (in mA)')
+            print(
+                '[2]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
+            print(
+                '[3]: ramp magnetic field (specify polar and azimuthal angles, magnitude range)')
+            print('[c]: get currents\n[s]: get ECB status\n[r] roll a die')
 
-                        c1 = input()
-                        if c1 == '0':
-                                inp1 = input('configuration (z or x-y direction, acceptable inputs: z, xy) = ')
-                                inp2 = input('starting current in mA = ')
-                                inp3 = input('ending current in mA = ')
-                                inp4 = input('# of steps: ')
+            c1 = input()
+            if c1 == '0':
+                inp1 = input(
+                    'configuration (z or x-y direction, acceptable inputs: z, xy) = ')
+                inp2 = input('starting current in mA = ')
+                inp3 = input('ending current in mA = ')
+                inp4 = input('# of steps: ')
 
-                                try:
-                                        config = inp1
-                                except:
-                                        print('expected valid input (z or xy), defaulting to z')
-                                        config = 'z'
-                                try:
-                                        start_val = int(inp2)
-                                except:
-                                        print('expected numerical value')
-                                        start_val = 0
-                                try:
-                                        end_val = int(inp3)
-                                except:
-                                        print('expected numerical value, defaulting to 1')
-                                        end_val = 1
-                                try:
-                                        steps = int(inp4)
-                                except:
-                                        print('expected numerical value, defaulting to 1')
-                                        duration = 1
+                try:
+                    config = inp1
+                except:
+                    print('expected valid input (z or xy), defaulting to z')
+                    config = 'z'
+                try:
+                    start_val = int(inp2)
+                except:
+                    print('expected numerical value')
+                    start_val = 0
+                try:
+                    end_val = int(inp3)
+                except:
+                    print('expected numerical value, defaulting to 1')
+                    end_val = 1
+                try:
+                    steps = int(inp4)
+                except:
+                    print('expected numerical value, defaulting to 1')
+                    duration = 1
 
-                                        
-                                sweepCurrents(config, start_val, end_val, steps)
-                        elif c1 == '1':
-                                inp1 = input('Channel 1: ')
-                                inp2 = input('Channel 2: ')
-                                inp3 = input('Channel 3: ')
-                                inp4 = input('timer (leave empty -> manual termination) = ')
-                                try:
-                                        coil1 = int(inp1)
-                                except:
-                                        print('expected numerical value')
-                                        coil1 = 0
-                                try:
-                                        coil2 = int(inp2)
-                                except:
-                                        print('expected numerical value')
-                                        coil2 = 0
-                                try:
-                                        coil3 = int(inp3)
-                                except:
-                                        print('expected numerical value')
-                                        coil3 = 0
+                sweepCurrents(config, start_val, end_val, steps)
 
-                                if inp4 == '':
-                                        runCurrents(coil1, coil2, coil3, t=0, direct=b'1')
-                                else:
-                                        try:
-                                                timer = int(inp4)
-                                        except:
-                                                print('expected numerical value')
-                                                timer = 0
-                                        runCurrents(coil1, coil2, coil3, timer, direct=b'1')
+            elif c1 == '1':
+                inp1 = input('Channel 1: ')
+                inp2 = input('Channel 2: ')
+                inp3 = input('Channel 3: ')
+                inp4 = input('timer (leave empty -> manual termination) = ')
+                try:
+                    coil1 = int(inp1)
+                except:
+                    print('expected numerical value')
+                    coil1 = 0
+                try:
+                    coil2 = int(inp2)
+                except:
+                    print('expected numerical value')
+                    coil2 = 0
+                try:
+                    coil3 = int(inp3)
+                except:
+                    print('expected numerical value')
+                    coil3 = 0
 
-                        elif c1 == '2':
-                                inp1 = input('Magnitude in mT = ')
-                                inp2 = input('Angle to z axis in deg = ')
-                                inp3 = input('Angle to x axis in deg = ')
-                                inp4 = input('timer (leave empty -> manual termination) = ')
-                                try:
-                                        mag = int(inp1)
-                                except:
-                                        print('expected numerical value')
-                                        mag = 0
-                                try:
-                                        theta = int(inp2)
-                                except:
-                                        print('expected numerical value')
-                                        theta = 0
-                                try:
-                                        phi = int(inp3)
-                                except:
-                                        print('expected numerical value')
-                                        phi = 0
-                                if inp4 == '':
-                                        generateMagneticField(mag, theta, phi, t=0, direct=b'1')
-                                else:
-                                        try:
-                                                timer = int(inp4)
-                                        except:
-                                                print('expected numerical value')
-                                                timer = 0
-                                        generateMagneticField(mag, theta, phi, timer, direct=b'1')
+                if inp4 == '':
+                    runCurrents(coil1, coil2, coil3, t=0, direct=b'1')
+                else:
+                    try:
+                        timer = int(inp4)
+                    except:
+                        print('expected numerical value')
+                        timer = 0
+                    runCurrents(coil1, coil2, coil3, timer, direct=b'1')
 
-                        elif c1 == '3':
-                                inp1 = input('Angle to z axis in deg = ')
-                                inp2 = input('Angle to x axis in deg = ')
-                                inp3 = input('starting magnitude in mT = ')
-                                inp4 = input('ending magnitude in mT = ')
-                                inp5 = input('measure B-field values? (y or n): ')
-                                inp6 = input('# of steps: ')
+            elif c1 == '2':
+                inp1 = input('Magnitude in mT = ')
+                inp2 = input('Angle to z axis in deg = ')
+                inp3 = input('Angle to x axis in deg = ')
+                inp4 = input('timer (leave empty -> manual termination) = ')
+                try:
+                    mag = int(inp1)
+                except:
+                    print('expected numerical value')
+                    mag = 0
+                try:
+                    theta = int(inp2)
+                except:
+                    print('expected numerical value')
+                    theta = 0
+                try:
+                    phi = int(inp3)
+                except:
+                    print('expected numerical value')
+                    phi = 0
+                if inp4 == '':
+                    generateMagneticField(mag, theta, phi, t=0, direct=b'1')
+                else:
+                    try:
+                        timer = int(inp4)
+                    except:
+                        print('expected numerical value')
+                        timer = 0
+                    generateMagneticField(mag, theta, phi, timer, direct=b'1')
 
-                                try:
-                                        theta = int(inp1)
-                                except:
-                                        print('expected numerical value')
-                                        theta = 0
-                                try:
-                                        phi = int(inp2)
-                                except:
-                                        print('expected numerical value')
-                                        phi = 0
-                                try:
-                                        start_mag = int(inp3)
-                                except:
-                                        print('expected numerical value')
-                                        start_mag = 0
-                                try:
-                                        end_mag = int(inp4)
-                                except:
-                                        print('expected numerical value')
-                                        end_mag = 1
-                                try:
-                                        measure = inp5
+            elif c1 == '3':
+                inp1 = input('Angle to z axis in deg = ')
+                inp2 = input('Angle to x axis in deg = ')
+                inp3 = input('starting magnitude in mT = ')
+                inp4 = input('ending magnitude in mT = ')
+                inp6 = input('# of steps: ')
 
-                                try:
-                                        steps = int(inp6)
-                                except:
-                                        print('expected numerical value')
-                                        steps = 1
-                                        
-                                rampVectorField(theta, phi, start_mag, end_mag, measure,steps)
+                try:
+                    theta = int(inp1)
+                except:
+                    print('expected numerical value')
+                    theta = 0
+                try:
+                    phi = int(inp2)
+                except:
+                    print('expected numerical value')
+                    phi = 0
+                try:
+                    start_mag = int(inp3)
+                except:
+                    print('expected numerical value')
+                    start_mag = 0
+                try:
+                    end_mag = int(inp4)
+                except:
+                    print('expected numerical value')
+                    end_mag = 1
+                try:
+                    steps = int(inp6)
+                except:
+                    print('expected numerical value')
+                    steps = 1
 
-                        elif c1 == 'c':
-                                getCurrents()
-                        elif c1 == 's':
-                                print(getStatus())
-                        elif c1 == 'r':
-                                print(np.random.randint(1,7))
+                rampVectorField(theta, phi, start_mag, end_mag, steps)
 
-                c1 = input('Demagnetize coils? [y/n]\t')
-                if c1 == 'y':
-                        demagnetizeCoils()
+            elif c1 == 'c':
+                getCurrents()
+            elif c1 == 's':
+                print(getStatus())
+            elif c1 == 'r':
+                print(np.random.randint(1, 7))
 
-        else:
-                print('not connected')
-                return
+        c1 = input('Demagnetize coils? [y/n]\t')
+        if c1 == 'y':
+            demagnetizeCoils()
+
+    else:
+        print('not connected')
+        return
 
 
 def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
-        """
-        sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
-        and stores the measured values in various arrays
-        
-        Args:
-        -config: 'z' or 'xy'
-        -start/end_val: current to start and end with, mA
-        -steps: number of steps
-        """
+    """
+    sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
+    and stores the measured values in various arrays
 
-        # initialization of all arrays
-        all_curr_steps = np.linspace(start_val, end_val, steps)
-        mean_values = np.zeros((steps, 3))
-        stdd_values = np.zeros((steps, 3))
-        expected_fields = np.zeros((steps, 3))
-        directory = ''
+    Args:
+    -config: 'z' or 'xy'
+    -start/end_val: current to start and end with, mA
+    -steps: number of steps
+    """
 
-        current_direction = np.ndarray(3)
-        if config == 'z':
-                current_direction[0] = 1
-                current_direction[1] = 1
-                current_direction[2] = 1
-        elif config == 'xy':
-                current_direction[0] = 1
-                current_direction[1] = 0
-                current_direction[2] = -1
-        else:
-                print('invalid input!')
-                return
+    # initialization of all arrays
+    all_curr_steps = np.linspace(start_val, end_val, steps)
+    mean_values = np.zeros((steps, 3))
+    stdd_values = np.zeros((steps, 3))
+    expected_fields = np.zeros((steps, 3))
+    directory = ''
 
-        folder = newMeasurementFolder()
+    current_direction = np.ndarray(3)
+    if config == 'z':
+        current_direction[0] = 1
+        current_direction[1] = 1
+        current_direction[2] = 1
+    elif config == 'xy':
+        current_direction[0] = 1
+        current_direction[1] = 0
+        current_direction[2] = -1
+    else:
+        print('invalid input!')
+        return
 
-        enableCurrents()
-        #iterate through all possible steps
-        for i in range(steps):
-                for k in range(3):
-                        desCurrents[k] = current_direction[k] * all_curr_steps[i]
-                B_expected = tr.computeMagField(current_direction * all_curr_steps[i], windings)
-                setCurrents(desCurrents, currDirectParam)
-                sleep(0.8)
-                # collect measured and expected magnetic field (of the specified sensor in measurements)
-                print('measurement nr. ', i+1)
-                mean_data, std_data, directory = measure(sub_dirname=folder) # see measurements.py for more details
-                mean_values[i] = mean_data
-                stdd_values[i] = std_data
-                expected_fields[i] = B_expected
+    folder = newMeasurementFolder()
 
-                sleep(0.1)
-        
-        disableCurrents()
+    enableCurrents()
+    # iterate through all possible steps
+    for i in range(steps):
+        # set the current on each channel
+        for k in range(3):
+            desCurrents[k] = current_direction[k] * all_curr_steps[i]
+        B_expected = tr.computeMagField(
+            current_direction * all_curr_steps[i], windings)
+        setCurrents(desCurrents, currDirectParam)
+        sleep(0.8)
 
-        # plotting section
-        saveDataPoints((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, directory)
-        generate_plots((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, flag_xaxis='I', flags_yaxis='pma', directory=directory, height_per_plot=3)
+        # collect measured and expected magnetic field (of the specified sensor in measurements)
+        print('measurement nr. ', i+1)
+        # see measurements.py for more details
+        mean_data, std_data, directory = measure(sub_dirname=folder)
+        mean_values[i] = mean_data
+        stdd_values[i] = std_data
+        expected_fields[i] = B_expected
+
+        sleep(0.1)
+
+    disableCurrents()
+
+    # plotting section (generate plots still only works for 1 current value)
+    saveDataPoints((all_curr_steps / 1000), mean_values,
+                   stdd_values, expected_fields, directory)
+    generate_plots((all_curr_steps / 1000), mean_values, stdd_values, expected_fields,
+                   flag_xaxis='I', flags_yaxis='pma', directory=directory, height_per_plot=3)
 
 
 def runCurrents(*coils, t=0, direct=b'1'):
-        """
-        run arbitrary currents (less than maximum current) on each channel 
+    """
+    run arbitrary currents (less than maximum current) on each channel 
 
-        Args:
-        -coils: current values in [mA]
-        -t: time for which the magnetic field should be activated (if not 0)
-        -direct: current direct parameter (can usually be left alone)
-        """
-        currDirectParam = direct
-        # copy the computed current values (mA) into the desCurrents list (first 3 positions)
-        # cast to int
-        for i in range(min(len(coils),8)):
-                if np.abs(coils[i]) > ECB_MAX_CURR:
-                        print("desired current exceeds limit")
-                        return
-                desCurrents[i] = int(coils[i])
+    Args:
+    -coils: current values in [mA]
+    -t: time for which the magnetic field should be activated (if not 0)
+    -direct: current direct parameter (can usually be left alone)
+    """
+    currDirectParam = direct
+    # copy the computed current values (mA) into the desCurrents list (first 3 positions)
+    # cast to int
+    for i in range(min(len(coils), 8)):
+        if np.abs(coils[i]) > ECB_MAX_CURR:
+            print("desired current exceeds limit")
+            return
+        desCurrents[i] = int(coils[i])
 
-        # user specified time
-        if t > 0:
-                enableCurrents()
-                setCurrents(desCurrents, currDirectParam)
+    # user specified time
+    if t > 0:
+        enableCurrents()
+        setCurrents(desCurrents, currDirectParam)
 
-                sleep(t)
+        sleep(t)
 
-                disableCurrents()
+        disableCurrents()
 
-        # on until interrupted by user
-        elif t == 0:
-                enableCurrents()
+    # on until interrupted by user
+    elif t == 0:
+        enableCurrents()
 
-                setCurrents(desCurrents, currDirectParam)
+        setCurrents(desCurrents, currDirectParam)
 
-                # wait until user presses enter
-                c1 = '0'
-                while c1 != 'q':
-                        c1 = input('[q] to disable currents\n[c]: get currents\n[d]: write currents to file\n[s]: get ECB status\n[t]: get coil temperature\n')
-                        if c1 == 'c':
-                                getCurrents()
-                        elif c1 == 's':
-                                print(getStatus())
-                        elif c1 == 't':
-                                getTemps()
+        # wait until user presses enter
+        c1 = '0'
+        while c1 != 'q':
+            c1 = input(
+                '[q] to disable currents\n[c]: get currents\n[d]: write currents to file\n[s]: get ECB status\n[t]: get coil temperature\n')
+            if c1 == 'c':
+                getCurrents()
+            elif c1 == 's':
+                print(getStatus())
+            elif c1 == 't':
+                getTemps()
 #                        elif c1 == 'd':
 #                                N = input('No. of measurements: ')
 #                                f = input('No. of measurements/second: ')
 #                                pollCurrents(int(N),float(f))
 
-                disableCurrents()
-        else:
-                return
+        disableCurrents()
+    else:
+        return
 
 
 def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
-        """  
-        generate a magnetic field in an arbitrary direction and an arbitrary magnitude
+    """  
+    generate a magnetic field in an arbitrary direction and an arbitrary magnitude
 
-        Args:
-        -magnitude: of the B-field, in [mT]
-        -theta: angle between desired field direction and z axis
-        -phi: azimuthal angle (measured from the x axis)
-        -t: time for which the magnetic field should be activated (if not 0)
-        -direct: current direct parameter (can usually be left alone)
-        """
+    Args:
+    -magnitude: of the B-field, in [mT]
+    -theta: angle between desired field direction and z axis
+    -phi: azimuthal angle (measured from the x axis)
+    -t: time for which the magnetic field should be activated (if not 0)
+    -direct: current direct parameter (can usually be left alone)
+    """
 
-        B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-        I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+    B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+    I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
 
-        # make sure that the current is not too high
-        if np.amax(I_vector) > ECB_MAX_CURR:
-                print("desired current exceeds limit")
-                return
+    # make sure that the current is not too high
+    if np.amax(I_vector) > ECB_MAX_CURR:
+        print("desired current exceeds limit")
+        return
 
-        currDirectParam = direct
-        # copy the computed current values (mA) into the desCurrents list (first 3 positions)
-        # cast to int
-        for i in range(len(I_vector)):
-                desCurrents[i] = int(I_vector[i])
+    currDirectParam = direct
+    # copy the computed current values (mA) into the desCurrents list (first 3 positions)
+    # cast to int
+    for i in range(len(I_vector)):
+        desCurrents[i] = int(I_vector[i])
 
-        # user specified on time
-        if t > 0:
-                enableCurrents()
-                setCurrents(desCurrents, currDirectParam)
-                print('Current on coils 1, 2 and 3: [{}, {}, {}]'.format(I_vector[0], I_vector[1], I_vector[2]))
-                sleep(t)
-
-                disableCurrents()
-        # on until interrupted by user
-        elif t == 0:
-                enableCurrents()
-
-                setCurrents(desCurrents, currDirectParam)
-
-                # wait until user presses enter
-                c1 = '0'
-                while c1 != 'q':
-                        c1 = input('[q] to disable currents\n[c]: get currents\n[s]: get ECB status\n[t]: get coil temperature\n')
-                        if c1 == 'c':
-                                getCurrents()
-                        elif c1 == 's':
-                                print(getStatus())
-                        elif c1 == 't':
-                                getTemps()
-
-
-                disableCurrents()
-        else:
-                return
-
-
-def rampVectorField(theta, phi, start_mag, finish_mag, measureflag, steps):
-        """  
-        ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
-
-        Args:
-        -theta & phi: give the direction of the magnetic field (Polar/azimuthal angles)
-        -start/finish_magn: (desired) field range
-        -measureflag: (n=no, anything else=yes) measure the field values over time and save/plot them
-        -steps: number of steps
-        """
-
-        magnitudes = np.linspace(start_mag, finish_mag, steps)
-        mean_values = np.zeros((steps, 3))
-        stdd_values = np.zeros((steps, 3))
-        expected_fields = np.zeros((steps, 3))
-        all_curr_steps = np.zeros((steps, 3))
-        directory = ''
-
-        folder = newMeasurementFolder()
-
+    # user specified on time
+    if t > 0:
         enableCurrents()
-        #iterate through all possible steps
-        for i in range(steps):
-                # compute the currents theoretically needed to achieve an arbitrary magnetic field
-                B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
-                I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
-                expected_fields[i] = B_expected
+        setCurrents(desCurrents, currDirectParam)
+        print('Current on coils 1, 2 and 3: [{}, {}, {}]'.format(
+            I_vector[0], I_vector[1], I_vector[2]))
+        sleep(t)
 
-                for k in range(3):
-                        desCurrents[k] = I_vector[k]
-                setCurrents(desCurrents, currDirectParam)
-                sleep(0.8)
-                if measureflag != 'n':
-                        print('measurement nr. ', i+1)
-                        # collect measured magnetic field (of the specified sensor in measurements)
-                        mean_data, std_data, directory = measure(sub_dirname=folder)
-                        mean_values[i] = mean_data
-                        stdd_values[i] = std_data
-
-                sleep(0.1)
-        
         disableCurrents()
-        # plotting section
-        saveDataPoints((all_curr_steps / 1000), mean_values, stdd_values, expected_fields, directory)
-
-def demagnetizeCoils(stepSize = 100, amplitude = 1500, dt = 0.5, direct = b'1'):
-        """
-        Try to minimize residual flux in cores by running square wave shaped (positive-negative) currents on each coil.
-        
-        Args:
-        -stepSize: amount by which to reduce amplitude every period
-        -amplitude: Amplitude of square wave
-        -dt: half period of pulse
-        -direct: see ECB API documentation
-        """
-        currDirectParam = direct
-
+    # on until interrupted by user
+    elif t == 0:
         enableCurrents()
-        print('demagnetizing coils')
-        while amplitude > 0:
-                desCurrents = [amplitude] * 8
-                setCurrents(desCurrents, currDirectParam)
-                sleep(dt)
-                amplitude = (-1) * amplitude
-                desCurrents = [amplitude] * 8
-                setCurrents(desCurrents, currDirectParam)
-                sleep(dt)
-                amplitude = (-1) * (amplitude + stepSize)
-        
+
+        setCurrents(desCurrents, currDirectParam)
+
+        # wait until user presses enter
+        c1 = '0'
+        while c1 != 'q':
+            c1 = input(
+                '[q] to disable currents\n[c]: get currents\n[s]: get ECB status\n[t]: get coil temperature\n')
+            if c1 == 'c':
+                getCurrents()
+            elif c1 == 's':
+                print(getStatus())
+            elif c1 == 't':
+                getTemps()
+
         disableCurrents()
+    else:
+        return
+
+
+def rampVectorField(theta, phi, start_mag, finish_mag, steps):
+    """  
+    Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
+    Measure the magnetic field values.
+
+    Args:
+    -theta & phi: give the direction of the magnetic field (theta: angle between field vector and z axis; phi: angle between 
+    field vector projection on xy plane and x axis)
+    -start/finish_magn: (desired) field range
+    -steps: number of steps
+    """
+
+    magnitudes = np.linspace(start_mag, finish_mag, steps)
+    mean_values = np.zeros((steps, 3))
+    stdd_values = np.zeros((steps, 3))
+    expected_fields = np.zeros((steps, 3))
+    all_curr_steps = np.zeros((steps, 3))
+    directory = ''
+
+    folder = newMeasurementFolder()
+
+    enableCurrents()
+    # iterate through all possible steps
+    for i in range(steps):
+        # compute the currents theoretically needed to achieve an arbitrary magnetic field
+        B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
+        I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
+        # set the computed currents on each channel
+        for k in range(3):
+            desCurrents[k] = I_vector[k]
+        setCurrents(desCurrents, currDirectParam)
+        sleep(0.8)
+
+        print('measurement nr. ', i+1)
+        # collect measured magnetic field (of the specified sensor in measurements)
+        mean_data, std_data, directory = measure(sub_dirname=folder)
+        mean_values[i] = mean_data
+        stdd_values[i] = std_data
+        expected_fields[i] = B_expected
+        all_curr_steps[i] = I_vector
+
+        sleep(0.1)
+
+    disableCurrents()
+    # plotting section
+    saveDataPoints((all_curr_steps / 1000), mean_values,
+                   stdd_values, expected_fields, directory)
+
+
+def demagnetizeCoils(stepSize=100, amplitude=1500, dt=0.5, direct=b'1'):
+    """
+    Try to minimize residual flux in cores by running square wave shaped (positive-negative) currents on each coil.
+
+    Args:
+    -stepSize: amount by which to reduce amplitude every period
+    -amplitude: Amplitude of square wave
+    -dt: half period of pulse
+    -direct: see ECB API documentation
+    """
+    currDirectParam = direct
+
+    enableCurrents()
+    print('demagnetizing coils')
+    while amplitude > 0:
+        desCurrents = [amplitude] * 8
+        setCurrents(desCurrents, currDirectParam)
+        sleep(dt)
+        amplitude = (-1) * amplitude
+        desCurrents = [amplitude] * 8
+        setCurrents(desCurrents, currDirectParam)
+        sleep(dt)
+        amplitude = (-1) * (amplitude + stepSize)
+
+    disableCurrents()
 
 
 if __name__ == '__main__':
+    ecbInit = openConnection()
+    while ecbInit != 0:
         ecbInit = openConnection()
-        while ecbInit != 0:
-                ecbInit = openConnection()
 
-        MainMenu(ecbInit)
-        closeConnection()
-
+    MainMenu(ecbInit)
+    closeConnection()

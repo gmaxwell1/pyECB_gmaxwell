@@ -1,23 +1,35 @@
-#%%
+""" 
+filename: plot_hall_cube.py
+
+The following functions are used for plotting data extracted from the Hall Sensor Cube. Mainly for 3D plots of the vector field.
+
+Author: Jona Buehler 2020
+
+Documentation and Updates by Nicholas Meinhardt, Maxwell Guerne-Kieferndorf (QZabre)
+                             nmeinhar@student.ethz.ch, gmaxwell@student.ethz.ch
+        
+Date: 09.10.2020
+"""
+
+########## Standard library imports ##########
 import numpy as np
 from numpy.linalg import norm
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.colors import to_hex
-# import matplotlib.colors as colors
-# import matplotlib.colorbar as cbr
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
 import sys
 
+########## local imports ##########
 from modules.serial_reader import get_new_data_set
 
-#%%
-def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0,0,0]), Vecs=True, 
-                Mag_label=False, Cont=False, Scat_Mag=False, Show=True, 
-                title_on=True, cmin=None, cmax=None, single_comp=None, omit_64=False):
+
+def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0, 0, 0]), Vecs=True,
+             Mag_label=False, Cont=False, Scat_Mag=False, Show=True,
+             title_on=True, cmin=None, cmax=None, single_comp=None, omit_64=False):
     """
     Generate 3d plot of measurement data, where a single (mean) magnetic field vector is provided for each sensor. 
 
@@ -49,62 +61,63 @@ def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0,0,0]), Vecs=True,
     - u, v, w: vector components along x,y,z-axis in a suitable format for 3d-kjplotting
     """
     # initialize figure if not existing already
-    if fig==None:
-        #3D Vector plot of magnetic flux
+    if fig == None:
+        # 3D Vector plot of magnetic flux
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         ax.set_xlabel("x [mm]")
         ax.set_ylabel("y [mm]")
         ax.set_zlabel("z [mm]")
-        ax.set_xlim(0,15)
-        ax.set_ylim(0,15)
-        ax.set_zlim(0,15)
+        ax.set_xlim(0, 15)
+        ax.set_ylim(0, 15)
+        ax.set_zlim(0, 15)
 
     # initialize positions of sensors
-    x, y, z = np.meshgrid(  np.arange(Pos[0], 20+Pos[0], 5), 
-                            np.arange(Pos[1], 20+Pos[1], 5), 
-                            np.arange(Pos[2], 20+Pos[2], 5))
+    x, y, z = np.meshgrid(np.arange(Pos[0], 20+Pos[0], 5),
+                          np.arange(Pos[1], 20+Pos[1], 5),
+                          np.arange(Pos[2], 20+Pos[2], 5))
 
     # reshuffle the vector components of magnetic field, such that they are in the correct format
     # u v, w: vector components along x,y,z-axis
-    u= np.zeros(np.shape(x))
-    v= np.zeros(np.shape(y))
-    w= np.zeros(np.shape(z))
+    u = np.zeros(np.shape(x))
+    v = np.zeros(np.shape(y))
+    w = np.zeros(np.shape(z))
     for i in range(np.shape(x)[0]):
         for j in range(np.shape(x)[1]):
             for k in range(np.shape(x)[2]):
                 # if omit_64 and int(48+j+4*i-16*k)==63: #account for read failure of sensor 64
-                if omit_64 and int(60+j-4*i-16*k)==63: #account for read failure of sensor 64
+                # account for read failure of sensor 64
+                if omit_64 and int(60+j-4*i-16*k) == 63:
                     continue
                 else:
                     # u[i,j,k] = SensorData[int(48+j+4*i-16*k),0]
                     # v[i,j,k] = SensorData[int(48+j+4*i-16*k),1]
                     # w[i,j,k] = SensorData[int(48+j+4*i-16*k),2]
-                    u[i,j,k] = SensorData[int(60+j-4*i-16*k),0]
-                    v[i,j,k] = SensorData[int(60+j-4*i-16*k),1]
-                    w[i,j,k] = SensorData[int(60+j-4*i-16*k),2]
+                    u[i, j, k] = SensorData[int(60+j-4*i-16*k), 0]
+                    v[i, j, k] = SensorData[int(60+j-4*i-16*k), 1]
+                    w[i, j, k] = SensorData[int(60+j-4*i-16*k), 2]
 
     # choose how the data should be plotted
-    if single_comp==None:
+    if single_comp == None:
         mag = np.sqrt(u*u + v*v + w*w)
-    elif single_comp=='x':
+    elif single_comp == 'x':
         mag = u
-    elif single_comp=='y':
+    elif single_comp == 'y':
         mag = v
-    elif single_comp=='z':
+    elif single_comp == 'z':
         mag = w
-    elif single_comp=='xy':
+    elif single_comp == 'xy':
         mag = np.sqrt(u*u + v*v)
-    
+
     # set limits for colormap if they are not provided yet
-    if cmin==None or cmax==None:
+    if cmin == None or cmax == None:
         cmin = np.amin(mag) - 1
         cmax = np.amax(mag) + 1
 
     # create the actual plot
-    title="Magnetic"
-    if Vecs: # add vectors into plot, magnetic field strength used for color code
-        # get the correct color 
+    title = "Magnetic"
+    if Vecs:  # add vectors into plot, magnetic field strength used for color code
+        # get the correct color
         cmap = cm.get_cmap('viridis')
         normalized_mag = (mag - cmin) / (cmax - cmin)
         print((cmin, cmax))
@@ -112,55 +125,63 @@ def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0,0,0]), Vecs=True,
         for i in range(np.shape(mag)[0]):
             for j in range(np.shape(mag)[1]):
                 for k in range(np.shape(mag)[2]):
-                    color_hex[i,j,k] = to_hex(cmap(normalized_mag)[i,j,k,:])
-        cf = ax.quiver(x,y,z, u,v,w, length=0.2, colors=color_hex.flatten(), arrow_length_ratio=0.3)
-        fig.colorbar(cf, ax=ax, label="|B| in mT") 
+                    color_hex[i, j, k] = to_hex(
+                        cmap(normalized_mag)[i, j, k, :])
+        cf = ax.quiver(x, y, z, u, v, w, length=0.2,
+                       colors=color_hex.flatten(), arrow_length_ratio=0.3)
+        fig.colorbar(cf, ax=ax, label="|B| in mT")
 
-        title+=" field /"
+        title += " field /"
         #ax.scatter(x,y,z, s=1)
-        title+=" field /"
-    if Mag_label: # add magnitude of magnetic field strength into plot
+        title += " field /"
+    if Mag_label:  # add magnitude of magnetic field strength into plot
         for i in range(np.shape(x)[0]):
             for j in range(np.shape(x)[1]):
                 for k in range(np.shape(x)[2]):
                     # if omit_64 and int(48+j+4*i-16*k)==63: #account for read failure of sensor 64
-                    if omit_64 and int(60+j-4*i-16*k)==63: #account for read failure of sensor 64
+                    # account for read failure of sensor 64
+                    if omit_64 and int(60+j-4*i-16*k) == 63:
                         continue
                     else:
-                        M = "%.2f" % (np.sqrt(u[i,j,k]**2 + v[i,j,k]**2 + w[i,j,k]**2))
+                        M = "%.2f" % (
+                            np.sqrt(u[i, j, k]**2 + v[i, j, k]**2 + w[i, j, k]**2))
                         label = '#{}: {} mT'.format(60+j-4*i-16*k + 1, M)
                         # label = '#{}: {} mT'.format(48+j+4*i-16*k + 1, M)
-                        ax.text(x[i,j,k], y[i,j,k], z[i,j,k], label)
-        title+=" magnitude labels /"
+                        ax.text(x[i, j, k], y[i, j, k], z[i, j, k], label)
+        title += " magnitude labels /"
 
     cf = None
-    if Cont: # add contours into plot
-        cf = ax.contourf(x[0], z[0], np.transpose(mag[:,:,0]), zdir='z', offset=0, vmin=cmin, vmax=cmax)#, levels=20)
-        ax.contourf(x[1], z[1], np.transpose(mag[:,:,1]), zdir='z', offset=5, vmin=cmin, vmax=cmax)#, levels=20)
-        ax.contourf(x[2], z[2], np.transpose(mag[:,:,2]), zdir='z', offset=10, vmin=cmin, vmax=cmax)#, levels=20)
-        ax.contourf(x[3], z[3], np.transpose(mag[:,:,3]), zdir='z', offset=15, vmin=cmin, vmax=cmax)#, levels=20)
+    if Cont:  # add contours into plot
+        cf = ax.contourf(x[0], z[0], np.transpose(
+            mag[:, :, 0]), zdir='z', offset=0, vmin=cmin, vmax=cmax)  # , levels=20)
+        ax.contourf(x[1], z[1], np.transpose(mag[:, :, 1]),
+                    zdir='z', offset=5, vmin=cmin, vmax=cmax)  # , levels=20)
+        ax.contourf(x[2], z[2], np.transpose(mag[:, :, 2]), zdir='z',
+                    offset=10, vmin=cmin, vmax=cmax)  # , levels=20)
+        ax.contourf(x[3], z[3], np.transpose(mag[:, :, 3]), zdir='z',
+                    offset=15, vmin=cmin, vmax=cmax)  # , levels=20)
 
-        fig.colorbar(cf, ax=ax, boundaries=(cmin, cmax), label="|B| in mT") 
-        title+=" flux magnitudes"
-    if Scat_Mag: # scatter plot
+        fig.colorbar(cf, ax=ax, boundaries=(cmin, cmax), label="|B| in mT")
+        title += " flux magnitudes"
+    if Scat_Mag:  # scatter plot
         mag = mag.flatten()
-        cf = ax.scatter(x,y,z, s=1, c=mag, vmin=cmin, vmax=cmax)
+        cf = ax.scatter(x, y, z, s=1, c=mag, vmin=cmin, vmax=cmax)
         fig.colorbar(cf, ax=ax, label="|B| in mT")
-        title+=" flux magnitudes"
+        title += " flux magnitudes"
 
-    # if title ends with /, remove it 
+    # if title ends with /, remove it
     if title[-1] == '/':
-            title=title[:-1]
+        title = title[:-1]
 
     if title_on:
         plt.title(title)
     plt.tight_layout()
     if Show:
         plt.show()
-    return fig, ax, (cf, cmin, cmax), u,v, w
+    return fig, ax, (cf, cmin, cmax), u, v, w
 
 
-def plot_many_sets(directory, Vecs=True, Cont=False, Scat_Mag=False, save=False, omit_64 = False):
+def plot_many_sets(directory, filename="means_grid_points.csv", Vecs=True, Cont=False, Scat_Mag=False, save=False, omit_64=False):
     """
     Generate 3d plot of many datasets, for example originating from running grid-measurements.
 
@@ -168,7 +189,8 @@ def plot_many_sets(directory, Vecs=True, Cont=False, Scat_Mag=False, save=False,
     visible if there are too many data. Needs to be fixed later!
 
     Args:
-    - directory: 
+    - directory: directory where the data file(s) that need(s) to be read is (are) located
+    - filename: name of the data file that needs to be read
     - Vecs: flag to switch on/off plotting of vectors
     - Scat_Mag: flag to switch on/off scatter plot (only points) of magnetic field
     - Cont: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
@@ -177,48 +199,47 @@ def plot_many_sets(directory, Vecs=True, Cont=False, Scat_Mag=False, save=False,
     - save: flag to save or not save the plot at the end
     - omit_64: flag to include (False) or exclude (True) the 64th sensor
     """
-    #3D Vector plot of magnetic flux
+    # 3D Vector plot of magnetic flux
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.set_xlabel("x [mm]")
     ax.set_ylabel("y [mm]")
     ax.set_zlabel("z [mm]")
-    ax.set_zlim(0,15)
+    ax.set_zlim(0, 15)
 
     cwd = os.getcwd()
     access_rights = 0o755
-    filedir = cwd+directory
-    filename="means_grid_points.csv"
+    filedir = cwd + directory
     os.chmod(filedir, access_rights)    # won't have an effect on Windows
 
     # read in the measurement data from csv files
-    mpoints = pd.read_csv(filedir+filename)
+    mpoints = pd.read_csv(filedir + filename)
     if sys.version_info[0] == 3:
-        mpoints=mpoints.to_numpy() #use mpoints.values() if you use python 2
+        mpoints = mpoints.to_numpy()  # use mpoints.values() if you use python 2
     else:
-        mpoints=mpoints.values
+        mpoints = mpoints.values
     if omit_64:
-        only_values = np.zeros((63, 3)) #((np.shape(means))[0], 3))
+        only_values = np.zeros((63, 3))  # ((np.shape(means))[0], 3))
     else:
         only_values = np.zeros((64, 3))
 
-    cmin=None
-    cmax=None
-    cbar_par=None
-    all_axes=[]
+    cmin = None
+    cmax = None
+    cbar_par = None
+    all_axes = []
     for i in range(np.shape(mpoints)[0]):
         meanname = "means_" + str(i+1) + ".csv"
-        means = pd.read_csv(filedir+meanname)
+        means = pd.read_csv(filedir + meanname)
         if sys.version_info[0] == 3:
-            means = means.to_numpy() #use means.values() if you use python 2
+            means = means.to_numpy()  # use means.values() if you use python 2
         else:
-            means= means.values
-        only_values[:, 0] = means[:,0]
-        only_values[:, 1] = means[:,2]
-        only_values[:, 2] = means[:,4]
-        fig, ax, cbar_par,_,_,_= plot_set(only_values, fig=fig, ax=ax, Pos=mpoints[i,1:], Vecs=Vecs, 
-                                            Cont=Cont, Scat_Mag=Scat_Mag, Show=False, title_on=False, 
-                                            cmin=cmin, cmax=cmax, omit_64=omit_64)
+            means = means.values
+        only_values[:, 0] = means[:, 0]
+        only_values[:, 1] = means[:, 2]
+        only_values[:, 2] = means[:, 4]
+        fig, ax, cbar_par, _, _, _ = plot_set(only_values, fig=fig, ax=ax, Pos=mpoints[i, 1:], Vecs=Vecs,
+                                              Cont=Cont, Scat_Mag=Scat_Mag, Show=False, title_on=False,
+                                              cmin=cmin, cmax=cmax, omit_64=omit_64)
         cmin = cbar_par[1]
         cmax = cbar_par[2]
         all_axes.append(cbar_par[0])
@@ -228,10 +249,11 @@ def plot_many_sets(directory, Vecs=True, Cont=False, Scat_Mag=False, save=False,
     plt.title("Magnetic field")
     if save:
         if Scat_Mag:
-            plt.savefig(filedir+"plot_mags.png")
+            plt.savefig(filedir + "plot_mags.png")
         elif Vecs:
-            plt.savefig(filedir+"plot_vecs.png")
+            plt.savefig(filedir + "plot_vecs.png")
     plt.show()
+
 
 def plot_stage_positions(directory, filename="means_grid_points.csv", save=False):
     """
@@ -246,29 +268,31 @@ def plot_stage_positions(directory, filename="means_grid_points.csv", save=False
     cwd = os.getcwd()
     access_rights = 0o755
     filedir = cwd+directory
-    os.chmod(cwd+directory, access_rights) # won't have an effect on Windows
+    os.chmod(cwd+directory, access_rights)  # won't have an effect on Windows
     mpoints = pd.read_csv(filedir+filename)
     if sys.version_info[0] == 3:
-        mpoints=mpoints.to_numpy() #use mpoints.values() if you use python 2
+        mpoints = mpoints.to_numpy()  # use mpoints.values() if you use python 2
     else:
-        mpoints=mpoints.values
+        mpoints = mpoints.values
 
-    # create plot 
+    # create plot
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.set_xlabel("x [mm]")
     ax.set_ylabel("y [mm]")
     ax.set_zlabel("z [mm]")
-    ax.scatter(mpoints[:,1], mpoints[:,2], mpoints[:,3])
+    ax.scatter(mpoints[:, 1], mpoints[:, 2], mpoints[:, 3])
     for i in range(1, np.shape(mpoints)[0]):
-        vec= mpoints[i,1:] - mpoints[i-1,1:]
-        ax.quiver(mpoints[i-1,1],mpoints[i-1,2],mpoints[i-1,3], vec[0], vec[1], vec[2])
+        vec = mpoints[i, 1:] - mpoints[i-1, 1:]
+        ax.quiver(mpoints[i-1, 1], mpoints[i-1, 2],
+                  mpoints[i-1, 3], vec[0], vec[1], vec[2])
     plt.title("Stage Positions: Movement of each sensor w.r.t its initial position")
     if save:
         plt.savefig(filedir+"plot_"+filename[:-4]+".png")
     plt.show()
 
-def plot_sensor_positions(Pos = np.array([0,0,0])):
+
+def plot_sensor_positions(Pos=np.array([0, 0, 0])):
     """
     Generate 3d plot of the positions of the Hall sensors 
 
@@ -283,17 +307,17 @@ def plot_sensor_positions(Pos = np.array([0,0,0])):
     ax.set_xlabel("x [mm]")
     ax.set_ylabel("y [mm]")
     ax.set_zlabel("z [mm]")
-    ax.set_xlim(0,15)
-    ax.set_ylim(0,15)
-    ax.set_zlim(0,15)
+    ax.set_xlim(0, 15)
+    ax.set_ylim(0, 15)
+    ax.set_zlim(0, 15)
 
     # initialize positions of sensors
-    x, y, z = np.meshgrid(  np.arange(Pos[0], 20+Pos[0], 5), 
-                            np.arange(Pos[1], 20+Pos[1], 5), 
-                            np.arange(Pos[2], 20+Pos[2], 5))
-    
+    x, y, z = np.meshgrid(np.arange(Pos[0], 20+Pos[0], 5),
+                          np.arange(Pos[1], 20+Pos[1], 5),
+                          np.arange(Pos[2], 20+Pos[2], 5))
+
     z_offsets = np.arange(Pos[2], 20+Pos[2], 5)
-    colors = np.array(['r','g','b','k'])
+    colors = np.array(['r', 'g', 'b', 'k'])
 
     # reshuffle the vector components of magnetic field, such that they are in the correct format
     # u v, w: vector components along x,y,z-axis
@@ -301,17 +325,18 @@ def plot_sensor_positions(Pos = np.array([0,0,0])):
     for i in range(np.shape(x)[0]):
         for j in range(np.shape(x)[1]):
             for k in range(np.shape(x)[2]):
-                u[i,j,k] = int(48+j+4*i-16*k)
+                u[i, j, k] = int(48+j+4*i-16*k)
 
     # choose how the data should be plotted
-    
+
     for i in range(np.shape(x)[0]):
         for j in range(np.shape(x)[1]):
             for k in range(np.shape(x)[2]):
                 label = '#{}'.format(60+j-4*i-16*k + 1)
-                ax.text(x[i,j,k], y[i,j,k], z[i,j,k], label, color = colors[z_offsets==z[i,j,k]][0])
+                ax.text(x[i, j, k], y[i, j, k], z[i, j, k], label,
+                        color=colors[z_offsets == z[i, j, k]][0])
 
-    plt.title('sensor positions', pad= 20)
+    plt.title('sensor positions', pad=20)
     plt.tight_layout()
     # plt.show()
 
@@ -327,21 +352,21 @@ def plot_angle(vec):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
 
-    # normalize vector 
+    # normalize vector
     mag = norm(vec)
     vecn = vec/mag
     ang = np.arccos(vec[2]/mag)
     print(vecn)
-    
-    ax.quiver(0.0,0.0,0.0, vecn[0], vecn[1], vecn[2], arrow_length_ratio=0.3)
-    ax.text(0.2,0.2,0.5, 'Angle: {:.1f} °'.format(np.degrees(ang)))
-    
-    # add red triangle between vector and z-axis to illustrate angle 
-    x=[0,0,0.8*vecn[0]]
-    y=[0,0,0.8*vecn[1]]
-    z=[0,0.8,0.8*vecn[2]]
-    vtx=[list(zip(x, y, z))]
-    tri=Poly3DCollection(vtx)
+
+    ax.quiver(0.0, 0.0, 0.0, vecn[0], vecn[1], vecn[2], arrow_length_ratio=0.3)
+    ax.text(0.2, 0.2, 0.5, 'Angle: {:.1f} °'.format(np.degrees(ang)))
+
+    # add red triangle between vector and z-axis to illustrate angle
+    x = [0, 0, 0.8*vecn[0]]
+    y = [0, 0, 0.8*vecn[1]]
+    z = [0, 0.8, 0.8*vecn[2]]
+    vtx = [list(zip(x, y, z))]
+    tri = Poly3DCollection(vtx)
     tri.set_color('red')
     ax.add_collection3d(tri)
 
@@ -354,7 +379,7 @@ def plot_angle(vec):
     ax.set_zlabel("z")
 
     plt.show()
-    
+
 
 def plot_angle_spherical(vec):
     """
@@ -367,15 +392,17 @@ def plot_angle_spherical(vec):
     theta = np.arccos(vec[2]/norm(vec))
     phi = np.arctan2(vec[1], vec[0])
 
-    fig = plt.figure(figsize = plt.figaspect(1.))
+    fig = plt.figure(figsize=plt.figaspect(1.))
     ax = fig.add_subplot(111, projection='3d')
-
 
     # plot arrows for x, y, z axis
     length_axes = 2.4
-    ax.quiver(length_axes/2 ,0, 0, length_axes, 0, 0, color = 'k', arrow_length_ratio=0.08, pivot='tip', linewidth =1.1)
-    ax.quiver(0, length_axes/2, 0, 0, length_axes, 0, color = 'k', arrow_length_ratio=0.08, pivot='tip', linewidth =1.1)
-    ax.quiver(0, 0, length_axes/2, 0, 0, length_axes, color = 'k', arrow_length_ratio=0.08, pivot='tip', linewidth =1.1)
+    ax.quiver(length_axes/2, 0, 0, length_axes, 0, 0, color='k',
+              arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
+    ax.quiver(0, length_axes/2, 0, 0, length_axes, 0, color='k',
+              arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
+    ax.quiver(0, 0, length_axes/2, 0, 0, length_axes, color='k',
+              arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
     ax.text(1.45, 0, 0, 'x')
     ax.text(0, 1.35, 0, 'y')
     ax.text(0, 0, 1.3, 'z')
@@ -385,35 +412,37 @@ def plot_angle_spherical(vec):
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-    ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1, alpha = 0.05, antialiased=False, vmax=2) # cmap=cm.gray,
+    ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
+                    alpha=0.05, antialiased=False, vmax=2)  # cmap=cm.gray,
 
     # plot equator
     u, v = np.mgrid[0:2*np.pi:40j, np.pi/2:np.pi/2:1j]
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-    ax.plot_wireframe(x, y, z, color='k', linewidth =0.5)
+    ax.plot_wireframe(x, y, z, color='k', linewidth=0.5)
 
     # plot actual vector
-    ax.quiver(0.0,0.0,0.0, vecn[0], vecn[1], vecn[2], arrow_length_ratio=0.2, color='b', linewidth = 3)
+    ax.quiver(0.0, 0.0, 0.0, vecn[0], vecn[1], vecn[2],
+              arrow_length_ratio=0.2, color='b', linewidth=3)
 
-    # add red triangle between vector and z-axis to illustrate theta-angle 
+    # add red triangle between vector and z-axis to illustrate theta-angle
     scaling_factor = 1.0
-    x=[0, 0, scaling_factor*vecn[0]]
-    y=[0, 0, scaling_factor*vecn[1]]
-    z=[0, scaling_factor, scaling_factor*vecn[2]]
-    vtx=[list(zip(x, y, z))]
+    x = [0, 0, scaling_factor*vecn[0]]
+    y = [0, 0, scaling_factor*vecn[1]]
+    z = [0, scaling_factor, scaling_factor*vecn[2]]
+    vtx = [list(zip(x, y, z))]
     tri = Poly3DCollection(vtx)
     tri.set_color('red')
     tri.set_alpha(0.3)
     tri.set_linewidth(0.2)
     ax.add_collection3d(tri)
 
-    # add red triangle between vector and x-axis in xy-plane to illustrate phi-angle 
-    x=[0, scaling_factor, scaling_factor*vecn[0]]
-    y=[0, 0, scaling_factor*vecn[1]]
-    z=[0, 0, 0]
-    vtx=[list(zip(x, y, z))]
+    # add red triangle between vector and x-axis in xy-plane to illustrate phi-angle
+    x = [0, scaling_factor, scaling_factor*vecn[0]]
+    y = [0, 0, scaling_factor*vecn[1]]
+    z = [0, 0, 0]
+    vtx = [list(zip(x, y, z))]
     tri = Poly3DCollection(vtx)
     tri.set_color('green')
     tri.set_alpha(0.3)
@@ -421,12 +450,14 @@ def plot_angle_spherical(vec):
     ax.add_collection3d(tri)
 
     # print angles as title
-    ax.set_title('$\\theta$ = {:.1f} °\n $\\phi$ =  {:.1f} °'.format(np.degrees(theta), np.degrees(phi)))
+    ax.set_title('$\\theta$ = {:.1f} °\n $\\phi$ =  {:.1f} °'.format(
+        np.degrees(theta), np.degrees(phi)))
 
-    # switch off axes and planes in background, rotate to nice position. 
+    # switch off axes and planes in background, rotate to nice position.
     ax.set_axis_off()
-    ax.view_init(30,45)
+    ax.view_init(30, 45)
     plt.show()
+
 
 if __name__ == "__main__":
     directory = '\\data_sets\\set_4_centered\\'
@@ -481,10 +512,3 @@ if __name__ == "__main__":
     w[0,0,1] = SensorData[31,4]
     """
 
-
-
-
-
-
-
-# %%
