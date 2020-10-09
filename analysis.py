@@ -7,8 +7,8 @@ from modules.analysis_tools import *
 
 
 #%%
-data_directory = './test_data/z_field_meas_set_5'
-data_filename = '20_10_08_13-36-45_B_field_vs_I_new.csv'
+data_directory = './test_data/xy_field_meas_set_2'
+data_filename = '20_10_08_14-18-22_B_field_vs_I_new.csv'
 data_filepath = os.path.join(data_directory, data_filename)
 
 I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields = extract_raw_data_from_file(data_filepath)
