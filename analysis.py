@@ -2,7 +2,7 @@
 import numpy as np
 import os
 from scipy.optimize import curve_fit
-
+kj
 from modules.analysis_tools import *
 
 
@@ -16,15 +16,17 @@ I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields = extrac
 
 _ = generate_plots(I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields, 
                 flag_xaxis='I1', flags_yaxis='zmptf', plot_delta_sim=False, save_image=False,
-                directory=data_directory, height_per_plot=2, show_labels=True, 
+                directory=data_directory, height_per_plot=2, show_labels=True, distance=1.7,
                 xlim=None, ylim_field_abs=(0,80), ylim_field_z=(-80,80))
+
+plot_I_vs_B(I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields, directory=data_directory,
+                save_image=False, xlim=(0,90), ylim=None)
+
 
 #%%
 
 def fit_B_vs_single_current(I_single_coil, B_magnitudes):
-    """
-    Work in progress
-    """
+
     # fit functions
     fit_functions_collection = [abs_sigmoid, abs_brillouin_fct, abs_lin_and_const]
     fit_labels = ['sigmoid', 'brillouin', 'linconst']
