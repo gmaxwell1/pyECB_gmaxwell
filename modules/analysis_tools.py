@@ -1,14 +1,23 @@
-# Author Nicholas Meinhardt 2020
+""" 
+filename: analysis_tools.py
 
-#%%
+This file contains functions that are used for plotting data extracted from the Hall Sensor Cube. Mainly for 2D plots of the magnetic field.
+
+Author: Nicholas Meinhardt (Qzabre)
+        nmeinhar@student.ethz.ch
+        
+Date: 09.10.2020
+"""
+
+########## Standard library imports ##########
 import numpy as np
-import pandas as pd 
+import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-#%%
+# %%
 def estimate_std_theta(mean_values, std_values):
     """
     Estimate the standard deviation of the estimated angle theta (wrt. z-axis), 
@@ -22,14 +31,16 @@ def estimate_std_theta(mean_values, std_values):
     mag = np.linalg.norm(mean_values, axis=1)
 
     # estimate partial derivatives
-    deriv_arccos = 1/ np.sqrt(1- mean_values[:,2]**2 / mag**2)
+    deriv_arccos = 1 / np.sqrt(1 - mean_values[:, 2]**2 / mag**2)
 
-    pderiv_x = deriv_arccos * mean_values[:,2]*mean_values[:,0] / mag**3
-    pderiv_y = deriv_arccos * mean_values[:,2]*mean_values[:,1] / mag**3
-    pderiv_z = deriv_arccos * (mean_values[:,2]**2 / mag**3 - 1/mag)
+    pderiv_x = deriv_arccos * mean_values[:, 2]*mean_values[:, 0] / mag**3
+    pderiv_y = deriv_arccos * mean_values[:, 2]*mean_values[:, 1] / mag**3
+    pderiv_z = deriv_arccos * (mean_values[:, 2]**2 / mag**3 - 1/mag)
 
-    var_theta = (pderiv_x*std_values[:,0])**2 + (pderiv_y*std_values[:,1])**2 + (pderiv_z*std_values[:,2])**2
+    var_theta = (pderiv_x*std_values[:, 0])**2 + (pderiv_y *
+                                                  std_values[:, 1])**2 + (pderiv_z*std_values[:, 2])**2
     return np.sqrt(var_theta)
+
 
 def estimate_std_magnitude(mean_values, std_values):
     """
@@ -45,6 +56,7 @@ def estimate_std_magnitude(mean_values, std_values):
 
     return np.sqrt(np.einsum('ij,ij->i', mean_values**2, std_values**2)) / mag
 
+
 def estimate_std_inplane(mean_values, std_values):
     """
     Estimate the standard deviation of the estimated in-plane magnitude |B_xy|, 
@@ -55,9 +67,10 @@ def estimate_std_inplane(mean_values, std_values):
     Returns: ndarray of length #measurements containing standard deviations of |B_xy|
     """
     # estimate magnitudes
-    inplane_mag = np.linalg.norm(mean_values[:,0:2], axis=1)
+    inplane_mag = np.linalg.norm(mean_values[:, 0:2], axis=1)
 
-    return np.sqrt(np.einsum('ij,ij->i', mean_values[:,0:2]**2, std_values[:,0:2]**2)) / inplane_mag
+    return np.sqrt(np.einsum('ij,ij->i', mean_values[:, 0:2]**2, std_values[:, 0:2]**2)) / inplane_mag
+
 
 def extract_raw_data_from_file(filepath):
     """
@@ -70,25 +83,26 @@ def extract_raw_data_from_file(filepath):
 
     # current can be single-valued or a vector, differentiate these cases
     dimension_I = len(raw_data[0]) - 9
-    if dimension_I == 1 :
-        I = raw_data[:,0]
-        mean_data_specific_sensor = raw_data[:,1:4]
-        std_data_specific_sensor = raw_data[:,4:7]
-        expected_fields = raw_data[:,7:10]
+    if dimension_I == 1:
+        I = raw_data[:, 0]
+        mean_data_specific_sensor = raw_data[:, 1:4]
+        std_data_specific_sensor = raw_data[:, 4:7]
+        expected_fields = raw_data[:, 7:10]
     else:
-        I = raw_data[:,0:3]
-        mean_data_specific_sensor = raw_data[:,3:6]
-        std_data_specific_sensor = raw_data[:,6:9]
-        expected_fields = raw_data[:,9:12]
+        I = raw_data[:, 0:3]
+        mean_data_specific_sensor = raw_data[:, 3:6]
+        std_data_specific_sensor = raw_data[:, 6:9]
+        expected_fields = raw_data[:, 9:12]
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
 
-def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
-                        plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_image = True, distance=3.0):
+
+def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis='I1', flags_yaxis='zma',
+                   plot_delta_sim=False, directory=None, data_filename_postfix='B_vs_I',
+                   height_per_plot=2, save_image=True, distance=3.0):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
-    
+
     Note that one can decide on which quantities should be plotted on the x and y axes, 
     as well as how many plots should be generated, by adapting the flags_yaxis and flag_xaxis parameters. 
 
@@ -139,16 +153,16 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     fig, axs = plt.subplots(number_plots, 1, sharex=True)
     fig.set_size_inches(6, number_plots * height_per_plot)
 
-    # if number_plots=1, axs is returned as AxesSubplot class instead of an ndarray containing 
+    # if number_plots=1, axs is returned as AxesSubplot class instead of an ndarray containing
     # instances of this class. Since the following requires a ndarray, ensure to have an ndarray!
-    if number_plots ==1:
+    if number_plots == 1:
         axs = np.array([axs])
 
     # calculate magnitudes of measured and expected magnetic field
     mean_magnitudes = np.linalg.norm(mean_values, axis=1)
     expected_magnitudes = np.linalg.norm(expected_values, axis=1)
 
-    # collect plot data. 
+    # collect plot data.
     # Note: errorbars display std, estimate errors for magnitudes (and angle) using propagation of uncertainty,
     # assuming that the measured fields in x,y,z direction are independent variables
     plot_mean_data = []
@@ -158,32 +172,38 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     for flag in flags_yaxis:
         # magnetic field in z-direction
         if flag == 'z':
-            plot_mean_data.append(mean_values[:,2])
-            plot_std_data.append(std_values[:,2])
-            plot_expected_data.append(expected_values[:,2])
+            plot_mean_data.append(mean_values[:, 2])
+            plot_std_data.append(std_values[:, 2])
+            plot_expected_data.append(expected_values[:, 2])
             ylabels.append('$B_z$ [mT]')
         # magnitude of magnetic field
         elif flag == 'm':
             plot_mean_data.append(mean_magnitudes)
-            plot_std_data.append(estimate_std_magnitude(mean_values, std_values))
+            plot_std_data.append(
+                estimate_std_magnitude(mean_values, std_values))
             plot_expected_data.append(expected_magnitudes)
             ylabels.append('$|B|$ [mT]')
         # angle theta (wrt to z-axis)
         elif flag == 'a':
-            plot_mean_data.append(np.degrees(np.arccos(mean_values[:,2]/mean_magnitudes)))
-            plot_std_data.append(np.degrees(estimate_std_theta(mean_values, std_values)))
-            plot_expected_data.append( np.degrees(np.arccos(expected_values[:,2]/expected_magnitudes)))
+            plot_mean_data.append(np.degrees(
+                np.arccos(mean_values[:, 2]/mean_magnitudes)))
+            plot_std_data.append(np.degrees(
+                estimate_std_theta(mean_values, std_values)))
+            plot_expected_data.append(np.degrees(
+                np.arccos(expected_values[:, 2]/expected_magnitudes)))
             ylabels.append('$\\theta$ [°]')
         # in-plane component (along xy) of magnetic field
         elif flag == 'p':
-            plot_mean_data.append(np.sqrt(mean_values[:,0]**2 + mean_values[:,1]**2))
+            plot_mean_data.append(
+                np.sqrt(mean_values[:, 0]**2 + mean_values[:, 1]**2))
             plot_std_data.append(estimate_std_inplane(mean_values, std_values))
-            plot_expected_data.append(np.sqrt(expected_values[:,0]**2 + expected_values[:,1]**2))
+            plot_expected_data.append(
+                np.sqrt(expected_values[:, 0]**2 + expected_values[:, 1]**2))
             ylabels.append('$|B_{xy}|$ [mT]')
         # account for invalid flags:
         else:
-            raise ValueError('{} is not a valid flag, it should be in [\'z\', \'m\', \'a\', \'p\']!'.format(flag))
-    
+            raise ValueError(
+                '{} is not a valid flag, it should be in [\'z\', \'m\', \'a\', \'p\']!'.format(flag))
 
     # plot current ('I'), power ('P') or magnitude of magnetic field ('B') on xaxis, depending on flag_xaxis
     if flag_xaxis == 'P':
@@ -194,30 +214,30 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         x_vals = mean_magnitudes
         axs[-1].set_xlabel('$|B|$ [mT]')
     elif flag_xaxis == 'I2':
-        x_vals = I[:,1]
+        x_vals = I[:, 1]
         axs[-1].set_xlabel('$I_2$ [A]')
     elif flag_xaxis == 'I3':
-        x_vals = I[:,2]
+        x_vals = I[:, 2]
         axs[-1].set_xlabel('$I_3$ [A]')
     else:
-        x_vals = I[:,0]
+        x_vals = I[:, 0]
         axs[-1].set_xlabel('$I_1$ [A]')
 
-    # actual plotting 
+    # actual plotting
     for i in range(len(axs)):
         axs[i].set_ylabel(ylabels[i])
 
-        # plot either both measured and expected values or only the differences between both. 
+        # plot either both measured and expected values or only the differences between both.
         if plot_delta_sim:
             axs[i].errorbar(x_vals, plot_expected_data[i]-plot_mean_data[i], yerr=plot_std_data[i],
-                                linestyle='', marker='.', capsize = 2, 
-                                label = '$\\Delta$ = simulation-measurements')
+                            linestyle='', marker='.', capsize=2,
+                            label='$\\Delta$ = simulation-measurements')
         else:
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
-                                    linestyle='', marker='.', capsize = 2, 
-                                    label = 'measured @ {:.1f} mm'.format(distance))
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', 
-                                    label = 'simulation @ 3 mm')
+                            linestyle='', marker='.', capsize=2,
+                            label='measured @ {:.1f} mm'.format(distance))
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.',
+                        label='simulation @ 3 mm')
             axs[i].legend()
 
     # add a Delta at the front of each label if differences should be plotted
@@ -228,23 +248,23 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     if not plot_delta_sim:
         for i in range(len(flags_yaxis)):
             if flags_yaxis[i] == 'a':
-                axs[i].set_ylim((-5,185))
+                axs[i].set_ylim((-5, 185))
                 axs[i].yaxis.set_ticks(np.arange(0, 210, 30))
-    
+
     # further adjustments
     plt.tight_layout()
 
     # save image
-    if save_image :
+    if save_image:
         # set the directory name and current datetime if not passed as argument
         if directory is None:
             directory = os.getcwd()
         now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
 
-        output_file_name = '{}_{}.png'.format(now, data_filename_postfix) 
+        output_file_name = '{}_{}.png'.format(now, data_filename_postfix)
         file_path = os.path.join(directory, output_file_name)
-        fig.savefig(file_path, dpi = 300)
-    
+        fig.savefig(file_path, dpi=300)
+
     fig.show()
 
     return x_vals, plot_mean_data, plot_std_data, plot_expected_data
@@ -256,6 +276,7 @@ def sigmoid(x, k, a):
     """
     return a * (1 - np.exp(-k*x)) / (1 + np.exp(-k*x))
 
+
 def abs_sigmoid(x, k, a):
     """
     Return absolute value of sigmoid function with growth rate k and maximum value a, 
@@ -263,22 +284,26 @@ def abs_sigmoid(x, k, a):
     """
     return np.abs(sigmoid(x, k, a))
 
+
 def coth(x):
     """Return cosh(x)/sinh(x)"""
     return np.cosh(x) / np.sinh(x)
 
-def brillouin_fct(x, J, a): 
+
+def brillouin_fct(x, J, a):
     """
     Implement the Brillouin function, which is used to describe paramagnet. 
     """
     s = 1/(2*J)
-    return a * ((1+s)* coth((1+s)*x) - s * coth(s*x))
+    return a * ((1+s) * coth((1+s)*x) - s * coth(s*x))
 
-def abs_brillouin_fct(x, J, a): 
+
+def abs_brillouin_fct(x, J, a):
     """
     Implement the absolute value of Brillouin function, which is used to describe paramagnet. 
     """
     return np.abs(brillouin_fct(x, J, a))
+
 
 def lin_and_const(x, x_kink, a):
     """
@@ -292,6 +317,7 @@ def lin_and_const(x, x_kink, a):
         return a*x if np.abs(x) <= x_kink else a*x_kink*np.sign(x)
     else:
         return np.array([a*x[i] if np.abs(x[i]) <= x_kink else a*x_kink*np.sign(x[i]) for i in range(len(x))])
+
 
 def abs_lin_and_const(x, x_kink, a):
     """

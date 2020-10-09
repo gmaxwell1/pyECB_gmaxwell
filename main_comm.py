@@ -1,14 +1,15 @@
 """
 filename: main_comm.py
 
-This code is meant to be used to set a specific desired current on the channels
-1, 2 and 3 (and up to 8, but this is not really needed in our case) of the ECB-820, 
-either by expilcitly setting current values, or by specifying the desired magnetic field vector.
+This code is meant to bundle the communication with the ECB-820, by simplifying the most basic necessary functions.
+There may be some more functions that are necessary in the future
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
 
-Date: 28.09.2020
+Based on code by Moritz Reinders, Denis von Arx
+
+Date: 09.10.2020
 """
 ########## Standard library imports ##########
 import numpy as np
@@ -20,21 +21,22 @@ from pathlib import Path
 import csv
 
 ########## local imports ##########
-from ECB import * # this is ok, since all the function names are pretty much unique and known.
+# this is ok, since all the function names are pretty much unique and known.
+from ECB import *
 
 
 __all__ = [
-        'openConnection',
-        'closeConnection',
-        'enableCurrents',
-        'disableCurrents',
-        'setMaxCurrent',
-        'setCurrents',
-        'getCurrents',
-        'getTemps',
-        'getStatus',
-        'ECB_MAX_CURR'
-        ]
+    'openConnection',
+    'closeConnection',
+    'enableCurrents',
+    'disableCurrents',
+    'setMaxCurrent',
+    'setCurrents',
+    'getCurrents',
+    'getTemps',
+    'getStatus',
+    'ECB_MAX_CURR'
+]
 
 ##########  Connection parameters ##########
 
@@ -57,7 +59,7 @@ ECB_CURRENTS_ENABLED = False
 
 
 ##########  Error messages from ECB, Error messages from ECB, see ECB_API documentation (no exceptions needed): ##########
-#           ..\ECB_820_Pantec\Pantec_API\pantec_tftp\ecb_api_20150203\doxygen\html     
+#           ..\ECB_820_Pantec\Pantec_API\pantec_tftp\ecb_api_20150203\doxygen\html
 
 def _chk(msg):
     """
@@ -115,6 +117,7 @@ def _chk(msg):
 def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
     """
     Open a connection with the ECB on port ECB_PORT.
+
     Args:
     -IPAddress: IP address of the ECB. Should always be 192.168.237.47, unless the configuration was changed.
     -port: port on which TCP connection is opened. Should always be 7070, unless the configuration was changed.
@@ -187,9 +190,10 @@ def setMaxCurrent(maxValue=19000):
         print("specified current was too high")
 
 
-def setCurrents(desCurrents=[0,0,0,0,0,0,0,0], direct=b'0'):
+def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     """
     Set current values for each ECB channel
+
     Args:
     -desCurrents: list of length 8 containing int values, where the '0th' value is the desired current on channel 1 (units of mA),
     the '1st' is the desired current on channel 2 and so on.
@@ -199,7 +203,7 @@ def setCurrents(desCurrents=[0,0,0,0,0,0,0,0], direct=b'0'):
     Returns: error code iff an error occurs
     """
     ECB_ERR = setDesCurrents(desCurrents, direct)
-    
+
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
@@ -219,8 +223,8 @@ def getCurrents():
     else:
         print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
         print("Current [mA]: {0} \t {1} \t {2} \t {3} \t {4} \t {5} \t {6} \t {7}"
-            .format(result[0], result[1], result[2], result[3], result[4],
-                    result[5], result[6], result[7]))
+              .format(result[0], result[1], result[2], result[3], result[4],
+                      result[5], result[6], result[7]))
 
     return result
 
@@ -232,15 +236,15 @@ def getTemps():
     returns: a tuple with all of the values of interest if no error occurs otherwise an error code is returned
     """
     (ECB_ERR, result, hall_list, currents_list, coil_status) = getCoilValues()
-    
+
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
     else:
         print("Channel: 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
         print("Temperature [°C]: {0} \t {1} \t {2} \t {3} \t {4} \t {5} \t {6} \t {7}"
-            .format(result[0], result[1], result[2], result[3], result[4],
-                    result[5], result[6], result[7]))
+              .format(result[0], result[1], result[2], result[3], result[4],
+                      result[5], result[6], result[7]))
 
     return (result, hall_list, currents_list, coil_status)
 
@@ -252,7 +256,7 @@ def getStatus():
     returns: status, or error code iff there is an error
     """
     (ECB_ERR, status) = getECBStatus()
-    
+
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
@@ -263,13 +267,13 @@ def getStatus():
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
     print(initECBapi(ECB_ADDRESS, ECB_PORT))
-    #enableECBCurrents()
-    #generateMagField(magnitude=60,theta=0,phi=0)
+    # enableECBCurrents()
+    # generateMagField(magnitude=60,theta=0,phi=0)
     #setDesCurrents([2232,2232,2232,0,0,0,0,0], currDirectParam)
 
-    #getCurrents()
+    # getCurrents()
     print(getStatus())
-    #pollCurrents(100,10)
+    # pollCurrents(100,10)
     sleep(10)
-    #disableECBCurrents()
+    # disableECBCurrents()
     exitECBapi()
