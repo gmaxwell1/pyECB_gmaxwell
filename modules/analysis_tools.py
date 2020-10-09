@@ -31,6 +31,24 @@ def estimate_std_theta(mean_values, std_values):
     var_theta = (pderiv_x*std_values[:,0])**2 + (pderiv_y*std_values[:,1])**2 + (pderiv_z*std_values[:,2])**2
     return np.sqrt(var_theta)
 
+def estimate_std_phi(mean_values, std_values):
+    """
+    Estimate the standard deviation of the estimated in-plane angle phi (wrt. x-axis), 
+    assuming that x,y,z components of magnetic field are independent variables.
+
+    Args: mean_data_specific_sensor, std_data_specific_sensor are ndarrays of shape (#measurements, 3).
+
+    Returns: ndarray of length #measurements containing standard deviations of phi
+    """
+    # estimate partial derivatives
+    deriv_arctan = np.cos(np.arctan2(mean_values[:,1], mean_values[:,0]))**2
+
+    pderiv_x = deriv_arctan * (-mean_values[:,1]/ mean_values[:,0]**2)
+    pderiv_y = deriv_arctan / mean_values[:,0]
+
+    var_phi = (pderiv_x*std_values[:,0])**2 + (pderiv_y*std_values[:,1])**2 
+    return np.sqrt(var_phi)
+
 def estimate_std_magnitude(mean_values, std_values):
     """
     Estimate the standard deviation of the estimated magnitude |B|, 
@@ -85,7 +103,8 @@ def extract_raw_data_from_file(filepath):
 
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zma',
                         plot_delta_sim = False, directory= None, data_filename_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_image = True, distance=3.0):
+                        height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
+                        ylim_field_abs = None, ylim_field_z = None, show_labels=True):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
     
@@ -109,7 +128,8 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         - 'z': Bz-component of magnetic field
         - 'm': magnitude of magnetic field
         - 'p': in-plane magnitude |B_xy| of magnetic field in xy-plane
-        - 'a': angle theta with respect to z-axis
+        - 't': angle theta with respect to z-axis
+        - 'f': in-plane angle phi with respect to x-axis
     - plot_delta_sim: If False, both the measured and expected values are plotted. 
     If True, the difference between simulation and measurement is plotted.
     - directory: valid path of directory where the image should be saved
@@ -117,7 +137,11 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     - height_per_plot: height of each plot in inches. Default for several plots is 2.
     The usual height of a single plot is 4.
     - save_image: flag to save or not save the image
-    - distance is the distance between sensor and tip, which is added as plot label 
+    - distance is the distance between sensor and tip [mm], which is added as plot label 
+    - xlim: tuple containing (xmin, xmax) of plots. If None, the default limits are taken
+    - ylim_field_abs, ylim_field_z: tuple containing (ymin, ymax) for the plots of magnetic field,
+    where '_abs' indicates magnitudes (only positive) and '_z' indicates the field along z (positive and negative)
+    - show_labels: bool flag to switch on/off labels of plots
 
     Return: 
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
@@ -128,7 +152,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     The values that are expected based on previous simulations are returned as plot_expected_data for each plot.
     Note that if plot_delta_sim==False, the actual measurement data are returned. 
     Else, if plot_delta_sim==True, plot_mean_data is the difference between expected and measured data, 
-    i.e. plot_mean_data = plot_expected_data - (measurement data).    
+    i.e. plot_mean_data = plot_expected_data - (measurement data).   
     """
     # if an empty string is passed as flags_yaxis, set it to 'm'
     if len(flags_yaxis) == 0:
@@ -169,11 +193,17 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             plot_expected_data.append(expected_magnitudes)
             ylabels.append('$|B|$ [mT]')
         # angle theta (wrt to z-axis)
-        elif flag == 'a':
+        elif flag == 't':
             plot_mean_data.append(np.degrees(np.arccos(mean_values[:,2]/mean_magnitudes)))
             plot_std_data.append(np.degrees(estimate_std_theta(mean_values, std_values)))
             plot_expected_data.append( np.degrees(np.arccos(expected_values[:,2]/expected_magnitudes)))
             ylabels.append('$\\theta$ [°]')
+        # angle phi (wrt to x-axis)
+        elif flag == 'f':
+            plot_mean_data.append(np.degrees(np.arctan2(mean_values[:,1], mean_values[:,0])))
+            plot_std_data.append(np.degrees(estimate_std_phi(mean_values, std_values)))
+            plot_expected_data.append(np.degrees(np.arctan2(expected_values[:,1], expected_values[:,0])))
+            ylabels.append('$\\phi$ [°]')
         # in-plane component (along xy) of magnetic field
         elif flag == 'p':
             plot_mean_data.append(np.sqrt(mean_values[:,0]**2 + mean_values[:,1]**2))
@@ -218,19 +248,35 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                                     label = 'measured @ {:.1f} mm'.format(distance))
             axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', marker='.', 
                                     label = 'simulation @ 3 mm')
-            axs[i].legend()
+            if show_labels:
+                axs[i].legend()
 
     # add a Delta at the front of each label if differences should be plotted
     if plot_delta_sim:
         ylabels = ['$\\Delta$ {}'.format(label) for label in ylabels]
 
-    # if the angle is plotted on one of the axes, set the limits to (-5, 185)
-    if not plot_delta_sim:
-        for i in range(len(flags_yaxis)):
-            if flags_yaxis[i] == 'a':
+    # settings that are different for plots of angle and plots of field
+    
+    
+    for i in range(len(flags_yaxis)):
+        if flags_yaxis[i] == 't':
+            # if the angle is plotted on one of the axes, set the limits to (-5, 185)
+            if not plot_delta_sim:
                 axs[i].set_ylim((-5,185))
                 axs[i].yaxis.set_ticks(np.arange(0, 210, 30))
+        elif flags_yaxis[i] == 'f':
+            # if the angle is plotted on one of the axes, set the limits to (-5, 365)
+            if not plot_delta_sim:
+                axs[i].set_ylim((-10,370))
+                axs[i].yaxis.set_ticks(np.arange(0, 420, 60))
+        elif flags_yaxis[i] == 'z':
+            axs[i].set_ylim(ylim_field_z)
+        else:
+            axs[i].set_ylim(ylim_field_abs)
     
+    # set limits for x-axis 
+    axs[-1].set_xlim(xlim)
+
     # further adjustments
     plt.tight_layout()
 
@@ -299,4 +345,5 @@ def abs_lin_and_const(x, x_kink, a):
 
     Note that x_kink >= 0 is required and that the returned value is >= 0.
     """
-    return abs(lin_and_const(x, x_kink, a))
+    return np.abs(lin_and_const(x, x_kink, a))
+
