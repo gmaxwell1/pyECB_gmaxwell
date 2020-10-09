@@ -238,7 +238,8 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         print('invalid input!')
         return
 
-    folder = newMeasurementFolder()
+    subDirBase = config + '_field_meas'
+    folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
     # iterate through all possible steps
@@ -385,7 +386,7 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
 def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     """  
     Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
-    Measure the magnetic field values.
+    Measure the magnetic field values, save them to a file.
 
     Args:
     -theta & phi: give the direction of the magnetic field (theta: angle between field vector and z axis; phi: angle between 
@@ -401,7 +402,8 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     all_curr_steps = np.zeros((steps, 3))
     directory = ''
 
-    folder = newMeasurementFolder()
+    subDirBase = '{}_{}_field_meas'.format(theta,phi)
+    folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
     # iterate through all possible steps
