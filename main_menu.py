@@ -52,20 +52,21 @@ def MainMenu(initialized):
         while c1 != 'x':
             print('----------- Main Menu -----------')
             print('[x] to exit\n')
-            print('[0]: sweep multiple current values and make measurment with cube (specify coil configuration)')
-            print('[1]: sweep theoretical magnetic field magnitudes, measure actual values (specify polar and azimuthal angles, magnitude range)')
-            print('[2]: set currents manually on 3 channels (in mA)')
+            print('[1]: sweep multiple current values and make measurment with cube (specify coil configuration)')
+            print('[2]: sweep theoretical magnetic field magnitudes, measure actual values (specify polar and azimuthal angles, magnitude range)')
+            print('[3]: set currents manually on 3 channels (in mA)')
             print(
-                '[3]: generate magnetic field (specify polar and azimuthal angles, magnitude)\n')
+                '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)\n')
             print('[s]: get ECB status\n[r] roll a die\n')
 
             c1 = input()
-            if c1 == '0':
+            if c1 == '1':
                 inp1 = input(
-                    'configuration (z or x-y direction), acceptable inputs:\n z, xy0...6 for different directions in xy plane = ')
+                    'configuration (z or x-y direction), acceptable inputs:\n z, xy0...6 (for different directions in xy plane), r for random test = ')
                 inp2 = input('starting current in mA = ')
                 inp3 = input('ending current in mA = ')
                 inp4 = input('# of steps: ')
+                inp5 = input('How many measurement runs? (only if config r was chosen): ')
 
                 try:
                     config = inp1
@@ -86,11 +87,23 @@ def MainMenu(initialized):
                     steps = int(inp4)
                 except:
                     print('expected numerical value, defaulting to 1')
-                    duration = 1
-
-                sweepCurrents(config, start_val, end_val, steps)
+                    steps = 1
+                try:
+                    randomRuns = int(inp5)
+                except:
+                    print('expected numerical value, defaulting to 0')
+                    randomRuns = 0
+                    
+                if randomRuns < 1:
+                    sweepCurrents(config, start_val, end_val, steps)
+                elif (randomRuns >= 1 and config == 'r'):
+                    while randomRuns > 0:
+                        sweepCurrents(config, start_val, end_val, steps)
+                        randomRuns = randomRuns-1
+                else:
+                    print('please enter a valid combination of inputs.')
                 
-            elif c1 == '1':
+            elif c1 == '2':
                 inp1 = input('Angle to z axis in deg = ')
                 inp2 = input('Angle to x axis in deg = ')
                 inp3 = input('starting magnitude in mT = ')
@@ -125,7 +138,7 @@ def MainMenu(initialized):
 
                 rampVectorField(theta, phi, start_mag, end_mag, steps)
 
-            elif c1 == '2':
+            elif c1 == '3':
                 inp1 = input('Channel 1: ')
                 inp2 = input('Channel 2: ')
                 inp3 = input('Channel 3: ')
@@ -157,7 +170,7 @@ def MainMenu(initialized):
                         
                 runCurrents(coil1, coil2, coil3, timer, direct=b'1')
 
-            elif c1 == '3':
+            elif c1 == '4':
                 inp1 = input('Magnitude in mT = ')
                 inp2 = input('Angle to z axis in deg = ')
                 inp3 = input('Angle to x axis in deg = ')
@@ -209,9 +222,11 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     -steps: number of steps
 
     Args:
+        ch1,ch2,ch3 (float, optional): current ratios (to the maximum number entered)
         config (str, optional): Choose from multiple possible 'configurations' (coil1, coil2, coil3) of currents. Possible values:
-            - 'z': 
-        
+            - 'z': coil currents all the same
+            - 'xy0', 'xy1',...: one coil on in positive direction, one in negative direction and one off
+            - 'r': randomly generated configuration.
         Defaults to 'z'.
         start_val (int, optional): [description]. Defaults to 0.
         end_val (int, optional): [description]. Defaults to 1.
@@ -255,11 +270,17 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         current_direction[0] = 0
         current_direction[1] = 1
         current_direction[2] = -1
+    elif config == 'r':
+        arg = np.random.uniform(size=3)
+        max_val = np.amax(arg)
+        current_direction[0] = arg[0] / max_val
+        current_direction[1] = arg[1] / max_val
+        current_direction[2] = arg[2] / max_val
     else:
         print('invalid input!')
         return
 
-    subDirBase = config + '_field_meas'
+    subDirBase = '({}{}{})_field_meas'.format(current_direction[0],current_direction[1],current_direction[2])
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
