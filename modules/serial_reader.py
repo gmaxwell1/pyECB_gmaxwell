@@ -240,7 +240,6 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
                     # when only an incomplete message is received from the sensor.
                     # The following messages should be fine again
                     if 'invalid literal for int() with base 10:' == e.args[0][:39]:
-                        print('This was the previous error')
                         pass
                     else:
                         print(e)
@@ -260,6 +259,8 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
                             'Read Failure', 0, 0, 0, 0) + '\r\n')
                     else:
                         print(e)
+                        print('current raw output from sensor: {}'.format(
+                            [data[i] for i in range(len(data))]))
                         print('current output from sensor: {}'.format(
                             [data[i].decode('ascii') for i in range(len(data))]))
                         print("Have to restart measurement at this position.")
