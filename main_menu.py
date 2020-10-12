@@ -45,7 +45,9 @@ def MainMenu(initialized):
             print('[2]: sweep theoretical magnetic field magnitudes, measure actual values (specify polar and azimuthal angles, magnitude range)')
             print('[3]: set currents manually on 3 channels (in mA)')
             print(
-                '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)\n')
+                '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
+            print(
+                '[5]: Switch from one operating point to another multiple times while measuring\n')
             print('[s]: get ECB status\n[r] roll a die\n')
 
             c1 = input()
@@ -192,6 +194,32 @@ def MainMenu(initialized):
                         timer = 0
 
                 generateMagneticField(mag, theta, phi, timer, direct=b'1')
+                
+            elif c1 == '5':
+                inp1 = input('configuration 1\nChannel 1: ')
+                inp2 = input('Channel 2: ')
+                inp3 = input('Channel 3: ')
+                inp4 = input('configuration 2\nChannel 1: ')
+                inp5 = input('Channel 2: ')
+                inp6 = input('Channel 3: ')
+                try:
+                    a1 = int(inp1)
+                    b1 = int(inp2)
+                    c1 = int(inp3)
+                    config1 = np.array([a1,b1,c1])
+                except:
+                    print('expected numerical value, defaulting to (0,0,1)')
+                    config1 = np.array([0,0,1])
+                try:
+                    a2 = int(inp4)
+                    b2 = int(inp5)
+                    c2 = int(inp6)
+                    config2 = np.array([a2,b2,c2])
+                except:
+                    print('expected numerical value(s), defaulting to (0,1,0)')
+                    config2 = np.array([0,1,0])
+
+                switchConfigsAndMeasure(config1, config2)
 
             elif c1 == 's':
                 print(getStatus())

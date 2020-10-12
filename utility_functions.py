@@ -1,10 +1,10 @@
 """
 filename: utility_functions.py
 
-This script is meant to be used as an interface with the ECB 820. The user can choose from various
-methods to set currents on the different channels ('coils' in Pantec's terminology) and thus communicate
-with the ECB. The standard interface is the command line, but another option is to integrate this into 
-a GUI for the best user experience.
+This collection of functions has functions that can be used to manipulate the currents on the ECB channels. 
+The user can choose from various methods to set currents on the different channels ('coils' in Pantec's terminology)
+and thus generate a magnetic field with the vector magnet. For example, we can sweep through current values on the 
+different channels and simultaneously measure the actual magnetic field to compare the theory with the actual results.
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
@@ -272,15 +272,14 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
     B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
     I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
 
-    # make sure that the current is not too high
-    if np.amax(I_vector) > ECB_MAX_CURR:
-        print("desired current exceeds limit")
-        return
-
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
     for i in range(len(I_vector)):
+        # make sure that the current is not too high
+        if np.amax(I_vector) > ECB_MAX_CURR:
+            print("desired current exceeds limit")
+            return
         desCurrents[i] = int(I_vector[i])
 
     # user specified on time
@@ -327,3 +326,47 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
         disableCurrents()
     else:
         return
+    
+    
+def switchConfigsAndMeasure(config1, config2, dt=0.5, rounds=10):
+    """
+    Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
+
+    Args:
+        config1 (np.array): currents on coil 1, 2 and 3 as an array with 3 entries.
+        config2 (np.array): currents on coil 1, 2 and 3 as an array with 3 entries.
+        dt (float): Time to remain in each state. Defaults to 0.5s.
+        rounds (int): Number of times to switch. Defaults to 10
+    """
+    
+    subDirBase = 'dynamic_field_meas'
+    folder = newMeasurementFolder(sub_dir_base=subDirBase)
+    
+    enableCurrents()
+    
+    while rounds > 0:
+        for i in range(len(config1)):
+            # make sure that the current is not too high
+            if np.amax(config1) > ECB_MAX_CURR:
+                print("desired current exceeds limit")
+                return
+            desCurrents[i] = int(config1[i])
+            
+        setCurrents(desCurrents, currDirectParam)
+        measure(folder, True, N=5)
+        
+        for i in range(len(config2)):
+            # make sure that the current is not too high
+            if np.amax(config2) > ECB_MAX_CURR:
+                print("desired current exceeds limit")
+                return
+            desCurrents[i] = int(config2[i])
+            
+        setCurrents(desCurrents, currDirectParam)
+        measure(folder, True, N=5)
+        
+        rounds = rounds-1
+    
+    disableCurrents()
+
+        
