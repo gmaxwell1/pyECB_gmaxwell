@@ -280,7 +280,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         print('invalid input!')
         return
 
-    subDirBase = '({}{}{})_field_meas'.format(current_direction[0],current_direction[1],current_direction[2])
+    subDirBase = config+'_field_meas'
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
