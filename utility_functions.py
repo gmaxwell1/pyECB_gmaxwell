@@ -240,6 +240,9 @@ def runCurrents(channels, t=0, direct=b'1'):
                         return
                     # TODO: chk slew rate
                     desCurrents[i] = int(channels[i])
+                
+                setCurrents(desCurrents, currDirectParam)
+
 
             elif c1 == 's':
                 print(getStatus())
@@ -309,7 +312,8 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                 theta = input('Polar angle theta: ')
                 phi = input('Azimuthal angle phi: ')
                 B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-                I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+                I_vector = tr.computeCoilCurrents(
+                    B_vector, windings, resistance)
 
                 for i in range(len(I_vector)):
                     if np.abs(I_vector[i]) > ECB_MAX_CURR:
@@ -326,8 +330,8 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
         disableCurrents()
     else:
         return
-    
-    
+
+
 def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
     """
     Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
@@ -338,12 +342,12 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
         dt (float): Time to remain in each state. Defaults to 0s.
         rounds (int): Number of times to switch. Defaults to 10
     """
-    
+
     subDirBase = 'dynamic_field_meas'
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
-    
+
     enableCurrents()
-    
+
     while rounds > 0:
         for i in range(len(config1)):
             # make sure that the current is not too high
@@ -351,24 +355,22 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
                 print("desired current exceeds limit")
                 return
             desCurrents[i] = int(config1[i])
-            
+
         setCurrents(desCurrents, currDirectParam)
-        measure(folder, True, N=5)
+        measure(folder, True, N=10)
         sleep(dt)
-        
+
         for i in range(len(config2)):
             # make sure that the current is not too high
             if np.amax(config2) > ECB_MAX_CURR:
                 print("desired current exceeds limit")
                 return
             desCurrents[i] = int(config2[i])
-            
+
         setCurrents(desCurrents, currDirectParam)
-        measure(folder, True, N=5)
+        measure(folder, True, N=10)
         sleep(dt)
 
         rounds = rounds-1
-    
-    disableCurrents()
 
-        
+    disableCurrents()

@@ -394,7 +394,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi=300)
 
-    fig.show()
+    plt.show()
 
     return x_vals, plot_mean_data, plot_std_data, plot_expected_data
 
