@@ -10,7 +10,7 @@ Documentation and Updates by Nicholas Meinhardt (Qzabre)
         
 Date: 09.10.2020
 """
-
+#%%
 ########## Standard library imports ##########
 import numpy as np
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ def check_validity(min_val, max_val, CC1: ConexCC):
 
 
 def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
-           num_prec=10.0, sampling_size=10, verbose=False):
+           grid_number=10, sampling_size=10, verbose=False):
     """
     Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z. 
 
@@ -70,16 +70,16 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
     - min_step_size: stop searching for minimum once the step size is smaller than this value.
     - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
         If no limits are provided, the min and max values of the respective actuator is used.
-    - num_prec (float): controls the stepsize when sweeping along x- and y-axis. The larger the number, 
+    - grid_number (int): controls the stepsize when sweeping along x- and y-axis. The larger the number, 
       the smaller the stepsize. 
-      NOTE: num_prec >= 2 is required to not raise errors, > 2 to not get trapped in while-loop!
+      NOTE: grid_number >= 2 is required to not raise errors, > 2 to not get trapped in while-loop!
     - sampling_size: Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
     - verbose: switching on/off print-statements for displaying progress
 
-    Returns: xpos, ypos, xmax/num_prec
+    Returns: xpos, ypos, xmax/grid_number
     - xpos, ypos: 
-    - xmax/num_prec:  why?
+    - xmax/grid_number:  why?
     """
     # set min and max limits for x,y axis
     if xlim == None:
@@ -101,40 +101,40 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
     all_ready(CC1, CC2=CC2)
 
     # Sweep over plane by considering each a min and max x-value (y-value), find position with minimum and
-    # redefine min/max values as this position +- one step size. As long as num_prec > 2 and
+    # redefine min/max values as this position +- one step size. As long as grid_number > 2 and
     # if min/max remain between allowed limits, the procedudure should converge (?)
     xrang = xmax-xmin
     yrang = ymax-ymin
-    while ((xrang/num_prec) >= min_step_size) or ((yrang/num_prec) >= min_step_size):
+    while ((xrang/grid_number) >= min_step_size) or ((yrang/grid_number) >= min_step_size):
         if verbose:
             print('\nstep size (x): {:.5f}\nstep size (y): {:.5f}'.format(
-                xrang/num_prec, yrang/num_prec))
+                xrang/grid_number, yrang/grid_number))
 
         # sweep along x-axis and measure B_y field component
         if verbose:
             print("\nNow sweeping x: ")
         fsx = []
-        for i in range(int(num_prec + 1)):
-            CC1.move_absolute(xrang/num_prec * i + xmin)
+        for i in range(int(grid_number + 1)):
+            CC1.move_absolute(xrang/grid_number * i + xmin)
             all_ready(CC1, CC2=CC2)
             fsx.append(av_single_sens(cube, specific_sensor, sampling_size)[1])
 
             if verbose:
                 print('Position {}: {:.5f}'.format(
-                    i, (xrang/num_prec * i + xmin)))
+                    i, (xrang/grid_number * i + xmin)))
                 print('Field at position {}: {:.3f}'.format(i, fsx[-1]))
 
         # move to x-position with smallest (absolute value of) B_y
         fminx = np.argmin(abs(np.asarray(fsx)))
-        xpos = (xmin+(xrang/num_prec)*fminx)
+        xpos = (xmin+(xrang/grid_number)*fminx)
         CC1.move_absolute(xpos)
         all_ready(CC1, CC2=CC2)
         if verbose:
             print('Now moving to position {}: {:.5f}'.format(fminx, xpos))
 
         # update xmin, xmax as the x-position with smallest B_y +- one stepsize
-        xmin = xpos-(xrang/num_prec)
-        xmax = xpos+(xrang/num_prec)
+        xmin = xpos-(xrang/grid_number)
+        xmax = xpos+(xrang/grid_number)
         xmin, xmax = check_validity(xmin, xmax, CC1)
         xrang = xmax-xmin
         if verbose:
@@ -145,33 +145,154 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
         if verbose:
             print("\nNow sweeping y: ")
         fsy = []
-        for i in range(int(num_prec + 1)):
-            CC2.move_absolute(yrang/num_prec * i + ymin)
+        for i in range(int(grid_number + 1)):
+            CC2.move_absolute(yrang/grid_number * i + ymin)
             all_ready(CC1, CC2=CC2)
             fsy.append(av_single_sens(cube, specific_sensor, sampling_size)[0])
             if verbose:
                 print('Position {}: {:.5f}'.format(
-                    i, (yrang/num_prec * i + ymin)))
+                    i, (yrang/grid_number * i + ymin)))
                 print('Field at position {}: {:.3f}'.format(i, fsy[-1]))
 
         # move to x-position with smallest (absolute value of) B_x
         fminy = np.argmin(abs(np.asarray(fsy)))
-        ypos = (ymin+(yrang/num_prec)*fminy)
+        ypos = (ymin+(yrang/grid_number)*fminy)
         CC2.move_absolute(ypos)
         all_ready(CC1, CC2=CC2)
         if verbose:
             print('Now moving to position {}: {:.5f}'.format(fminy, ypos))
 
         # update ymin, ymax as the y-position with smallest B_x +- one stepsize
-        ymin = ypos-(yrang/num_prec)
-        ymax = ypos+(yrang/num_prec)
+        ymin = ypos-(yrang/grid_number)
+        ymax = ypos+(yrang/grid_number)
         ymin, ymax = check_validity(ymin, ymax, CC2)
         yrang = ymax-ymin
         if verbose:
             print('New ymin: {:.5f}  new ymax: {:.5f} new yrang: {:.5f}'.format(
                 ymin, ymax, yrang))
 
-    return xpos, ypos, xrang/num_prec
+    return xpos, ypos, xrang/grid_number
+
+def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
+           grid_number=10, sampling_size=10, verbose=False):
+    """
+    Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z.
+    In contrast to the search-function, all points on the grid are measured to find the minimum, 
+    which takes longer than only searching along one axis. 
+
+    Note: It can happen that an invalid position that is out of the actuator's bounds should be reached.
+    In this case, an according message is printed to the terminal and the actuator does not move. 
+    This might yield an incorrect calibration! 
+
+    Args:
+    - CC_X, CC_Y are instances of conexcc_class for x and y axis
+    - cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube.
+    - min_step_size: stop searching for minimum once the step size is smaller than this value.
+    - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
+        If no limits are provided, the min and max values of the respective actuator is used.
+    - grid_number (int): number of points to sweep over per axis per iteration, thereby controlling the step size of sweeps.
+      NOTE: > 2 to not get trapped in while-loop!
+    - sampling_size: Number of samples considered for the mean value of the field estimated 
+      with the chosen sensor at a fixed position
+    - verbose: switching on/off print-statements for displaying progress
+
+    Returns: xpos, ypos, precision
+    - xpos, ypos: 
+    - precision: maximum of xrang/grid_number and yrang/grid_number, 
+    which is the final distance between gird points
+    """
+    # set min and max limits for x,y axis
+    if xlim == None:
+        xmin = CC_X.min_limit
+        xmax = CC_X.max_limit
+    else:
+        xmin = xlim[0]
+        xmax = xlim[1]
+    if ylim == None:
+        ymin = CC_Y.min_limit
+        ymax = CC_Y.max_limit
+    else:
+        ymin = ylim[0]
+        ymax = ylim[1]
+
+    # move actuator(or cube, respectively) to the minimum position and wait until controllers are ready again.
+    CC_X.move_absolute(xmin)
+    CC_Y.move_absolute(ymin)
+    all_ready(CC_X, CC2=CC_Y, timeout=60)
+
+    print('initial position:({:.4f}, {:.4f})'.format(CC_X.read_cur_pos(),CC_Y.read_cur_pos()))
+
+
+    # Sweep over plane by considering each a min and max x-value (y-value), find position with minimum and
+    # redefine min/max values as this position +- one step size. As long as num_prec > 2 and
+    # if min/max remain between allowed limits, the procedudure should converge (?)
+    xrang = xmax-xmin
+    yrang = ymax-ymin
+    while ((xrang/grid_number) >= min_step_size) or ((yrang/grid_number) >= min_step_size):
+
+        # define new step size
+        x_step = xrang/grid_number
+        y_step = yrang/grid_number
+        if verbose:
+            print('\nstep size (x): {:.5f}\nstep size (y): {:.5f}'.format(x_step, y_step))
+        
+        # initialize array to store the in-plane magnitudes of magnetic field
+        inplane_magnitude = np.zeros((grid_number+1, grid_number+1))
+
+        # sweep along xy-plane and estimate the inplane field component
+        if verbose:
+            print("\nNow sweeping along xy- plane: ")
+        for i in range(grid_number + 1):    # along x
+            if i != 0:
+                CC_X.move_relative(x_step)
+            for j in range(grid_number + 1):    # along y     
+                if j != 0:
+                    CC_Y.move_relative((-1)**i * y_step)
+                all_ready(CC_X, CC2=CC_Y)
+
+                field = av_single_sens(cube, specific_sensor, sampling_size)
+                inplane_magnitude[i,j] = np.sqrt(field[0]**2 + field[1]**2)
+
+                if verbose:
+                    if i % 2 ==0: 
+                        print('Position ({},{}): ({:.4f}, {:.4f})'.format(i,j, 
+                                                (xmin + x_step * i), (ymin + y_step * j)))
+                    else:
+                        print('Position ({},{}): ({:.4f}, {:.4f})'.format(i,j, 
+                                                (xmin + x_step * i), (ymax - y_step * j)))
+                    print('measured field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
+
+        # find position of minimum magnitude of in-plane field 
+        i_min, j_min = np.unravel_index(np.argmin(inplane_magnitude), inplane_magnitude.shape)
+
+        # move to minimum position
+        xpos = xmin+ i_min * x_step
+        if i % 2 == 0:
+            ypos = ymin + j_min * y_step
+        else:
+            ypos = ymax - j_min * y_step
+        CC_X.move_absolute(xpos)
+        CC_Y.move_absolute(ypos)
+        if verbose:
+            print('Now moving to position ({},{}): ({:.4f}, {:.4f})'.format(i_min, j_min, xpos, ypos))
+
+        # update boundaries, such that the neighboring grid points become minimum/maximum values
+        xmin = xpos - x_step
+        xmax = xpos + x_step
+        xmin, xmax = check_validity(xmin, xmax, CC_X)
+        xrang = xmax - xmin
+        ymin = ypos - y_step
+        ymax = ypos + y_step
+        ymin, ymax = check_validity(ymin, ymax, CC_Y)
+        yrang = ymax - ymin
+
+        if verbose:
+            print('New xmin: {:.4f} new xmax: {:.4f} new xrang: {:.4f}'.format(xmin, xmax, xrang))
+            print('New ymin: {:.4f} new ymax: {:.4f} new yrang: {:.4f}'.format(ymin, ymax, yrang))
+
+    return xpos, ypos, np.max([xrang, yrang])/grid_number
+
 
 
 def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
@@ -213,7 +334,7 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
 
 
 def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor=54, limits_x=[0, 10],
-                     limits_y=[0, 10], verbose=True):
+                     limits_y=[0, 10], grid_number = 10, verbose=True, extended=True):
     """
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
 
@@ -235,10 +356,12 @@ def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor
     if verbose:
         print("\nTrying to find center axis using sensor # {} ...\n".format(
             specific_sensor))
-
-    xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size,
-                                   xlim=limits_x, ylim=limits_y,
-                                   verbose=verbose)
+    if extended:
+        xpos, ypos, precision = search_extended(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size,
+                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number)
+    else:
+        xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size,
+                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number)
     x0 = np.array([xpos, ypos])
     f0 = av_single_sens(cube, specific_sensor, N)
 
