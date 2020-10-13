@@ -202,6 +202,8 @@ def MainMenu(initialized):
                 inp4 = input('configuration 2\nChannel 1: ')
                 inp5 = input('Channel 2: ')
                 inp6 = input('Channel 3: ')
+                inp7 = input('time in each state (add 1.5s): ')
+                inp8 = input('how many times to switch: ')
                 try:
                     a1 = int(inp1)
                     b1 = int(inp2)
@@ -218,8 +220,18 @@ def MainMenu(initialized):
                 except:
                     print('expected numerical value(s), defaulting to (0,1,0)')
                     config2 = np.array([0,1,0])
+                try:
+                    dt = float(inp7)
+                except:
+                    print('expected numerical value(s), defaulting to 0')
+                    dt = 0
+                try:
+                    rounds = int(inp8)
+                except:
+                    print('expected numerical value(s), defaulting to 10')
+                    rounds = 10
 
-                switchConfigsAndMeasure(config1, config2)
+                switchConfigsAndMeasure(config1, config2, dt, rounds)
 
             elif c1 == 's':
                 print(getStatus())

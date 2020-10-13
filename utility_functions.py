@@ -328,14 +328,14 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
         return
     
     
-def switchConfigsAndMeasure(config1, config2, dt=0.5, rounds=10):
+def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
     """
     Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
 
     Args:
         config1 (np.array): currents on coil 1, 2 and 3 as an array with 3 entries.
         config2 (np.array): currents on coil 1, 2 and 3 as an array with 3 entries.
-        dt (float): Time to remain in each state. Defaults to 0.5s.
+        dt (float): Time to remain in each state. Defaults to 0s.
         rounds (int): Number of times to switch. Defaults to 10
     """
     
@@ -354,6 +354,7 @@ def switchConfigsAndMeasure(config1, config2, dt=0.5, rounds=10):
             
         setCurrents(desCurrents, currDirectParam)
         measure(folder, True, N=5)
+        sleep(dt)
         
         for i in range(len(config2)):
             # make sure that the current is not too high
@@ -364,7 +365,8 @@ def switchConfigsAndMeasure(config1, config2, dt=0.5, rounds=10):
             
         setCurrents(desCurrents, currDirectParam)
         measure(folder, True, N=5)
-        
+        sleep(dt)
+
         rounds = rounds-1
     
     disableCurrents()
