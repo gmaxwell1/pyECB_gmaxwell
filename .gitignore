@@ -1,6 +1,7 @@
 # Data from measurements
 data_sets/
 test_data/
+0_measurement.py
 analysis.py
 update_old_data_files.py
 analysis_time_dependence.py
