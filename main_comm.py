@@ -55,6 +55,7 @@ ECB_MAX_CURR = 19800
 ##### 7: 0x07 = 00000111 , that is, 3 sensors enabled #####
 # ECB_TEMP_MASK = 7
 ECB_CURRENTS_ENABLED = False
+currents = [0,0,0,0,0,0,0,0]
 # overCurrent = 0
 
 
@@ -202,18 +203,33 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
 
     Returns: error code iff an error occurs
     """
+    currents = desCurrents
     ECB_ERR = setDesCurrents(desCurrents, direct)
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
+    
+
+# TODO: implement this function
+def chkSlewRate(desCurrents, currDirectParam):  
+    for i in range(len(desCurrents)):
+        diff = desCurrents[i]-currents[i]
+        desCurrent_temp = 0
+        if diff > 500:
+            while desCurrents[i] > currents[i]:
+                desCurrents_temp[i]
+                desCurrents[i]
+                
+            
+
 
 
 def getCurrents():
     """
     Get current values from each ECB channel, print them to the console
 
-    Returns: a list of all the currents or error code
+    Returns: a list of all the currents (or an error code)
     """
     (ECB_ERR, result) = getActCurrents()
 

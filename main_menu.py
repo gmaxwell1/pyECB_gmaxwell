@@ -157,6 +157,7 @@ def MainMenu(initialized):
                 else:
                     try:
                         timer = int(inp4)
+                        c1 = input('Automatic Termination after timer? (x for yes): ')
                     except:
                         print('expected numerical value, defaulting to 0')
                         timer = 0

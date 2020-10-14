@@ -254,11 +254,6 @@ def runCurrents(channels, t=0, direct=b'1'):
         return
 
 
-# TODO: implement this function
-def chkSlewRate():
-    pass
-
-
 def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
     """
     generate a magnetic field in an arbitrary direction and an arbitrary magnitude
