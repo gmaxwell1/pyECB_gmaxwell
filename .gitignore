@@ -5,6 +5,7 @@ test_data/
 analysis.py
 update_old_data_files.py
 analysis_time_dependence.py
+analyze_2d_scan.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

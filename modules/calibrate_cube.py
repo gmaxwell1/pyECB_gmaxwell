@@ -19,11 +19,12 @@ import serial
 from numpy.linalg import norm
 import os
 import sys
+from datetime import datetime
 
 ########## local imports ##########
-from modules.serial_reader import get_new_data_set
+from modules.serial_reader import get_new_data_set, ensure_dir_exists
 # , get_coords, correct_reset
-from modules.conexcc_control import all_ready, save_in_dir, setup
+from modules.conexcc_control import all_ready, save_in_dir, setup, check_no_motion, get_coords
 from conexcc.conexcc_class import *
 from modules.plot_hall_cube import plot_set, plot_angle, plot_angle_spherical
 
@@ -55,7 +56,7 @@ def check_validity(min_val, max_val, CC1: ConexCC):
 
 
 def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
-           grid_number=10, sampling_size=10, verbose=False):
+           grid_number=10, sampling_size=10, verbose=False, update_factor=1):
     """
     Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z. 
 
@@ -76,6 +77,10 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
     - sampling_size: Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
     - verbose: switching on/off print-statements for displaying progress
+    - update_factor (float): after one iteration, the bounds xmin and xmax are updated
+    as xmin = xpos - update_factor* xstep and xmax = xpos + update_factor* xstep (same for y).
+    Thus, the smaller the update_factor, the faster one reaches the min_step_size. However,
+    it becomes more likely to miss the actual minimum if update_factor is too small. 
 
     Returns: xpos, ypos, xmax/grid_number
     - xpos, ypos: 
@@ -133,8 +138,8 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
             print('Now moving to position {}: {:.5f}'.format(fminx, xpos))
 
         # update xmin, xmax as the x-position with smallest B_y +- one stepsize
-        xmin = xpos-(xrang/grid_number)
-        xmax = xpos+(xrang/grid_number)
+        xmin = xpos - update_factor*(xrang/grid_number)
+        xmax = xpos + update_factor*(xrang/grid_number)
         xmin, xmax = check_validity(xmin, xmax, CC1)
         xrang = xmax-xmin
         if verbose:
@@ -163,8 +168,8 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
             print('Now moving to position {}: {:.5f}'.format(fminy, ypos))
 
         # update ymin, ymax as the y-position with smallest B_x +- one stepsize
-        ymin = ypos-(yrang/grid_number)
-        ymax = ypos+(yrang/grid_number)
+        ymin = ypos - update_factor*(yrang/grid_number)
+        ymax = ypos + update_factor*(yrang/grid_number)
         ymin, ymax = check_validity(ymin, ymax, CC2)
         yrang = ymax-ymin
         if verbose:
@@ -174,7 +179,7 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
     return xpos, ypos, xrang/grid_number
 
 def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
-           grid_number=10, sampling_size=10, verbose=False):
+           grid_number=10, sampling_size=10, verbose=False, update_factor=1.0):
     """
     Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z.
     In contrast to the search-function, all points on the grid are measured to find the minimum, 
@@ -196,6 +201,10 @@ def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_ste
     - sampling_size: Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
     - verbose: switching on/off print-statements for displaying progress
+    - update_factor (float): after one iteration, the bounds xmin and xmax are updated
+    as xmin = xpos - update_factor* xstep and xmax = xpos + update_factor* xstep (same for y).
+    Thus, the smaller the update_factor, the faster one reaches the min_step_size. However,
+    it becomes more likely to miss the actual minimum if update_factor is too small. 
 
     Returns: xpos, ypos, precision
     - xpos, ypos: 
@@ -278,12 +287,12 @@ def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_ste
             print('Now moving to position ({},{}): ({:.4f}, {:.4f})'.format(i_min, j_min, xpos, ypos))
 
         # update boundaries, such that the neighboring grid points become minimum/maximum values
-        xmin = xpos - x_step
-        xmax = xpos + x_step
+        xmin = xpos - update_factor*x_step
+        xmax = xpos + update_factor*x_step
         xmin, xmax = check_validity(xmin, xmax, CC_X)
         xrang = xmax - xmin
-        ymin = ypos - y_step
-        ymax = ypos + y_step
+        ymin = ypos - update_factor*y_step
+        ymax = ypos + update_factor*y_step
         ymin, ymax = check_validity(ymin, ymax, CC_Y)
         yrang = ymax - ymin
 
@@ -334,7 +343,7 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
 
 
 def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor=54, limits_x=[0, 10],
-                     limits_y=[0, 10], grid_number = 10, verbose=True, extended=True):
+                     limits_y=[0, 10], grid_number = 10, verbose=True, extended=True, update_factor=1):
     """
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
 
@@ -358,10 +367,12 @@ def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor
             specific_sensor))
     if extended:
         xpos, ypos, precision = search_extended(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size,
-                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number)
+                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number,
+                                   update_factor=update_factor)
     else:
-        xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size,
-                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number)
+        xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size, 
+                                   xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number,
+                                   update_factor=update_factor)
     x0 = np.array([xpos, ypos])
     f0 = av_single_sens(cube, specific_sensor, N)
 
@@ -521,6 +532,140 @@ def get_new_mean_data_set(N, sub_dirname=None, cube=None, no_enter=False, on_sta
         directory = cwd + '\\' + str(N) + "_means\\"
         save_in_dir(mean_data, directory, "autosave")
         return mean_data, std_data, perc_data
+
+
+def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=None, ylim=None,
+           grid_number=50, sampling_size=10, verbose=False, save_data=False, directory=None):
+    """
+    Sweep over xy-plane and measure the field on each grid point, return the field values and coordinates.
+    
+    Note: 
+    - The coordinates of sensor and actuators are not the same, this function accounts for this fact
+    and returns all data in SENSOR COORDINATE SYSTEM.
+    - It can happen that an invalid position that is out of the actuator's bounds should be reached.
+    In this case, an according message is printed to the terminal and the actuator does not move. 
+
+    Args:
+    - CC_X, CC_Y are instances of conexcc_class for x and y axis
+    - cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube.
+    - height: z-component of the 2d-plane, this value will be carried over to all positions
+    - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
+        If no limits are provided, the min and max values of the respective actuator is used.
+    - grid_number (int): number of points +1 to sweep over per axis per iteration
+    - sampling_size: Number of samples considered for the mean value of the field estimated 
+      with the chosen sensor at a fixed position
+    - verbose: switching on/off print-statements for displaying progress
+    - save_data (bool): flag to switch on/off saving of data
+    - directory: valid path  of folder in which the data are stored
+
+    Returns: positions_corrected, B_field
+    - positions_corrected is an ndarray of shape ((grid_number+1)**2, 3) containing the stage positions 
+    in sensor coordinates
+    - B_field: is an ndarray of shape ((grid_number+1)**2, 3) containing the measured fields
+    - file_path: path of the data file 
+    which is the final distance between gird points
+    """
+    # set min and max limits for x,y axis
+    if xlim == None:
+        xmin = CC_X.min_limit
+        xmax = CC_X.max_limit
+    else:
+        xmin = xlim[0]
+        xmax = xlim[1]
+    if ylim == None:
+        ymin = CC_Y.min_limit
+        ymax = CC_Y.max_limit
+    else:
+        ymin = ylim[0]
+        ymax = ylim[1]
+
+    # set step size accordingly
+    x_step = (xmax-xmin) / grid_number
+    y_step = (ymax-ymin) / grid_number
+
+    # move actuator(or cube, respectively) to the minimum position and wait until controllers are ready again.
+    CC_X.move_absolute(xmin)
+    CC_Y.move_absolute(ymin)
+    all_ready(CC_X, CC2=CC_Y, timeout=60)
+
+    # set step size accordingly
+    x_step = (xmax-xmin) / grid_number
+    y_step = (ymax-ymin) / grid_number
+
+    # collect some grid 
+    if verbose:
+        print('initial position:({:.4f}, {:.4f})'.format(CC_X.read_cur_pos(),CC_Y.read_cur_pos()))
+        print('\nstep size (x): {:.5f}\nstep size (y): {:.5f}'.format(x_step, y_step))
+        print("\nNow sweeping along xy- plane: ")
+        
+    # initialize array to store the measured magnetic field components and the positions
+    B_field = np.zeros((grid_number+1, grid_number+1, 3))
+    positions = np.zeros((grid_number+1, grid_number+1, 3))
+
+    # sweep along xy-plane and estimate the inplane field component
+    for i in range(grid_number + 1):    # along x
+        print('{} / {} rows'.format(i, grid_number))
+
+        if i != 0:
+            CC_X.move_relative(x_step)
+        for j in range(grid_number + 1):    # along y    
+            if j != 0:
+                CC_Y.move_relative((-1)**i * y_step)
+                
+            all_ready(CC_X, CC2=CC_Y, verbose=verbose)
+            check_no_motion(CC_X, CC2=CC_Y, verbose=verbose)
+
+            # save position and measured field value 
+            positions[i,j,0:2] = get_coords(CC_X, CC2=CC_Y)[0]
+            B_field[i,j,:] = av_single_sens(cube, specific_sensor, sampling_size)
+
+            if verbose:
+                if i % 2 ==0: 
+                    print('Position ({},{}): ({:.4f}, {:.4f})'.format(i,j, 
+                                            (xmin + x_step * i), (ymin + y_step * j)))
+                else:
+                    print('Position ({},{}): ({:.4f}, {:.4f})'.format(i,j, 
+                                            (xmin + x_step * i), (ymax - y_step * j)))
+
+    # coordinate systems of sensor and axes differ, account for this and reshuffle the position array
+    # x and y must be changed and get an additional (-1)-factor each
+    positions_corrected = np.zeros_like(positions)
+    positions_corrected[:,:,0] = -positions[:,:,1]
+    positions_corrected[:,:,1] = -positions[:,:,0]
+
+    # eventually reshape the arrays
+    positions_corrected = positions_corrected.reshape((grid_number+1)**2,3)
+    B_field = B_field.reshape((grid_number+1)**2,3)
+
+    # add the z-component as a position
+    positions_corrected[:,2] = height
+
+    # save data if desired
+    if save_data:
+        df = pd.DataFrame({ 'x [mm]': positions_corrected[:,0], 
+                            'y [mm]': positions_corrected[:,1], 
+                            'z [mm]': positions_corrected[:,2], 
+                            'mean Bx [mT]': B_field[:,0],
+                            'mean By [mT]': B_field[:,1],
+                            'mean Bz [mT]': B_field[:,2]})
+
+        if directory is None:
+            directory = os.getcwd()
+        ensure_dir_exists(directory)
+
+        now = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
+        output_file_name = "{}_2d_scan.csv".format(now)
+        data_filepath = os.path.join(directory, output_file_name)
+
+        try:
+            df.to_csv(data_filepath, index=False, header=True)
+        except FileNotFoundError:
+            data_filepath = os.path.join(os.getcwd(), output_file_name)
+            df.to_csv(data_filepath, index=False, header=True)
+    
+    return positions_corrected, B_field, data_filepath
+
 
 
 # %%

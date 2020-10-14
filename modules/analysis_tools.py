@@ -1,7 +1,8 @@
 """ 
 filename: analysis_tools.py
 
-This file contains functions that are used for plotting data extracted from the Hall Sensor Cube. Mainly for 2D plots of the magnetic field.
+This file contains functions that are used for plotting data extracted from the Hall Sensor Cube. 
+Mainly for 2D plots of the magnetic field.
 
 Author: Nicholas Meinhardt (Qzabre)
         nmeinhar@student.ethz.ch
@@ -16,6 +17,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from datetime import datetime
+from itertools import product
 
 
 # %%
@@ -113,6 +115,131 @@ def extract_raw_data_from_file(filepath):
         expected_fields = raw_data[:, 9:12]
 
     return I, mean_data_specific_sensor, std_data_specific_sensor, expected_fields
+
+def extract_raw_data_from_2d_scan(filepath):
+    """
+    Extract positions and measured magnetic fields from file that was created after 2d-scan.
+
+    Returns: positions, B_field (both are arrays of shape (#points, 3))
+    """
+    # extract data and convert to ndarray
+    raw_data = pd.read_csv(filepath).to_numpy()
+
+    # current can be single-valued or a vector, differentiate these cases
+    dimension_I = len(raw_data[0]) - 9
+    
+    positions = raw_data[:, 0:3]
+    B_field = raw_data[:, 3:6]
+
+
+    return positions, B_field
+
+def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Show=True,
+             title_on=True, cmin=None, cmax=None, single_comp=None):
+    """
+    Generate 3d plot of 2d-sweep data in the sensor coordinate system.
+
+    Note that sensor and stage coordinate systems differ, the provided positions are expected to be in 
+    sensor coordinates already.
+
+    Args:
+    - positions_corrected is an ndarray of shape ((grid_number+1)**2, 3) containing the stage positions 
+    in sensor coordinates
+    - B_field: is an ndarray of shape ((grid_number+1)**2, 3) containing the measured fields
+    which is the final distance between gird points
+    - origin (None or 1d-array of length 3): 
+    If None, the origin is set automatically such that the x and y data range between 0 and a positive number.
+    If an array is passed as offset position, note that a position (p.e. the chosen center position) has to be 
+    transformed to sensor coordinates before passing it as argument. 
+    - cmin, cmax: min and max of colormap for displaying magnetic field strength. 
+    If both any of them is None, the scale is chosen automatically based on the data
+    - Scat_Mag: flag to switch on/off scatter plot (only points) of magnetic field
+    - Cont: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
+    between data points and the surfaces are stacked on top of each other.
+    - Show: flag to switch on/off plt.show() command 
+    - title_on: flag to switch title on or off
+    If fig is not provided, a new figure with new axes are generated. 
+    Make sure to also provide an axes object if a figure is passed.
+    - single_comp: flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
+    None (or invalid flag): euclidian norm/magnitude of magnetic field vector. 
+    'x', 'y', 'z': plot the according vector component.
+    'xy': euclidian norm of in-plane component of field (i.e. x,y components)
+
+    Return: fig, ax: Figure and Axis objects of the created plot. 
+    """
+    # if origin is None, set it automatically. Note that x,y positions in stage coordinates (which are positive)
+    # are transformed to sensor coordinates, resulting in negative coordinates.
+    if origin is None:
+        origin = -1 * np.array([np.min(positions[:,0]), np.min(positions[:,1]), positions[:,2]])
+
+    # store positions in arrays x and y, which can be used to generate plots later
+    points_per_side = int(np.sqrt(len(positions)))
+    x = np.zeros((points_per_side, points_per_side))
+    y = np.zeros((points_per_side, points_per_side))
+    mag = np.zeros((points_per_side, points_per_side))
+    for i in range(points_per_side):
+        for j in range(points_per_side):
+            x[j,i] = positions[i+points_per_side*j, 0] + origin[0]
+            y[j,i] = positions[i+points_per_side*j, 1] + origin[1]
+
+    # x = positions[:,0].reshape((points_per_side, points_per_side)) + origin[0]
+    # y = positions[:,1].reshape((points_per_side, points_per_side)) + origin[1]
+    
+    # choose which data should be plotted. 
+    # abbriviate notation using itertools.product
+    if single_comp == 'x':
+        label = '$B_x$ [mT]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = B_field[i+points_per_side*j, 0]
+    elif single_comp == 'y':
+        label = '$B_y$ [mT]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = B_field[i+points_per_side*j, 1]
+    elif single_comp == 'z':
+        label = '$B_z$ [mT]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = B_field[i+points_per_side*j, 2]
+    elif single_comp == 'xy':
+        label = 'in-plane magnitude $|B_{xy}|$ [mT]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = np.sqrt(B_field[i+points_per_side*j, 0]**2 + B_field[i+points_per_side*j, 1]**2)
+    else:
+        label = 'total magnitude $|B|$ [mT]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = np.linalg.norm(B_field[i+points_per_side*j,:])
+            
+    # due to the structure of the 2d-grid run, the direction of every second sweep along x is reversed.
+    # for the scatter plot, this does not matter, while it makes a difference for contour plot. 
+    # account for this by inverting order
+    for j in range(points_per_side):
+        if j % 2 == 1:
+            x[j,:] = np.flip(x[j,:])
+            y[j,:] = np.flip(y[j,:])
+            mag[j,:] = np.flip(mag[j,:])
+
+    # set limits for colormap if they are not provided yet
+    if cmin == None or cmax == None:
+        cmin = np.amin(mag) 
+        cmax = np.amax(mag) 
+
+    # create figure 
+    fig, ax = plt.subplots()
+
+    # countour plot
+    if Cont:
+        cf = ax.contourf(x, y, mag, vmin=cmin, vmax=cmax)  # , levels=20)
+        fig.colorbar(cf, ax=ax, boundaries=(cmin, cmax), label=label)
+    # scatter plot
+    if Scat_Mag:  
+        mag = mag.flatten()
+        cf = ax.scatter(x, y, mag, c=mag, vmin=cmin, vmax=cmax)
+        fig.colorbar(cf, ax=ax, label=label)
+
+    # final axis settings
+    ax.set_xlabel("x [mm]")
+    ax.set_ylabel("y [mm]")
+
+    return fig, ax
 
 def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_image = True, 
                         show_labels=True, ylim=None, xlim=None, image_name_postfix='I_vs_B',
