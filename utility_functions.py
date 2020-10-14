@@ -211,8 +211,14 @@ def runCurrents(channels, t=0, direct=b'1'):
     if t > 0:
         enableCurrents()
         setCurrents(desCurrents, currDirectParam)
-
-        sleep(t)
+        # prevent the connection with the ECB from timing out for long measurements.
+        if t < 500:
+            sleep(t)
+        else:
+            starttime = time()
+            while time() - starttime < t:
+                sleep(500)
+                getCurrents()
 
         disableCurrents()
 
@@ -221,7 +227,6 @@ def runCurrents(channels, t=0, direct=b'1'):
         enableCurrents()
         # TODO: chk slew rate
         setCurrents(desCurrents, currDirectParam)
-
         # wait until user presses enter
         c1 = '0'
         while c1 != 'q':
@@ -238,7 +243,6 @@ def runCurrents(channels, t=0, direct=b'1'):
                     if np.abs(channels[i]) > ECB_MAX_CURR:
                         print("desired current exceeds limit")
                         return
-                    # TODO: chk slew rate
                     desCurrents[i] = int(channels[i])
                 
                 setCurrents(desCurrents, currDirectParam)
@@ -284,9 +288,14 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
     if t > 0:
         enableCurrents()
         setCurrents(desCurrents, currDirectParam)
-        print('Current on coils 1, 2 and 3: [{}, {}, {}]'.format(
-            I_vector[0], I_vector[1], I_vector[2]))
-        sleep(t)
+        # prevent the connection with the ECB from timing out for long measurements.
+        if t < 500:
+            sleep(t)
+        else:
+            starttime = time()
+            while time() - starttime < t:
+                sleep(500)
+                getCurrents()
 
         disableCurrents()
     # on until interrupted by user
@@ -352,7 +361,7 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
             desCurrents[i] = int(config1[i])
 
         setCurrents(desCurrents, currDirectParam)
-        measure(folder, True, N=10)
+        #measure(folder, True, N=10)
         sleep(dt)
 
         for i in range(len(config2)):
@@ -363,7 +372,7 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
             desCurrents[i] = int(config2[i])
 
         setCurrents(desCurrents, currDirectParam)
-        measure(folder, True, N=10)
+        #measure(folder, True, N=10)
         sleep(dt)
 
         rounds = rounds-1

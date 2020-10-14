@@ -35,32 +35,25 @@ __all__ = [
     'getCurrents',
     'getTemps',
     'getStatus',
+    'ECB_ACT_CURRENTS',
     'ECB_MAX_CURR'
 ]
 
 ##########  Connection parameters ##########
-
 ECB_ADDRESS = "192.168.237.47"
 ECB_PORT = "7070"
 
-##########  ECB state values (mostly unnecessary) ##########
+##########  ECB state values ##########
 
-# ECB_CONNECTED = False
 ECB_ERR = 0
 # Max current on any coil in [mA] (default value)
 ECB_MAX_CURR = 19800
-# ECB_ACT_CURRENTS = np.zeros(8, dtype=int)
-
+ECB_ACT_CURRENTS = [0,0,0,0,0,0,0,0]
+ECB_CURRENTS_ENABLED = False
 # ECB_MAX_TEMP = 50
 ##### 7: 0x07 = 00000111 , that is, 3 sensors enabled #####
 # ECB_TEMP_MASK = 7
-ECB_CURRENTS_ENABLED = False
-currents = [0,0,0,0,0,0,0,0]
-# overCurrent = 0
 
-
-##########  Error messages from ECB, Error messages from ECB, see ECB_API documentation (no exceptions needed): ##########
-#           ..\ECB_820_Pantec\Pantec_API\pantec_tftp\ecb_api_20150203\doxygen\html
 
 def _chk(msg):
     """
@@ -125,6 +118,8 @@ def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
 
     Returns: ECB error code
     """
+    global ECB_ERR
+    
     ECB_ERR = initECBapi(IPAddress, port)
 
     if ECB_ERR != 0:
@@ -147,6 +142,9 @@ def enableCurrents():
 
     Returns: error code iff an error occurs, otherwise True (whether ECB currents are enabled)
     """
+    global ECB_ERR
+    global ECB_CURRENTS_ENABLED
+
     ECB_ERR = enableECBCurrents()
 
     if ECB_ERR != 0:
@@ -163,6 +161,11 @@ def disableCurrents():
 
     Returns: error code iff an error occurs, otherwise False (whether ECB currents are enabled)
     """
+    global ECB_ERR    
+    global ECB_CURRENTS_ENABLED
+    global ECB_ACT_CURRENTS
+
+    ECB_ACT_CURRENTS = [0,0,0,0,0,0,0,0]
     ECB_ERR = disableECBCurrents()
 
     if ECB_ERR != 0:
@@ -181,6 +184,9 @@ def setMaxCurrent(maxValue=19000):
 
     Returns: error code iff an error occurs
     """
+    global ECB_ERR
+    global ECB_MAX_CURR
+        
     if maxValue < 19800:
         ECB_ERR = setMaxCurrent(maxValue)
         if ECB_ERR != 0:
@@ -191,9 +197,10 @@ def setMaxCurrent(maxValue=19000):
         print("specified current was too high")
 
 
-def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
+def _setCurrents_(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     """
-    Set current values for each ECB channel
+    Set current values for each ECB channel. Not recommended, instead use setCurrents, since there the maximum step size
+    is reduced to prevent mechanical shifting of the magnet, which could in turn cause a change in the magnetic field.
 
     Args:
     -desCurrents: list of length 8 containing int values, where the '0th' value is the desired current on channel 1 (units of mA),
@@ -203,7 +210,10 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
 
     Returns: error code iff an error occurs
     """
-    currents = desCurrents
+    global ECB_ERR
+    global ECB_ACT_CURRENTS
+    
+    ECB_ACT_CURRENTS = desCurrents
     ECB_ERR = setDesCurrents(desCurrents, direct)
 
     if ECB_ERR != 0:
@@ -212,17 +222,47 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     
 
 # TODO: implement this function
-def chkSlewRate(desCurrents, currDirectParam):  
-    for i in range(len(desCurrents)):
-        diff = desCurrents[i]-currents[i]
-        desCurrent_temp = 0
-        if diff > 500:
-            while desCurrents[i] > currents[i]:
-                desCurrents_temp[i]
-                desCurrents[i]
-                
-            
+def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
+    """
+    Set current values for each ECB channel.
+    Args:
+        desCurrents (list, optional): The desired currents on channels 1,2,3,4,5,6,7 and 8 (in that order).
+                                      Defaults to [0, 0, 0, 0, 0, 0, 0, 0].
+        direct (bytes, optional): if 1, the existing ECB buffer will be cleared and desCurrents will be directly applied.
+                                  If 0, the desired currents will be appended to the buffer. Defaults to b'0'.
 
+    Returns:
+        [type]: error code iff an error occurs
+    """
+    global ECB_ERR
+    global ECB_ACT_CURRENTS
+    global ECB_MAX_CURR
+    
+    for i in range(len(desCurrents)):
+        if abs(desCurrents[i]) > ECB_MAX_CURR:
+            print("desired current exceeds limit")
+            return
+
+    # Here we make sure that the current never increases more than 500mA every 50ms.
+    while ECB_ACT_CURRENTS != desCurrents:
+        desCurrents_temp = [0,0,0,0,0,0,0,0]
+        diff = np.array(desCurrents)-np.array(ECB_ACT_CURRENTS)
+        print(diff)
+        for i in range(len(desCurrents)):
+            sign = np.sign(diff[i])
+            if abs(diff[i]) > 500:
+                desCurrents_temp[i] = ECB_ACT_CURRENTS[i] + 500*sign
+            else:
+                desCurrents_temp[i] = ECB_ACT_CURRENTS[i] + diff[i]
+        # use setDesCurrents here 
+        # debugging
+        ECB_ACT_CURRENTS = desCurrents_temp
+        ECB_ERR = setDesCurrents(desCurrents_temp, direct)
+        sleep(0.05)
+
+        if ECB_ERR != 0:
+            _chk(ECB_ERR)
+            return ECB_ERR
 
 
 def getCurrents():
@@ -231,6 +271,8 @@ def getCurrents():
 
     Returns: a list of all the currents (or an error code)
     """
+    global ECB_ERR
+    
     (ECB_ERR, result) = getActCurrents()
 
     if ECB_ERR != 0:
@@ -251,6 +293,8 @@ def getTemps():
 
     returns: a tuple with all of the values of interest if no error occurs otherwise an error code is returned
     """
+    global ECB_ERR
+    
     (ECB_ERR, result, hall_list, currents_list, coil_status) = getCoilValues()
 
     if ECB_ERR != 0:
@@ -271,6 +315,8 @@ def getStatus():
 
     returns: status, or error code iff there is an error
     """
+    global ECB_ERR
+    
     (ECB_ERR, status) = getECBStatus()
 
     if ECB_ERR != 0:
@@ -282,14 +328,18 @@ def getStatus():
 
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
-    print(initECBapi(ECB_ADDRESS, ECB_PORT))
+    #print(initECBapi(ECB_ADDRESS, ECB_PORT))
     # enableECBCurrents()
     # generateMagField(magnitude=60,theta=0,phi=0)
     #setDesCurrents([2232,2232,2232,0,0,0,0,0], currDirectParam)
 
     # getCurrents()
-    print(getStatus())
+    #print(getStatus())
     # pollCurrents(100,10)
-    sleep(10)
+    #sleep(10)
     # disableECBCurrents()
-    exitECBapi()
+    #exitECBapi()
+    print(dir())
+    print(ECB_ACT_CURRENTS)
+    setCurrents([3000,-2000,768,0,0,0,0,0],b'0')
+    

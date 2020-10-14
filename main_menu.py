@@ -251,3 +251,7 @@ if __name__ == '__main__':
 
     MainMenu(ecbInit)
     closeConnection()
+    # print(dir())
+    # print(ECB_ACT_CURRENTS)
+    # chkSlewRate([3000,-2000,768,0,0,0,0,0],b'0')
+    
