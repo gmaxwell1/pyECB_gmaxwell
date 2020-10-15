@@ -55,7 +55,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname
 
 
-def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50):
+def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50, specific_sensor=55):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
 
@@ -74,18 +74,20 @@ def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50):
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2) as cube:
         # measure field with all sensors
-        if on_stage:
-            resp = 1
-            path = ''
-            while resp == 1:
-                resp, directory, csvfile = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True,verbose=False, on_stage=on_stage)
-                path = os.path.join(directory, csvfile)
-        else:
-            path = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True, verbose=False, on_stage=on_stage)
+        mean_data, std_data, _, directory = get_new_mean_data_set(N, sub_dirname, cube, no_enter=Ture, on_stage=True)
+        # if on_stage:
+        #     resp = 1
+        #     path = ''
+        #     while resp == 1:
+        #         # N measurements of all 64 sensors are made and saved to a csv file.
+        #         resp, directory, csvfile = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True,verbose=False, on_stage=on_stage)
+        #         path = os.path.join(directory, csvfile)
+        # else:
+        #     path = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True, verbose=False, on_stage=on_stage)
     
-    return path
+    # return path
     # see .\modules\calibrate_cube.py for more details on this function
-    # return mean_data[specific_sensor-1, :], std_data[specific_sensor-1, :], directory
+    return mean_data[specific_sensor-1, :], std_data[specific_sensor-1, :], directory
 
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):

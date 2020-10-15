@@ -15,11 +15,6 @@ Date: 09.10.2020
 import numpy as np
 import math
 from time import time, sleep
-# from datetime import datetime
-# import sys
-# from os import getcwd, path
-# from pathlib import Path
-# import csv
 
 ########## local imports ##########
 from utility_functions import *
@@ -95,6 +90,7 @@ def MainMenu(initialized):
                 else:
                     print('please enter a valid combination of inputs.')
 
+            # tentative implementation. Actual I-to-B actuation matrix needed.
             elif c1 == '2':
                 inp1 = input('Angle to z axis in deg = ')
                 inp2 = input('Angle to x axis in deg = ')
@@ -161,10 +157,10 @@ def MainMenu(initialized):
                     except:
                         print('expected numerical value, defaulting to 0')
                         timer = 0
-
                     runCurrents(
                         np.array([coil1, coil2, coil3]), timer, direct=b'1')
-
+                    
+            # tentative implementation. Actual I-to-B actuation matrix needed.
             elif c1 == '4':
                 inp1 = input('Magnitude in mT = ')
                 inp2 = input('Angle to z axis in deg = ')
@@ -185,6 +181,7 @@ def MainMenu(initialized):
                 except:
                     print('expected numerical value')
                     phi = 0
+                    
                 if inp4 == '':
                     generateMagneticField(mag, theta, phi, t=0, direct=b'1')
                 else:
@@ -193,8 +190,7 @@ def MainMenu(initialized):
                     except:
                         print('expected numerical value')
                         timer = 0
-
-                generateMagneticField(mag, theta, phi, timer, direct=b'1')
+                    generateMagneticField(mag, theta, phi, timer, direct=b'1')
                 
             elif c1 == '5':
                 inp1 = input('configuration 1\nChannel 1: ')

@@ -54,7 +54,9 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         end_val (int, optional): [description]. Defaults to 1.
         steps (int, optional): [description]. Defaults to 5.
     """
-
+    global currDirectParam
+    global desCurrents
+    
     # initialization of all arrays
     all_curr_steps = np.linspace(start_val, end_val, steps)
     mean_values = np.zeros((steps, 3))
@@ -62,7 +64,8 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
     directory = ''
-
+    # some possible configurations 
+    # TODO: read in configuration files with a series of configs
     current_direction = np.ndarray(3)
     if config == 'z':
         current_direction[0] = 1
@@ -92,16 +95,18 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         current_direction[0] = 0
         current_direction[1] = 1
         current_direction[2] = -1
+    # r for randomized
     elif config == 'r':
-        arg = np.random.uniform(size=3)
-        max_val = np.amax(arg)
+        arg = np.random.uniform(low=-1.0, high=1.0, size=3)
+        max_val = abs(np.amax(arg))
         current_direction[0] = arg[0] / max_val
         current_direction[1] = arg[1] / max_val
         current_direction[2] = arg[2] / max_val
     else:
         print('invalid input!')
         return
-
+    
+    # create subdirectory to save measurements
     subDirBase = config+'_field_meas'
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
@@ -111,14 +116,14 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         # set the current on each channel
         for k in range(3):
             desCurrents[k] = current_direction[k]*all_curr_steps[i]
-
         all_curr_vals[i] = current_direction*all_curr_steps[i]
-
+        
+        # tentative estimation of resulting B field
         B_expected = tr.computeMagField(
             current_direction*all_curr_steps[i], windings)
         setCurrents(desCurrents, currDirectParam)
-        sleep(0.8)
-
+        # Let the field stabilize
+        sleep(0.1)
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
@@ -126,18 +131,18 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
-
-        sleep(0.1)
-
+        all_curr_vals[i] = I_vector
+        
+    # end of measurements
     disableCurrents()
-
-    # plotting section (generate plots still only works for 1 current value)
+    # saving data section (prepared for plotting)
     saveDataPoints((all_curr_vals / 1000), mean_values,
                    stdd_values, expected_fields, directory)
 
 
 def rampVectorField(theta, phi, start_mag, finish_mag, steps):
-    """  Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
+    """
+    Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
     Measure the magnetic field values, save them to a file.
 
 
@@ -148,6 +153,8 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         finish_mag (float): Magnitude in mT, finish_mag > start_mag must hold!!!
         steps (int): number of measurement steps
     """
+    global currDirectParam
+    global desCurrents
 
     magnitudes = np.linspace(start_mag, finish_mag, steps)
     mean_values = np.zeros((steps, 3))
@@ -155,7 +162,8 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
     directory = ''
-
+    
+    # create subdirectory to save measurements
     subDirBase = '{}_{}_field_meas'.format(theta, phi)
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
 
@@ -165,12 +173,14 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         # compute the currents theoretically needed to achieve an arbitrary magnetic field
         B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
         I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
+        
         # set the computed currents on each channel
         for k in range(3):
             desCurrents[k] = I_vector[k]
         setCurrents(desCurrents, currDirectParam)
-        sleep(0.8)
-
+        # Let the field stabilize
+        sleep(0.1)
+        # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # collect measured magnetic field (of the specified sensor in measurements)
         mean_data, std_data, directory = measure(sub_dirname=folder)
@@ -179,8 +189,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         expected_fields[i] = B_expected
         all_curr_vals[i] = I_vector
 
-        sleep(0.1)
-
+    # end of measurements
     disableCurrents()
     # plotting section
     saveDataPoints((all_curr_vals / 1000), mean_values,
@@ -198,6 +207,9 @@ def runCurrents(channels, t=0, direct=b'1'):
             If zero, user can decide whether to change the current or deactivate it. Defaults to 0.
         direct (bytes, optional): current direct parameter (can usually be left alone). Defaults to b'1'.
     """
+    global currDirectParam
+    global desCurrents
+    
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
@@ -225,7 +237,6 @@ def runCurrents(channels, t=0, direct=b'1'):
     # on until interrupted by user
     elif t == 0:
         enableCurrents()
-        # TODO: chk slew rate
         setCurrents(desCurrents, currDirectParam)
         # wait until user presses enter
         c1 = '0'
@@ -238,15 +249,18 @@ def runCurrents(channels, t=0, direct=b'1'):
                 channels[0] = input('Channel 1 current: ')
                 channels[1] = input('Channel 2 current: ')
                 channels[2] = input('Channel 3 current: ')
-
+                # handle new inputs
                 for i in range(len(channels)):
                     if np.abs(channels[i]) > ECB_MAX_CURR:
                         print("desired current exceeds limit")
                         return
-                    desCurrents[i] = int(channels[i])
+                    try:
+                        desCurrents[i] = int(channels[i])
+                    except:
+                        print("non-integer value entered, setting channel {} to 0".format(i+1))
+                        desCurrents[i] = 0
                 
                 setCurrents(desCurrents, currDirectParam)
-
 
             elif c1 == 's':
                 print(getStatus())
@@ -270,6 +284,8 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
         t (int, optional): Time for which the magnetic field should be activated (if not 0). Defaults to 0.
         direct (bytes, optional): Current direct parameter. Defaults to b'1'.
     """
+    global currDirectParam
+    global desCurrents
 
     B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
     I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
@@ -312,9 +328,25 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
             if c1 == 'c':
                 getCurrents()
             elif c1 == 'r':
-                magnitude = input('New B-Field magnitude: ')
-                theta = input('Polar angle theta: ')
-                phi = input('Azimuthal angle phi: ')
+                inp1 = input('New B-Field magnitude: ')
+                inp2 = input('Polar angle theta: ')
+                inp3 = input('Azimuthal angle phi: ')
+                try:
+                    magnitude = int(inp1)
+                except:
+                    print("non-integer value entered, magnitude = 20")
+                    magnitude = 20
+                try:
+                    theta = int(inp2)
+                except:
+                    print("non-integer value entered, theta = 0")
+                    theta = 0
+                try:
+                    phi = int(inp3)
+                except:
+                    print("non-integer value entered, phi = 0")
+                    phi = 0
+                        
                 B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
                 I_vector = tr.computeCoilCurrents(
                     B_vector, windings, resistance)
@@ -323,8 +355,10 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                     if np.abs(I_vector[i]) > ECB_MAX_CURR:
                         print("desired current exceeds limit")
                         return
-                    # TODO: chk slew rate
+                    
                     desCurrents[i] = int(I_vector[i])
+                                
+                setCurrents(desCurrents, currDirectParam)
 
             elif c1 == 's':
                 print(getStatus())
@@ -346,6 +380,8 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
         dt (float): Time to remain in each state. Defaults to 0s.
         rounds (int): Number of times to switch. Defaults to 10
     """
+    global currDirectParam
+    global desCurrents
 
     subDirBase = 'dynamic_field_meas'
     folder = newMeasurementFolder(sub_dir_base=subDirBase)
