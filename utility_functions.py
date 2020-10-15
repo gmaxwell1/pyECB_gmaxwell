@@ -121,23 +121,23 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         # tentative estimation of resulting B field
         B_expected = tr.computeMagField(
             current_direction*all_curr_steps[i], windings)
+        
         setCurrents(desCurrents, currDirectParam)
         # Let the field stabilize
         sleep(0.1)
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
-        mean_data, std_data, directory = measure(sub_dirname=folder)
+        mean_data, std_data = measure(filePath, N=15)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
-        all_curr_vals[i] = I_vector
 
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
     saveDataPoints((all_curr_vals / 1000), mean_values,
-                   stdd_values, expected_fields, directory)
+                   stdd_values, expected_fields, filePath)
 
 
 def rampVectorField(theta, phi, start_mag, finish_mag, steps):
@@ -183,7 +183,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # collect measured magnetic field (of the specified sensor in measurements)
-        mean_data, std_data, directory = measure(sub_dirname=folder)
+        mean_data, std_data = measure(filePath, N=15)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected

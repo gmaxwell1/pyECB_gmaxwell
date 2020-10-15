@@ -80,9 +80,11 @@ def MainMenu(initialized):
                 except:
                     print('expected numerical value, defaulting to 0')
                     randomRuns = 0
+                    
+                c1 = input('Automatic Termination after finish? (x for yes): ')
 
-                if randomRuns < 1:
-                    (config, start_val, end_val, steps)
+                if config != 'r':
+                    sweepCurrents(config, start_val, end_val, steps)
                 elif (randomRuns >= 1 and config == 'r'):
                     while randomRuns > 0:
                         sweepCurrents(config, start_val, end_val, steps)

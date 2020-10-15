@@ -75,33 +75,23 @@ def measure(dataDir, N=50, specific_sensor=55):
     
     Args:
     -dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
-    -specific_sensor: sensor from which data will be fetched
     -N: number of data points collected for each average
+    -specific_sensor: sensor from which data will be fetched
 
     Returns: 
     -mean measurement data of 'specific_sensor' (averaged over N measurements)
     -standard deviation in each averaged measurment
-    (where mean, std and abs(std/mean) are returned as ndarrays of shape (1, 3) for the 3 field directions)
-    -directory where the data will be saved to
+    (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
     ensure_dir_exists(dataDir, verbose=False)
+
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2) as cube:
-        # measure field with all sensors
-        mean_data, std_data, _, directory = get_new_mean_data_set(N,)
-        # if on_stage:
-        #     resp = 1
-        #     path = ''
-        #     while resp == 1:
-        #         # N measurements of all 64 sensors are made and saved to a csv file.
-        #         resp, directory, csvfile = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True,verbose=False, on_stage=on_stage)
-        #         path = os.path.join(directory, csvfile)
-        # else:
-        #     path = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True, verbose=False, on_stage=on_stage)
-    
-    # return path
+        # measure average field with one specific sensor
+        mean_data, std_data = get_new_mean_data_set(measure_runs=N, cube=cube, specific_sensor=specific_sensor)
+
     # see .\modules\calibrate_cube.py for more details on this function
-    return mean_data[specific_sensor-1, :], std_data[specific_sensor-1, :], directory
+    return mean_data, std_data
 
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
