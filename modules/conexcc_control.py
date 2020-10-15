@@ -336,6 +336,8 @@ def save_in_dir(means, directory, label, stds=None, coords=False, now=False):
                             'std y [mm]':  stds[:, 1], 
                             'z [mm]':  means[:, 2],
                             'std z [mm]':  stds[:, 2]})
+        df.to_csv(data_filepath, index=False, header=True)
+
 
 
 def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2, cube=None,

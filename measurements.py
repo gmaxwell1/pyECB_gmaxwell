@@ -88,7 +88,7 @@ def measure(dataDir, N=50, specific_sensor=55):
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2) as cube:
         # measure field with all sensors
-        mean_data, std_data, _, directory = get_new_mean_data_set(N, sub_dirname, cube, no_enter=True, on_stage=True)
+        mean_data, std_data, _, directory = get_new_mean_data_set(N,)
         # if on_stage:
         #     resp = 1
         #     path = ''
