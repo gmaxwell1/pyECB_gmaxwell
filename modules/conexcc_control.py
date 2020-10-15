@@ -340,8 +340,8 @@ def save_in_dir(means, directory, label, stds=None, coords=False, now=False):
 
 
 
-def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2, cube=None,
-         start=np.array([1, 1, 1]), measurement_function=None, N=None, filename=None, verbose=False):
+def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2, cube=None, directory = None,
+         start=np.array([1, 1, 1]), measurement_function=None, measure_runs=None, verbose=False):
     """
     Move the actuator on grid and wait for 1 s on each lattice point.
 
@@ -362,11 +362,12 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
     - start (array or list of floats and length 3): starting point of the grid. 
     - cube (serial.Serial): optional argument passed to measurement_function
     - measurement_function (callable) is a function that takes following arguments: 
-    measurement_function(N, filename=filename, cube=cube, no_enter=True, on_stage=True) and returns 
-    mean_data, std_data, _, directory
-    - N (int): number of times all 64 (or 63) sensor are read out in series,
+    measurement_function(measure_runs, cube, specific_sensor=None, omit_64=False, verbose=False, 
+            max_num_retrials=5, save_raw_data= False, save_mean_data=False, directory=None) 
+    and returns mean_data, std_data
+    - directory (string): path of folder where data can be stored, gets passed to measurement_function
+    - measure_runs(int): number of times all 64 (or 63) sensor are read out in series,
     required if measurement_function is provided
-    - filename (string): optional argument passed to measurement_function
     - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns: nd array of shape (number lattice points, 3), containing all lattice points of the grid
@@ -414,9 +415,10 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
     if measurement_function is not None:
         if verbose:
             print("Waiting for measurement...")
-        mean_data, std_data, _, directory = measurement_function(N, filename=filename, cube=cube,
-                                                                 no_enter=True, on_stage=True)
-        save_in_dir(mean_data, directory, l, stds=std_data)
+        
+        mean_data, std_data = measurement_function(measure_runs, cube, directory=directory, save_mean_data=True, 
+                                                            verbose=verbose)
+        save_in_dir(mean_data, directory, l, stds=std_data, now=True)
     # wait for one second to finish measurement
     sleep(1)
 
@@ -445,8 +447,8 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
                 if measurement_function is not None:
                     if verbose:
                         print("Waiting for measurement...")
-                    mean_data, std_data, _, directory = measurement_function(N, filename=filename, cube=cube,
-                                                                             no_enter=True, on_stage=True)
+                    mean_data, std_data = measurement_function(measure_runs, cube, directory=directory, 
+                                                            save_mean_data=True, verbose=verbose)
                     save_in_dir(mean_data, directory, l, stds=std_data)
                 sleep(1)
                 l += 1
@@ -467,8 +469,8 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
                 if measurement_function is not None:
                     if verbose:
                         print("Waiting for measurement...")
-                    mean_data, std_data, _, directory = measurement_function(N, filename=filename, cube=cube,
-                                                                             no_enter=True, on_stage=True)
+                    mean_data, std_data, _, directory = measurement_function(measure_runs, cube, directory=directory, 
+                                                                save_mean_data=True, verbose=verbose)
                     save_in_dir(mean_data, directory, l, stds=std_data)
                 sleep(1)
                 l += 1
@@ -490,8 +492,8 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
             if measurement_function is not None:
                 if verbose:
                     print("Waiting for measurement...")
-                mean_data, std_data, _, directory = measurement_function(
-                    N, filename=filename, cube=cube, no_enter=True, on_stage=True)
+                mean_data, std_data, _, directory = measurement_function(measure_runs, cube, directory=directory, 
+                                                            save_mean_data=True, verbose=verbose)
                 save_in_dir(mean_data, directory, l, stds=std_data)
             sleep(1)
             l += 1
@@ -499,7 +501,7 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
             continue
 
     # note that directory has not been defined if measurement_function = None
-    if measurement_function is None:
+    if measurement_function is None and directory is None:
         directory = os.getcwd()
 
     # save the locations of lattice points
