@@ -40,27 +40,41 @@ port_sensor = 'COM3'
 
 def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas', verbose=False):
     """
-    This function is supposed to create a new (unique) subdirectory to store data for a measurement run.
+    This function creates a new directory to store data from a measurement run.
+
+    Args:
+        defaultDataDir (str, optional): The directory where you want to store the subdirectories containing the actual data files. Defaults to 'data_sets'.
+        sub_dir_base (str, optional): The specific subdirectory base name that will be suffixed with a number. Defaults to 'z_field_meas'.
+        verbose (bool, optional): Whether it should tell you everything that's going on. Defaults to False.
+
+    Returns:
+        [type]: [description]
     """
     index = 1
     cwd = os.getcwd()
+    if verbose:
+        print(cwd)
     sub_dirname = sub_dir_base + '_' + str(index)
     dataDir = os.path.join(cwd, defaultDataDir, sub_dirname)
+    if verbose:
+        print(dataDir)
     # iterate though postfixes until a new directory name is found
     while ensure_dir_exists(dataDir, verbose=verbose):
         index = index + 1
         sub_dirname = sub_dir_base + '_' + str(index)
         dataDir = os.path.join(cwd, defaultDataDir, sub_dirname)
+        if verbose:
+            print(dataDir)
 
-    return sub_dirname
+    return sub_dirname, dataDir
 
 
-def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50, specific_sensor=55):
+def measure(dataDir, N=50, specific_sensor=55):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
-
+    
     Args:
-    -subdirname: folder where measurements will be stored
+    -dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
     -specific_sensor: sensor from which data will be fetched
     -N: number of data points collected for each average
 
@@ -70,11 +84,11 @@ def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50, specific_sensor=
     (where mean, std and abs(std/mean) are returned as ndarrays of shape (1, 3) for the 3 field directions)
     -directory where the data will be saved to
     """
-
+    ensure_dir_exists(dataDir, verbose=False)
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with serial.Serial(port_sensor, 256000, timeout=2) as cube:
         # measure field with all sensors
-        mean_data, std_data, _, directory = get_new_mean_data_set(N, sub_dirname, cube, no_enter=Ture, on_stage=True)
+        mean_data, std_data, _, directory = get_new_mean_data_set(N, sub_dirname, cube, no_enter=True, on_stage=True)
         # if on_stage:
         #     resp = 1
         #     path = ''

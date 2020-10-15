@@ -246,7 +246,7 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     while ECB_ACT_CURRENTS != desCurrents:
         desCurrents_temp = [0,0,0,0,0,0,0,0]
         diff = np.array(desCurrents)-np.array(ECB_ACT_CURRENTS)
-        print(diff)
+        # print(diff)
         for i in range(len(desCurrents)):
             sign = np.sign(diff[i])
             if abs(diff[i]) > 500:

@@ -56,7 +56,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     """
     global currDirectParam
     global desCurrents
-    
+
     # initialization of all arrays
     all_curr_steps = np.linspace(start_val, end_val, steps)
     mean_values = np.zeros((steps, 3))
@@ -64,7 +64,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
     directory = ''
-    # some possible configurations 
+    # some possible configurations
     # TODO: read in configuration files with a series of configs
     current_direction = np.ndarray(3)
     if config == 'z':
@@ -105,10 +105,10 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     else:
         print('invalid input!')
         return
-    
+
     # create subdirectory to save measurements
     subDirBase = config+'_field_meas'
-    folder = newMeasurementFolder(sub_dir_base=subDirBase)
+    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
     # iterate through all possible steps
@@ -117,7 +117,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         for k in range(3):
             desCurrents[k] = current_direction[k]*all_curr_steps[i]
         all_curr_vals[i] = current_direction*all_curr_steps[i]
-        
+
         # tentative estimation of resulting B field
         B_expected = tr.computeMagField(
             current_direction*all_curr_steps[i], windings)
@@ -132,7 +132,7 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
         all_curr_vals[i] = I_vector
-        
+
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -162,10 +162,10 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
     directory = ''
-    
+
     # create subdirectory to save measurements
     subDirBase = '{}_{}_field_meas'.format(theta, phi)
-    folder = newMeasurementFolder(sub_dir_base=subDirBase)
+    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
     # iterate through all possible steps
@@ -173,7 +173,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         # compute the currents theoretically needed to achieve an arbitrary magnetic field
         B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
         I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
-        
+
         # set the computed currents on each channel
         for k in range(3):
             desCurrents[k] = I_vector[k]
@@ -209,7 +209,7 @@ def runCurrents(channels, t=0, direct=b'1'):
     """
     global currDirectParam
     global desCurrents
-    
+
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
@@ -257,9 +257,10 @@ def runCurrents(channels, t=0, direct=b'1'):
                     try:
                         desCurrents[i] = int(channels[i])
                     except:
-                        print("non-integer value entered, setting channel {} to 0".format(i+1))
+                        print(
+                            "non-integer value entered, setting channel {} to 0".format(i+1))
                         desCurrents[i] = 0
-                
+
                 setCurrents(desCurrents, currDirectParam)
 
             elif c1 == 's':
@@ -346,7 +347,7 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                 except:
                     print("non-integer value entered, phi = 0")
                     phi = 0
-                        
+
                 B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
                 I_vector = tr.computeCoilCurrents(
                     B_vector, windings, resistance)
@@ -355,9 +356,9 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                     if np.abs(I_vector[i]) > ECB_MAX_CURR:
                         print("desired current exceeds limit")
                         return
-                    
+
                     desCurrents[i] = int(I_vector[i])
-                                
+
                 setCurrents(desCurrents, currDirectParam)
 
             elif c1 == 's':
@@ -384,7 +385,7 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
     global desCurrents
 
     subDirBase = 'dynamic_field_meas'
-    folder = newMeasurementFolder(sub_dir_base=subDirBase)
+    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
 
