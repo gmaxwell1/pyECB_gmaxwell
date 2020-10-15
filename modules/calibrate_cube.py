@@ -477,7 +477,11 @@ def get_new_mean_data_set(measure_runs, cube, specific_sensor=None, omit_64=Fals
     except UnboundLocalError:
         raise MeasurementError
     
+    # save mean data if desired
     if save_mean_data:
+        # if no directory is provided, just take current working directory
+        if directory is None:
+            directory = os.getcwd()
         save_in_dir(mean_data, directory, 'data', stds=std_data, now=True)
 
     # depending on the specific_sensor flag, return mean and std fields either for only this sensor or for all sensors
@@ -485,7 +489,6 @@ def get_new_mean_data_set(measure_runs, cube, specific_sensor=None, omit_64=Fals
         return mean_data[specific_sensor, :], std_data[specific_sensor, :]
     else:
         return mean_data, std_data
-
 
 
 def get_new_mean_data_set_old(N, sub_dirname=None, cube=None, no_enter=False, on_stage=False, omit_64=False,
