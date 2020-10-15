@@ -22,7 +22,7 @@ import sys
 from datetime import datetime
 
 ########## local imports ##########
-from modules.serial_reader import get_new_data_set, ensure_dir_exists
+from modules.serial_reader import get_new_data_set, ensure_dir_exists, direct_readout, MeasurementError
 # , get_coords, correct_reset
 from modules.conexcc_control import all_ready, save_in_dir, setup, check_no_motion, get_coords
 from conexcc.conexcc_class import *
@@ -429,8 +429,66 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
         print("Calibration of angle successfull!")
     return 0
 
+def get_new_mean_data_set(measure_runs, cube, specific_sensor=None, omit_64=False, verbose=False, max_num_retrials=5,
+                            save_raw_data= False, save_mean_data=False, directory=None):
+    """
+    Estimate field vectors with all sensors measure_runs-times and return the mean and std 
+    for the specific_sensor only or for all sensors (default). 
 
-def get_new_mean_data_set(N, sub_dirname=None, cube=None, no_enter=False, on_stage=False, omit_64=False,
+    Note: Sensor #64 has produced incorrect results in past, thus it can be omitted using the omit_True flag
+
+    Args: 
+    - measure_runs (int): sampling size to estimate mean magnetic field vector and std, 
+    i.e. number of times all sensor are read out in series before averaging 
+    - cube (serial.Serial): represents the magnetic field sensor.
+    - specific_sensor (None or int in [1,64]): If None, the mean values of all sensors are returned. 
+    If a number is provided, only the data from the sensor with this ID will be returned. 
+    - directory (string): valid path of the folder where data files can be stored (provided save_mean_data=True)
+    - max_num_retrials (int): when errors occur during the serial measurement of all sensors,
+    the measurement is repeated up to max_number_retrials times before raising a MeasurementError exception.
+    - save_raw_data (bool): if True, the raw data estimated during each measurement round for each sensor are saved as a csv-file.
+    - save_mean_data (bool): if True, the mean data averaged over all measurement rounds for each sensor are saved as a csv-file.
+    - omit_64 (bool): if True, sensor #64 will be omitted, else all 64 sensors are considered.
+    - verbose (bool): switching on/off print-statements for displaying progress
+
+    Return: 
+    - mean_data, std_data (ndarrays): Mean magnetic field and it the standard deviation as a vector, 
+    either for all sensors or for a single sensor only. If specific_sensor=None, both arrays are of shape (number sensors, 3),
+    else they are 1d arrays of length 3.
+
+    Exceptions:
+    - MeasurementError, if no raw data could be aquired after max_num_retrials repetitions. 
+    """
+    # perform measurement and collect the raw data 
+    for _ in range(max_num_retrials):
+        try:
+            _, meas_data = direct_readout(cube, measure_runs=measure_runs, save_data=save_raw_data, directory=directory,
+                                    fname_postfix='raw_data', verbose=verbose, omit_64=omit_64)
+        except MeasurementError:
+            pass
+        else:
+            break
+    
+    # estimate the mean and std from raw data for each sensor
+    try:
+        mean_data = np.mean(meas_data, axis=0)
+        std_data = np.std(meas_data, axis=0)
+    # if it was not possible to obtain valid measurement results after max_num_retrials, raise MeasurementError, too
+    except UnboundLocalError:
+        raise MeasurementError
+    
+    if save_mean_data:
+        save_in_dir(mean_data, directory, 'data', stds=std_data, now=True)
+
+    # depending on the specific_sensor flag, return mean and std fields either for only this sensor or for all sensors
+    if specific_sensor is not None:
+        return mean_data[specific_sensor, :], std_data[specific_sensor, :]
+    else:
+        return mean_data, std_data
+
+
+
+def get_new_mean_data_set_old(N, sub_dirname=None, cube=None, no_enter=False, on_stage=False, omit_64=False,
                           verbose=False):
     """
     Estimate field vectors N-times with all sensors and calculate mean, std and abs(std/mean) as vectors for each sensor.
@@ -559,7 +617,7 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=No
     with the chosen sensor at a fixed position
     - verbose (bool): switching on/off print-statements for displaying progress
     - save_data (bool): flag to switch on/off saving of data
-    - directory (string): valid path  of folder in which the data are stored
+    - directory (string): valid path of folder in which the data are stored
 
     Returns: positions_corrected, B_field
     - positions_corrected is an ndarray of shape ((grid_number+1)**2, 3) containing the stage positions 
@@ -717,3 +775,5 @@ if __name__ == "__main__":
     [print('sensor {}: {} +- {} ({})'.format(i+1, np.around(mean_data[i, :], 2),
                                              np.around(std_data[i, :], 2),
                                              np.around(perc_data[i, :], 2))) for i in range(64)]
+
+#%%
