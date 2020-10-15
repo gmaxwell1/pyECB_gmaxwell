@@ -78,6 +78,7 @@ def measure(sub_dirname='z_field_meas_set',on_stage=True, N=50):
             resp = 1
             path = ''
             while resp == 1:
+                # N measurements of all 64 sensors are made and saved to a csv file.
                 resp, directory, csvfile = get_new_data_set(measure_runs=N, sub_dirname=sub_dirname, cube=cube, no_enter=True,verbose=False, on_stage=on_stage)
                 path = os.path.join(directory, csvfile)
         else:

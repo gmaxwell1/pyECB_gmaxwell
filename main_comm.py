@@ -221,10 +221,9 @@ def _setCurrents_(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
         return ECB_ERR
     
 
-# TODO: implement this function
 def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     """
-    Set current values for each ECB channel.
+    Set current values for each ECB channel. The 'slew rate' (maximum dI/dt) limits the maximum current change to 500mA/50ms
     Args:
         desCurrents (list, optional): The desired currents on channels 1,2,3,4,5,6,7 and 8 (in that order).
                                       Defaults to [0, 0, 0, 0, 0, 0, 0, 0].
