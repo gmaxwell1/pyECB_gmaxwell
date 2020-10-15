@@ -26,9 +26,9 @@ def all_ready(CC1: ConexCC, CC2=None, CC3=None, timeout=30, verbose=False):
     Tests whether all controllers are ready, if they aren't, tries to achieve the READY state.
 
     Args:
-    - CC1, CC2, CC3 are instances of conexcc_class
-    - timeout [s] is maximum waiting time for trials. 
-    - verbose: switching on/off print-statements for displaying progress
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
+    - timeout (float): maximum waiting time [s] for trials. 
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns True if this is the case and False else. 
 
@@ -63,7 +63,7 @@ def get_coords(CC1, CC2=None, CC3=None):
     Returns current position [mm] of actuators, sorted in the usual order [x,y,z].
 
     Args:
-    - CC1, CC2, CC3 are instances of conexcc_class
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
 
     Returns:
     - pos: 1d-ndarray containing current positions [mm]
@@ -97,8 +97,8 @@ def reset_to(position, CC1, CC2=None, CC3=None):
     Moves the actuators to a desired, absolute position. 
 
     Args:
-    - position is a list or array of the desired new positions of actuators [mm]
-    - CC1, CC2, CC3 are instances of conexcc_class
+    - position (list or array): contains the desired new positions of actuators [mm]
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
 
     Note:
     - The movement can only be successful if the controllers are in READY state! 
@@ -117,9 +117,9 @@ def is_at_goal(goal, CC1, CC2=None, CC3=None,  eps=1e-3):
     Checks whether all current coordinates match the target coordinates (goal) up to a tolerance eps.
 
     Args: 
-    - goal: target position as array 
-    - CC1, CC2, CC3 are instances of conexcc_class
-    - eps is acceptable tolerance
+    - goal (array of length 3): target position
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
+    - eps (float): acceptable tolerance
 
     Returns:
     - ok: True if all coordinates are within eps-range of goal, False else
@@ -143,11 +143,11 @@ def correct_reset(goal, CC1, CC2=None, CC3=None,  eps=1e-3, end_after=3, verbose
     if both positions deviate by more than eps in any of the coordinates. 
 
     Args:
-    - goal: target position as array 
-    - CC1, CC2, CC3 are instances of conexcc_class
-    - eps is acceptable tolerance
-    - end_after: maximum number the function calls itself recursively
-    - verbose: switching on/off print-statements for displaying progress
+    - goal (array of length 3): target position
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
+    - eps (float) is acceptable tolerance
+    - end_after (int): maximum number the function calls itself recursively
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns 0 if the final coordinates are within eps-range of goal, else returns 1
     """
@@ -180,11 +180,11 @@ def check_no_motion(CC1, CC2=None, CC3=None, eps=1e-3, wait=0.5, end_after=3, ve
     Else the system is set to sleep for a given waiting time [s] before checking again on velocity
 
     Args: 
-    - CC1, CC2, CC3 are instances of conexcc_class
-    - eps is acceptable tolerance for zero velocity
-    - wait is the waiting time [s] between recursions 
-    - end_after: maximum number the function calls itself recursively
-    - verbose: switching on/off print-statements for displaying progress
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
+    - eps (float): acceptable tolerance for zero velocity
+    - wait (float): waiting time [s] between recursions 
+    - end_after (int): maximum number the function calls itself recursively
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns True if all velocities are below acceptable limit and False else.
     """
@@ -219,10 +219,10 @@ def setup(reset_position, COM_ports=['COM7', 'COM6', 'COM5'], verbose=False):
     that all actuators are not in motion (up to an acceptably small, nonzero velocity).
 
     Args:
-    - reset_position: array or list of length 3, containing the desired initial positions [mm]
-    - COM_ports: array or list of length 3, containing the COM-PORT numbers of controllers,
+    - reset_position (array or list of length 3): contains the desired initial positions [mm]
+    - COM_ports (array or list of strings and length 3): contains the COM-PORT numbers of controllers,
     sorted as [x, y, z]
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns CC_X, CC_Y, CC_Z: instances of conexcc_class
 
@@ -281,13 +281,13 @@ def save_in_dir(means, directory, label, stds=None, coords=False):
     The coords flag distinguishes between magnetic field strength (False) and spatial coordinates (True) as source of the data.
 
     Args:
-    - means: array or list of measured mean values of B-field or coordinates 
-    - directory: path of the directory in which the file should be stored
-    - label: a number or string to label the csv file  
-    - stds: array or list of measured standard deviations of B-field or coordinates. 
-    Should have at least the same size as means
+    - means (array or list): measured mean values of B-field or coordinates 
+    - directory (string): valid path of the directory in which the file should be stored
+    - label (string or float): used to label the csv file  
+    - stds (array or list): measured standard deviations of B-field or coordinates. 
+    Should have at least the same size as means.
     - coords (bool): Flag to switch between B-field (False) and spatial coordinates (True)
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
     """
     # Under Linux, user rights can be set with the scheme below,
     # where 755 means read+write+execute for owner and read+execute for group and others.
@@ -337,27 +337,25 @@ def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2
     - The grid's origin is at the starting point, from where the grid extends towards the 
     positive direction along all three axes. In this way, a cube of length = srange is formed.
     All positions at the lattice points are saved in a separate file at the end.
-
     - If measurement_function is provided, measurements are performed at each lattice point.
     The measurement outcomes are saved in separate files, which are consecutively labeled, starting from 0. 
-
     - Currently, the start position should have some buffer along x and y compared to (0,0,0), 
     since relative motion might fail sometimes due to inprecision (moving relatively by -1 
     from 0.999 is not allowed, since -0.001 is out of the allowed range). -> Fix this in a later step
 
     Args:
-    - CC1, CC2, CC3 are instances of conexcc_class
+    - CC1, CC2, CC3 (conexcc_class instances): represent x,y,z actuators
     - step_size (float): step size (lattice constant) of the grid [mm]
     - srange (float): maximum range of grid [mm], i.e. the length of grid along one dimension.
-    - start: array or list of length 3, starting point of the grid. 
-    - cube: optional argument passed to measurement_function
-    - measurement_function is a function that takes following arguments: 
+    - start (array or list of floats and length 3): starting point of the grid. 
+    - cube (serial.Serial): optional argument passed to measurement_function
+    - measurement_function (callable) is a function that takes following arguments: 
     measurement_function(N, filename=filename, cube=cube, no_enter=True, on_stage=True) and returns 
     mean_data, std_data, _, directory
-    - N: number of times all 64 (or 63) sensor are read out in series,
+    - N (int): number of times all 64 (or 63) sensor are read out in series,
     required if measurement_function is provided
-    - filename: optional argument passed to measurement_function
-    - verbose: switching on/off print-statements for displaying progress
+    - filename (string): optional argument passed to measurement_function
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Returns: nd array of shape (number lattice points, 3), containing all lattice points of the grid
     """
@@ -507,7 +505,7 @@ def close_connection(CC_X, CC_Y=None, CC_Z=None, verbose=False):
     Closes the communication with controllers. 
 
     Args: 
-    - CC_X, CC_Y, CC_Z: instances of conexcc_class
+    - CC_X, CC_Y, CC_Z (conexcc_class instances): represent x,y,z actuators
     - verbose is a flag to switch on/off print statements for displaying progress
 
     Note: Closing the connection does not stop ongoing motion of the motor!
@@ -524,8 +522,6 @@ def close_connection(CC_X, CC_Y=None, CC_Z=None, verbose=False):
         print("Goodbye!")
 
 # %%
-
-
 if __name__ == '__main__':
     # initial parameters
     reset = np.array([8.264, 4.248, 1.0])  # np.array([0,0,0])
@@ -534,13 +530,6 @@ if __name__ == '__main__':
     # set things up
     CC_X, CC_Y, CC_Z = setup(reset, COM_ports=COM_ports)
 
-    # grid run
-    #meas_points = grid(CC_X, CC_Y, CC_Z, steps=1, srange=2, start=reset)
-    # close connection
-    # close_connection(CC_X, CC_Y=CC_Y, CC_Z=CC_Z)
-
-    # ------------------------Testing area---------------------------------------------------
-    # %%
     # initial parameters
     reset = np.array([3, 3, 3])
     COM_ports = ['COM7', 'COM6', 'COM5']
