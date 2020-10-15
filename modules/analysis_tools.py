@@ -14,6 +14,7 @@ Date: 09.10.2020
 import numpy as np
 import pandas as pd
 import os
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from datetime import datetime
@@ -135,7 +136,7 @@ def extract_raw_data_from_2d_scan(filepath):
     return positions, B_field
 
 def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Show=True,
-             title_on=True, cmin=None, cmax=None, single_comp=None):
+             title_on=True, cmin=None, cmax=None, single_comp=None, center_position=None):
     """
     Generate 3d plot of 2d-sweep data in the sensor coordinate system.
 
@@ -143,27 +144,27 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     sensor coordinates already.
 
     Args:
-    - positions_corrected is an ndarray of shape ((grid_number+1)**2, 3) containing the stage positions 
+    - positions_corrected (ndarray) is of shape ((grid_number+1)**2, 3) and contains the stage positions 
     in sensor coordinates
-    - B_field: is an ndarray of shape ((grid_number+1)**2, 3) containing the measured fields
+    - B_field  (ndarray): is of shape ((grid_number+1)**2, 3) containing the measured fields
     which is the final distance between gird points
     - origin (None or 1d-array of length 3): 
     If None, the origin is set automatically such that the x and y data range between 0 and a positive number.
     If an array is passed as offset position, note that a position (p.e. the chosen center position) has to be 
     transformed to sensor coordinates before passing it as argument. 
-    - cmin, cmax: min and max of colormap for displaying magnetic field strength. 
+    - cmin, cmax (float): min and max of colormap for displaying magnetic field strength. 
     If both any of them is None, the scale is chosen automatically based on the data
-    - Scat_Mag: flag to switch on/off scatter plot (only points) of magnetic field
-    - Cont: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
+    - Scat_Mag (bool): flag to switch on/off scatter plot (only points) of magnetic field
+    - Cont (bool): flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
     between data points and the surfaces are stacked on top of each other.
-    - Show: flag to switch on/off plt.show() command 
-    - title_on: flag to switch title on or off
-    If fig is not provided, a new figure with new axes are generated. 
-    Make sure to also provide an axes object if a figure is passed.
-    - single_comp: flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
+    - Show (bool): flag to switch on/off plt.show() command 
+    - single_comp (string): flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
     None (or invalid flag): euclidian norm/magnitude of magnetic field vector. 
     'x', 'y', 'z': plot the according vector component.
     'xy': euclidian norm of in-plane component of field (i.e. x,y components)
+    - center_position (None or 1d array of length 2): If an array [x,y] is provided, a red dot is plotted
+    at this position. The passed positions are in stage coordinates and will be transformed to 
+    sensor coordinates. 
 
     Return: fig, ax: Figure and Axis objects of the created plot. 
     """
@@ -177,13 +178,13 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     x = np.zeros((points_per_side, points_per_side))
     y = np.zeros((points_per_side, points_per_side))
     mag = np.zeros((points_per_side, points_per_side))
-    for i in range(points_per_side):
-        for j in range(points_per_side):
-            x[j,i] = positions[i+points_per_side*j, 0] + origin[0]
-            y[j,i] = positions[i+points_per_side*j, 1] + origin[1]
 
-    # x = positions[:,0].reshape((points_per_side, points_per_side)) + origin[0]
-    # y = positions[:,1].reshape((points_per_side, points_per_side)) + origin[1]
+    # for i in range(points_per_side):
+    #     for j in range(points_per_side):
+    #         x[j,i] = positions[i+points_per_side*j, 0] + origin[0]
+    #         y[j,i] = positions[i+points_per_side*j, 1] + origin[1]
+    x = positions[:,0].reshape((points_per_side, points_per_side)) + origin[0]
+    y = positions[:,1].reshape((points_per_side, points_per_side)) + origin[1]
     
     # choose which data should be plotted. 
     # abbriviate notation using itertools.product
@@ -235,6 +236,11 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
         cf = ax.scatter(x, y, mag, c=mag, vmin=cmin, vmax=cmax)
         fig.colorbar(cf, ax=ax, label=label)
 
+    # if provided, plot the center position after converting it to sensor coordintates
+    if center_position is not None:
+        center_position = [-center_position[1], -center_position[0]]
+        ax.plot(center_position[0]+ origin[0], center_position[1]+ origin[1], marker='+', color='r')  
+
     # final axis settings
     ax.set_xlabel("x [mm]")
     ax.set_ylabel("y [mm]")
@@ -255,8 +261,8 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
     - directory: valid path of directory where the image should be saved
     - save_image (bool): flag to save or not save the image
     - show_labels (bool): flag to switch on/off labels of plots
-    - ylim: tuple containing (ymin, ymax). If None, the default limits are taken
-    - xlim: tuple containing (xmin, xmax). If None, the default limits are taken
+    - ylim: tuple of floats containing (ymin, ymax). If None, the default limits are taken
+    - xlim: tuple of floats containing (xmin, xmax). If None, the default limits are taken
     - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
     - remove_first_half (bool): ignore first half of all input data arrays, 
     which would correspond to a magnetic field pointing towards the negative direction
@@ -310,7 +316,10 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi=300)
 
-    fig.show()
+
+    plt.show()
+
+
 
 
 
@@ -325,7 +334,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     as well as how many plots should be generated, by adapting the flags_yaxis and flag_xaxis parameters. 
 
     Args: 
-    - I, mean_values, std_values, expected_values are ndarrays of shape (#measurements, 3), 
+    - I, mean_values, std_values, expected_values (ndarrays) are of shape (#measurements, 3), 
     containing applied current, experimentally estimated/expected mean values and standard deviations 
     for x,y,z-directions.
     - flag_xaxis (string): Switch between the following quantities displayed on the x-axis:
@@ -334,7 +343,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         - 'B' for magnitude of magnetic field
     All axes share the same x-axis, and only the lowest plot has a label and ticks (currently)! 
     If invalid (other than the listed letters) flags are passed, the default 'I1' is assumed.
-    - flag_yaxis: string containing the letters as flags, where valid letters are mentioned below.
+    - flag_yaxis (string): contains letters as flags, where valid letters are mentioned below.
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     a plot is generated with the according quantity plotted on the y-axis. The plots are generated
     in the same order as the flag-letters are passed. 
@@ -345,14 +354,14 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         - 'f': in-plane angle phi with respect to x-axis
     - plot_delta_sim: If False, both the measured and expected values are plotted. 
     If True, the difference between simulation and measurement is plotted.
-    - directory: valid path of directory where the image should be saved
-    - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
-    - height_per_plot: height of each plot in inches. Default for several plots is 2.
+    - directory (string): valid path of directory where the image should be saved
+    - image_name_postfix (string): The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
+    - height_per_plot (float): height of each plot [inches]. Default for several plots is 2.
     The usual height of a single plot is 4.
     - save_image (bool): flag to save or not save the image
     - distance (float): distance between sensor and tip [mm], which is added as plot label 
-    - xlim: tuple containing (xmin, xmax) of plots. If None, the default limits are taken
-    - ylim_field_abs, ylim_field_z: tuple containing (ymin, ymax) for the plots of magnetic field,
+    - xlim (float): tuple containing (xmin, xmax) of plots. If None, the default limits are taken
+    - ylim_field_abs, ylim_field_z: tuple of floats containing (ymin, ymax) for the plots of magnetic field,
     where '_abs' indicates magnitudes (only positive) and '_z' indicates the field along z (positive and negative)
     - show_labels (bool): flag to switch on/off labels of plots
     - remove_first_half (bool): ignore first half of all input data arrays, 
@@ -486,8 +495,6 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         ylabels = ['$\\Delta$ {}'.format(label) for label in ylabels]
 
     # settings that are different for plots of angle and plots of field
-    
-    
     for i in range(len(flags_yaxis)):
         if flags_yaxis[i] == 't':
             # if the angle is plotted on one of the axes, set the limits to (-5, 185)
@@ -583,3 +590,51 @@ def abs_lin_and_const(x, x_kink, a):
     """
     return np.abs(lin_and_const(x, x_kink, a))
 
+def extract_time_dependence(filepath, omit_64=False):
+    """
+    Extract and return time and field data from the provided file.
+
+    Args: 
+    - filepath (string): valid path of the data file
+    - omit_64 (bool): flag to omit sensor 64 if True
+
+    Return:
+    - times: ndarray of shape (number_sensors, measure_runs) containing the time estimates of measurements
+    - B_fields: ndarray of shape (number_sensors, measure_runs, 3) containing measured x,y,z-components 
+    of magnetic field
+    """
+    # import the measurement data from csv file 
+    dataD = pd.read_csv(filepath)
+    if sys.version_info[0] == 3:
+        data = dataD.to_numpy()
+    else:
+        data = dataD.values
+
+    # adapt number of sensors depending on omit_64 flag
+    if omit_64:
+        number_sensors = 63
+    else:
+        number_sensors = 64
+    
+    # estimate number of measurement rounds
+    measure_runs = len(data) // number_sensors
+    
+    # initialize arrays for measurement outcomes
+    times = np.zeros((number_sensors, measure_runs))
+    B_fields = np.zeros((number_sensors, measure_runs, 3))
+
+    # collect results for each sensor and save mean, std and abs(std/mean)
+    for i in range(number_sensors):
+        # collect data for sensor i
+        sensor_i_data = np.zeros((measure_runs, 5))
+        for k in range(measure_runs):
+            if (data[i+k*number_sensors,:].dtype == 'float64'):
+                sensor_i_data[k,:] = data[i+k*number_sensors,:]
+            else:
+                print("could not convert data properly! wrong data type: ", data[i+k*number_sensors,:].dtype)
+                sensor_i_data[k,:] = 0
+        
+        times[i,:] = sensor_i_data[:,0]
+        B_fields[i,:,:] = sensor_i_data[:, 2:5]
+        
+    return  times, B_fields

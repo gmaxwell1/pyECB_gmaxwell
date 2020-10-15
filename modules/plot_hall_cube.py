@@ -34,31 +34,31 @@ def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0, 0, 0]), Vecs=True,
     Generate 3d plot of measurement data, where a single (mean) magnetic field vector is provided for each sensor. 
 
     Args:
-    - SensorData: measured (mean) values for all sensors as ndarray of size (#sensors, 3).
+    - SensorData (ndarray of size (#sensors, 3)): measured (mean) values for all sensors.
     Note that the 64th senser used to be faulty, hence #sensor can be 63 or 64.
-    - Pos: 1d-array of length 3, containing the offset position of cube (which is position of sensor 49)
+    - Pos (1d-array of length 3): contains the offset position of cube (which is position of sensor 49)
     - fig, ax: Figure and Axis objects of matplotlib. 
-    - cmin, cmax: min and max of colormap for displaying magnetic field strength. 
+    - cmin, cmax (float): min and max of colormap for displaying magnetic field strength. 
     If both any of them is None, the scale is chosen automatically based on the data
-    - Vecs: flag to switch on/off plotting of vectors
-    - Mag_label: flag to switch on/off dislaying the magnitudes of vectors next 
+    - Vecs (bool): flag to switch on/off plotting of vectors
+    - Mag_label (bool): flag to switch on/off dislaying the magnitudes of vectors next 
     as labels next to the data points/arrows
-    - Scat_Mag: flag to switch on/off scatter plot (only points) of magnetic field
-    - Cont: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
+    - Scat_Mag (bool): flag to switch on/off scatter plot (only points) of magnetic field
+    - Con (boolt: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
     between data points and the surfaces are stacked on top of each other.
-    - Show: flag to switch on/off plt.show() command 
-    - title_on: flag to switch title on or off
+    - Show (bool): flag to switch on/off plt.show() command 
+    - title_on (bool): flag to switch title on or off
     If fig is not provided, a new figure with new axes are generated. 
     Make sure to also provide an axes object if a figure is passed.
-    - single_comp: flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
+    - single_comp (string): flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
     None: euclidian norm/magnitude of magnetic field vector. 'x', 'y', 'z': plot the according vector component.
     'xy': euclidian norm of in-plane component of field (i.e. x,y components)
-    - omit_64: flag to include (False) or exclude (True) the 64th sensor
+    - omit_64 (bool): flag to include (False) or exclude (True) the 64th sensor
 
     Return: fig, ax, (cf, cmin, cmax), u, v, w
     - fig, ax: Figure and Axis objects of the created plot. 
-    - cf, cmin, cmax:
-    - u, v, w: vector components along x,y,z-axis in a suitable format for 3d-kjplotting
+    - cf, cmin, cmax: colormap object and the (float) min and max values of the colorbar
+    - u, v, w (ndarrays): vector components along x,y,z-axis in a suitable format for 3d-plotting
     """
     # initialize figure if not existing already
     if fig == None:
@@ -189,15 +189,15 @@ def plot_many_sets(directory, filename="means_grid_points.csv", Vecs=True, Cont=
     visible if there are too many data. Needs to be fixed later!
 
     Args:
-    - directory: directory where the data file(s) that need(s) to be read is (are) located
-    - filename: name of the data file that needs to be read
-    - Vecs: flag to switch on/off plotting of vectors
-    - Scat_Mag: flag to switch on/off scatter plot (only points) of magnetic field
-    - Cont: flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
+    - directory (string): valid path of folder where the data file(s) that need(s) to be read is (are) located
+    - filename (string): name of the data file that needs to be read
+    - Vecs (bool): flag to switch on/off plotting of vectors
+    - Scat_Mag (bool): flag to switch on/off scatter plot (only points) of magnetic field
+    - Cont (bool): flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
     between data points and the surfaces are stacked on top of each other. 
     (This option is not reasonable if many z-layers are present)
-    - save: flag to save or not save the plot at the end
-    - omit_64: flag to include (False) or exclude (True) the 64th sensor
+    - save (bool): flag to save or not save the plot at the end
+    - omit_64 (bool): flag to include (False) or exclude (True) the 64th sensor
     """
     # 3D Vector plot of magnetic flux
     fig = plt.figure()
@@ -260,9 +260,9 @@ def plot_stage_positions(directory, filename="means_grid_points.csv", save=False
     Plot the positions 
 
     Args:
-    - directory is the path of the folder that contains the csv file 
-    - filename is the name of the csv file 
-    - save: flag to save or not save the plot at the end
+    - directory (string): valid path of the folder that contains the csv file 
+    - filename (string): name of the csv file 
+    - save (bool): flag to save or not save the plot at the end
     """
     # extract stage positions from csv file
     cwd = os.getcwd()
@@ -297,7 +297,7 @@ def plot_sensor_positions(Pos=np.array([0, 0, 0])):
     Generate 3d plot of the positions of the Hall sensors 
 
     Args:
-    - Pos: 1d-array of length 3, containing the offset position of cube (which is position of sensor 49)
+    - Pos (1d-array of length 3): containx the offset position of cube (which is position of sensor 49)
 
     Return: fig, ax: Figure and Axis objects of the created plot. 
     """
@@ -347,7 +347,8 @@ def plot_angle(vec):
     """
     Generate 3d plot of the normalized input vector and show the angle with respect to z axis
 
-    Arg: vec is a 3d, nonzero vector with x, y and z components
+    Arg: 
+    - vec (ndarray of length 3): nonzero vector with x, y and z components
     """
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -385,7 +386,8 @@ def plot_angle_spherical(vec):
     """
     Generate 3d spherical plot of the normalized input vector and show the corresponding angles theta and phi.
 
-    Arg: vec is a 3d, nonzero vector with x, y and z components
+    Arg: 
+    - vec (ndarray of length 3): nonzero vector with x, y and z components
     """
     # normalize vector and estimate angles
     vecn = vec / norm(vec)
@@ -464,51 +466,4 @@ if __name__ == "__main__":
     plot_stage_positions(directory)
     plot_many_sets(directory, Vecs=True, Cont=False, Scat_Mag=False)
 
-    """
-    mode = str(input('Do you want to create a new dataset? (yes/no)'))
-    if mode == 'yes':
-        inter = bool(float(input("Interactive mode? (Yes=1/No=0):")))
-        SensorDataF = pd.read_csv(get_new_data_set(interactive=inter)) #replace by filename if it already exists
-    elif mode == 'no':
-        filename= str(input('Enter file name/path from current work directoy (with postfix .csv):'))
-        try:
-            SensorDataF = pd.read_csv(filename)
-        except:
-            print("File does not exist!")
-    else:
-        print("Invalid Input!")
-        exit()
-    whats_what = SensorDataF.columns
-    SensorData = SensorDataF.to_numpy()
-
-    assert(np.shape(SensorData)[0] == 63), "Measurement failure! Try again!"  #actually it should be 64 but one sensor doesn't work!
-
-    #Some additional post processing:
-    All_Mags = np.zeros(np.shape(SensorData)[0])
-    All_Mags = norm(SensorData[:, 2:], axis=1)
-    print('Maximal Magnitude: ', max(All_Mags), 'mT at Sensor #', np.argmax(All_Mags)+1)
-
-    plot_set(SensorData[:,2:])
-
-
-
-
-#####################################################
-
-    u[0,0,0] = SensorData[63,2]
-    v[0,0,0] = SensorData[63,3]
-    w[0,0,0] = SensorData[63,4]
-
-    u[1,0,0] = SensorData[62,2] #-1
-    v[1,0,0] = SensorData[62,3]
-    w[1,0,0] = SensorData[62,4]
-
-    u[0,1,0] = SensorData[11,2] #-4
-    v[0,1,0] = SensorData[11,3]
-    w[0,1,0] = SensorData[11,4]
-
-    u[0,0,1] = SensorData[31,2] #+16
-    v[0,0,1] = SensorData[31,3]
-    w[0,0,1] = SensorData[31,4]
-    """
-
+   

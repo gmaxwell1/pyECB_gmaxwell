@@ -76,4 +76,4 @@ with serial.Serial(port_sensor, 256000, timeout=2) as cube:
 
 
 
-
+# %%

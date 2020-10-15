@@ -18,6 +18,7 @@ import serial
 import os
 from time import time
 from datetime import datetime
+import pandas as pd
 
 
 def open_port(numport='4', baudrate=256000, timeout=2):
@@ -25,9 +26,9 @@ def open_port(numport='4', baudrate=256000, timeout=2):
     Open the COM-numport port and return instance of serial.Serial class.
 
     Args:
-    - numport is the number of COM port that should be opened
-    - baudrate
-    - timeout [s] before raising exception
+    - numport (int) is the number of COM port that should be opened
+    - baudrate (int)
+    - timeout (float) [s] before raising exception
     """
     try:
         # open serial port; baud rate = 256000
@@ -46,7 +47,7 @@ def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=F
     Note that only read and write options can be set under Windows, rest ignored.
 
     Args:
-    - directory is a path which should exist after calling this function
+    - directory (string) is a path which should exist after calling this function
     - access_rights: set rights for reading and writing.
     - purpose_text (str): add more information what the dictionary was created for
 
@@ -73,9 +74,10 @@ def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=F
         return -1
 
 
-def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_postfix='measured', runtimelimit_per_run=5,
-                                                dirname='data_sets', sub_dirname=None, cube: serial.Serial = None, verbose=False, no_enter=False,
-                                                on_stage=False, specific_sensor=None, omit_64=False):
+def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_postfix='measured', 
+                    runtimelimit_per_run=5, dirname='data_sets', sub_dirname=None, 
+                    cube: serial.Serial = None, verbose=False, no_enter=False,
+                    on_stage=False, specific_sensor=None, omit_64=False):
     """
     Read data from cube with 64 Hall sensors and either return (if specific sensor chosen) 
     or write the estimated B-field to an output csv-file (specific_sensor=None,  default).
@@ -86,15 +88,13 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
     - interactive (bool): Flag to allow parameter adjustment over terminal window. 
       In this mode, it is not necessary to provide `cube`, `numport` and `measure_runs` parameters
     - numport (string): The COM port number of the sensor/serial device
-    - measure_runs: INTEGER! Number of samples per fuction call per sensor
-    - runtimelimit_per_run (float): in seconds, waiting time for sensor before error message 
+    - measure_runs (int): Number of samples per fuction call per sensor
+    - runtimelimit_per_run (float): waiting time [s] for sensor before error message 
       per measurment run
-
-    - dirname: name of folder where data is stored in general. Can be left alone unless you need a new main data folder.
-    - sub_dirname: name of folder where measured data files are stored. Make sure to always set this specifically!
+    - dirname (string): name of folder where data is stored in general. Can be left alone unless you need a new main data folder.
+    - sub_dirname (string): name of folder where measured data files are stored. Make sure to always set this specifically!
     - fname_postfix (string): postfix of data file (csv).
-
-    - cube: instance of serial.Serial class, representing the magnetic field sensor
+    - cube (serial.Serial): represents the magnetic field sensor
     - no_enter (bool): if True, measurement starts automatically, else the user is asked to press enter to start.
       This flag only matters if specific_sensor == None!
     - on_stage (bool): flag used to set the action upon occurence an error when reading a measurement outcome 
@@ -103,8 +103,7 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
     - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube. 
       If this argument is provided, only the output of this sensor will be considered. 
       All remaining sensors are neglected
-
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Return (several possibilities):
     - if specific_sensor=None and 
@@ -113,9 +112,6 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
     - specific_sensor != None: return either a 1-d ndarray containing the 3 measured magnetic field components
     or return 1 if measurement fails
     """
-    # a = serial.Serial()
-    # a.readline()
-
     # if specific sensor is selected
     if specific_sensor is not None:
         meas_time = 0
@@ -190,7 +186,7 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
 
         os.chmod(work_dir, access_rights)
         now = datetime.now().strftime("%y_%m_%d_%H-%M-%S")  # Jona used "%d_%m_%y_%H-%M-%S"
-        # name of the csv-file will be in the format: dd_mm_yy_hh-mm-ss_fname_postfix,
+        # name of the csv-file will be in the format: yy_mm_dd_hh-mm-ss_fname_postfix,
         # where fname_postfix is the input the user gave in the line above
         output_file_name = "{}_{}".format(now, fname_postfix + '.csv')
 
@@ -293,12 +289,123 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
         else:
             return 0, str(work_dir), str(output_file_name)
 
+def fast_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data_sets_fast',
+                    directory = './data_sets', verbose=False, save_data=True, 
+                    specific_sensor=None, omit_64=False):
+    """
+    Read data from cube with 64 Hall sensors and either return (if specific sensor chosen) 
+    or write the estimated B-field to an output csv-file (specific_sensor=None,  default).
+
+    Note: The 64th sensor might be broken, hence it can be ignored using the omit_64 flag!
+
+    Args:
+    - cube (serial.Serial): represents the magnetic field sensor
+    - measure_runs (int): Number of samples per fuction call per sensor
+    - runtimelimit_per_run (float): in seconds, waiting time for sensor before error message 
+      per measurment run
+    - save_data (bool): if True, the results are stored in a csv-file
+    - directory (string): valid path of the folder where data should be stored. The default name of the data file is
+    'yy_mm_dd_hh-mm-ss_{fname_postfix}.csv'
+    - fname_postfix (string): postfix of data file (csv).
+    - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube. 
+      If this argument is provided, only the output of this sensor will be considered. 
+      All remaining sensors are neglected
+    - verbose (bool): switching on/off print-statements for displaying progress
+
+    Return:
+    - meas_time (ndarray of shape (measure_runs, number_sensors)): Contains the time of each measurement relative 
+    to start of measurements 
+    - meas_data (ndarray of shape (measure_runs, number_sensors, 3)): Contains the measured field components
+    """
+    # set the last sensor ID, depending on whether sensor 64 is omitted or not
+    if omit_64:
+        number_sensors = 63
+    else:
+        number_sensors = 64
+
+    # initialize ndarray to store the measurement data and time
+    meas_data = np.zeros((measure_runs, number_sensors, 3))
+    meas_time = np.zeros((measure_runs, number_sensors))
+
+    # first line is typically incomplete, hence trash
+    # Actually not needed, but still nice to check that everything is working:
+    # the first line can certainly be split. If the first entry is not a number,
+    # the comparison raises exception. if length less than 4 nothing is returned anyway
+    if verbose:
+        print('Test output: {}'.format(cube.readline()))
+    else:
+        _ = cube.readline()
+
+    # search for last sensor, what follows should be the first sensor again
+    reached_last_sensor = False
+    while not reached_last_sensor:
+        data = cube.readline().split(b',')
+        reached_last_sensor =  (int(data[0].decode('ascii')) == 64)
+    if verbose: 
+        print('Output of sensor 64 received, start measuring now')
+
+    # get current time before starting
+    t_start = time()
+
+    # read in data from sensor for all measurement runs and sensors 
+    for run in range(measure_runs):
+        for sensor in range(number_sensors):
+            # read the current output of sensor 
+            data = cube.readline().split(b',')
+            current_time = time() - t_start
+            
+            # try to convert the first input to integer
+            try:
+                correct_sensor = (sensor + 1 == int(data[0].decode('ascii')))
+            except ValueError as e:
+                print(e)
+                print('The first entry of received string is not an integer')
+                print('Due to a ValueError, stop the current readout.')
+                return False
+            except Exception as e:
+                print(e)
+                print('The first entry of received string is not an integer')
+                print('Due to a {}, stop the current readout.'.format(type(e)))
+                return False
+            else:
+                # if no error occured, continue with saving the data, provided correct sensor=True
+                if not correct_sensor:
+                    print('Results of an incorrect sensor have been received, probably a sensor was skipped')
+                    return False
+
+                # save measured magnetic field
+                meas_data[run, sensor, :] = [float(data[1]), float(data[2]), float(data[3])]
+                meas_time[run, sensor] = current_time
+
+    # save data if desired
+    if save_data:
+
+        # Measurement Time (s), Sensor Number, X-Axis (mT), Y-Axis (mT), Z-Axis (mT)
+        df = pd.DataFrame({ 'Measurement Time (s)': meas_time.flatten(), 
+                            'Sensor ': np.tile(np.arange(1, 65), measure_runs), 
+                            'Bx [mT]': meas_data[:, :, 0].flatten(),
+                            'By [mT]': meas_data[:, :, 1].flatten(),
+                            'Bz [mT]': meas_data[:, :, 2].flatten()})
+
+        if directory is None:
+            directory = os.getcwd()
+        ensure_dir_exists(directory)
+
+        now = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
+        output_file_name = "{}_{}.csv".format(now, fname_postfix)
+        data_filepath = os.path.join(directory, output_file_name)
+
+        try:
+            df.to_csv(data_filepath, index=False, header=True)
+        except FileNotFoundError:
+            data_filepath = os.path.join(os.getcwd(), output_file_name)
+            df.to_csv(data_filepath, index=False, header=True)
+    
+    return meas_time, meas_data
 
 # %%
 if __name__ == "__main__":
-    _ = get_new_data_set(interactive=True)
 
-    # ------------------------Testing area---------------------------------------------------
     # %%
     # test the whole measurement setup
 
@@ -317,7 +424,7 @@ if __name__ == "__main__":
     # test duration and compare sensor 64 with others, use rod magnet to see a difference
     port = 'COM4'
     t1 = time()
-    for _ in range(5):
+    for _ in range(100):
         # open serial port; baud rate = 256000
         with serial.Serial(port, 256000, timeout=2) as cube:
             # results = get_new_data_set(numport=4, specific_sensor=1, measure_runs=int(2), cube=cube)
@@ -329,3 +436,7 @@ if __name__ == "__main__":
     duration = time() - t1
 
     print(duration/100)
+
+#%%
+
+                    

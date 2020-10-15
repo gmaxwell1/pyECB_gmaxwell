@@ -236,12 +236,14 @@ class ConexCC:
     def move_relative(self, distance, verbose=False):
         """
         Move the actuator by distance [mm]
+
+        Returns True if the relative movement is valid and False if actuator would have to out of bounds.
         """
         self.read_cur_pos(verbose=verbose)
         if (self.cur_pos + distance > self.max_limit) or (self.cur_pos + distance < self.min_limit):
             if verbose:
                 print("Would move out of bounds: Movement interrupted!")
-            return -1
+            return False
 
         elif self.is_ready(verbose=verbose):
             err_str = ''
@@ -250,6 +252,7 @@ class ConexCC:
                 print('Oops: Move Relative: result=%d,errString=\'%s\'' % (res, err_str))
             elif not (res != 0 or err_str != '') and verbose:
                 print('Moving Relative %.3f mm' % distance)
+            return True
 
     def move_absolute(self, new_pos, verbose=False):
         """

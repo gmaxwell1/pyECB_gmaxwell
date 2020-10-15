@@ -37,7 +37,7 @@ def check_validity(min_val, max_val, CC1: ConexCC):
 
     Args: 
     - min_val < max_val (float)
-    - CC1, CC2 are instances of conexcc_class to control an actuator
+    - CC1, CC2 (conexcc_class instances): represent two (e.g. x and y) actuators
 
     Returns: valid_min_val, valid_max_val
     """
@@ -65,26 +65,28 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
     This might yield an incorrect calibration! 
 
     Args:
-    - CC1, CC2 are instances of conexcc_class for x and y axis
-    - cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - CC1, CC2 (conexcc_class instances): represent x,y actuators
+    - cube (serial.Serial): represents the magnetic field sensor.
     - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube.
-    - min_step_size: stop searching for minimum once the step size is smaller than this value.
-    - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
+    - min_step_size (float): stop searching for minimum once the step size is smaller than this value.
+    - xlim, ylim (None or tuple/list of floats): Either None or (min, max) as limits for x and y direction.
         If no limits are provided, the min and max values of the respective actuator is used.
     - grid_number (int): controls the stepsize when sweeping along x- and y-axis. The larger the number, 
       the smaller the stepsize. 
       NOTE: grid_number >= 2 is required to not raise errors, > 2 to not get trapped in while-loop!
-    - sampling_size: Number of samples considered for the mean value of the field estimated 
+    - sampling_size (int): Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
     - update_factor (float): after one iteration, the bounds xmin and xmax are updated
     as xmin = xpos - update_factor* xstep and xmax = xpos + update_factor* xstep (same for y).
     Thus, the smaller the update_factor, the faster one reaches the min_step_size. However,
     it becomes more likely to miss the actual minimum if update_factor is too small. 
 
     Returns: xpos, ypos, xmax/grid_number
-    - xpos, ypos: 
-    - xmax/grid_number:  why?
+    - xpos, ypos (float): final center positions along x and y at which the in-plane field is 
+    supposed to be minimal 
+    - precision (float): Final precision, which is the maximum of the final range of values along x and y 
+    within which the center position is assumed devided by grid_number, 
     """
     # set min and max limits for x,y axis
     if xlim == None:
@@ -176,7 +178,7 @@ def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e
             print('New ymin: {:.5f}  new ymax: {:.5f} new yrang: {:.5f}'.format(
                 ymin, ymax, yrang))
 
-    return xpos, ypos, xrang/grid_number
+    return xpos, ypos, np.max([xrang/grid_number, yrang/grid_number])
 
 def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
            grid_number=10, sampling_size=10, verbose=False, update_factor=1.0):
@@ -190,17 +192,17 @@ def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_ste
     This might yield an incorrect calibration! 
 
     Args:
-    - CC_X, CC_Y are instances of conexcc_class for x and y axis
-    - cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - CC_X, CC_Y (conexcc_class instances): represent x,y actuators
+    - cube (serial.Serial): represents the magnetic field sensor.
     - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube.
-    - min_step_size: stop searching for minimum once the step size is smaller than this value.
-    - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
-        If no limits are provided, the min and max values of the respective actuator is used.
+    - min_step_size (float): stop searching for minimum once the step size is smaller than this value.
+    - xlim, ylim (None or tuple/list of floats): Either None or (min, max) as limits for x and y direction.
+    If no limits are provided, the min and max values of the respective actuator is used.
     - grid_number (int): number of points to sweep over per axis per iteration, thereby controlling the step size of sweeps.
-      NOTE: > 2 to not get trapped in while-loop!
-    - sampling_size: Number of samples considered for the mean value of the field estimated 
+    NOTE: > 2 to not get trapped in while-loop!
+    - sampling_size (int): Number of samples considered for the mean value of the field estimated 
       with the chosen sensor at a fixed position
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
     - update_factor (float): after one iteration, the bounds xmin and xmax are updated
     as xmin = xpos - update_factor* xstep and xmax = xpos + update_factor* xstep (same for y).
     Thus, the smaller the update_factor, the faster one reaches the min_step_size. However,
@@ -303,7 +305,6 @@ def search_extended(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, min_ste
     return xpos, ypos, np.max([xrang, yrang])/grid_number
 
 
-
 def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
     """
     Measure magnetic field vector N times using a specific sensor and return mean values.
@@ -315,10 +316,10 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
     to ensure that the sensor is not moving beforehand.
 
     Args:
-    - cube: instance of serial.Serial class, representing the magnetic field sensor
+    - cube (serial.Serial): represents the magnetic field sensor
     - specific_sensor (int): number of a desired sensor, specific_sensor in [1, 64]  
     - N (int): number of B-field estimates that are averaged
-    - max_number_attempts (int) is the maximum number of attempts to replace faulty measurements by valid outcomes.
+    - max_number_attempts (int): maximum number of attempts to replace faulty measurements by valid outcomes.
 
     Returns 1d-ndarray with 3 entries, corresponding to the mean magnetic field vector at this position.
     """
@@ -348,19 +349,19 @@ def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
 
     Args:
-    - CC1, CC2 are instances of conexcc_class for x and y axis
-    - cube: instance of serial.Serial class, representing the magnetic field sensor.
-    - N: number of estimates of B-field used for average
-    - min_step_size: stop searching for minimum of B-field along xy-plane 
+    - CC1, CC2 (conexcc_class instances): represent x,y actuators
+    - cube (serial.Serial): represents the magnetic field sensor.
+    - N (int): number of estimates of B-field used for average
+    - min_step_size (float): stop searching for minimum of B-field along xy-plane 
     once the step size is smaller than this value.
-    - specific_sensor: number of sensor that is used when searching the center position. 
-    - limits_x, limits_x: array of length 2 with minimum and maximum values of x (y) that are considered 
+    - specific_sensor (int in [1,64]): number of sensor that is used when searching the center position. 
+    - limits_x, limits_x (array of length 2): minimum and maximum values of x (y) that are considered 
     when searching for the center position.
-    - verbose: switching on/off print-statements for displaying progress
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Return:
-    - x0 = [xpos, ypos]: ndarray containing the position of the minimum in-plane field
-    - f0: measured B-field vector at x0
+    - x0 = [xpos, ypos] (ndarray of floats): contains the position of the minimum in-plane field
+    - f0 (float): measured B-field vector at x0
     """
     if verbose:
         print("\nTrying to find center axis using sensor # {} ...\n".format(
@@ -397,16 +398,17 @@ def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, e
     Note: Pass all angles in degrees!
 
     Args: 
-    - desired: desired angle of magnetic field with respect to z-axis
-    - cube: cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - desired (float): desired angle of magnetic field with respect to z-axis
+    - cube (serial.Serial): represents the magnetic field sensor.
     - specific_sensor (int): id in [1,64] of sensor that should be used for calibration
-    - N: sampling size of magnetic field estimates used for average
+    - N (int): sampling size of magnetic field estimates used for average
     - visual_feedback (bool): flag to switch on/off a plotted visualization of measured vector,
     showing an normalized vector and the measured angle with z-axis
-    - eps: acceptable difference in angle
-    - max_number_trials: to avoid an infinite while-loop, a maximum number of trials can be set.
-    - spherical: flag to switch on spherical plot, else 'normal' 3d plot is shown.
-    - verbose: switching on/off print-statements for displaying progress
+    - eps (float): acceptable difference in angle
+    - max_number_trials (int): to avoid an infinite while-loop, a maximum number of trials can be set.
+    - spherical (bool): flag to switch on spherical plot, else 'normal' 3d plot is shown.
+    - verbose (bool): switching on/off print-statements for displaying progress
+
     Return 0 
     """
     diff = 5*eps
@@ -436,15 +438,15 @@ def get_new_mean_data_set(N, sub_dirname=None, cube=None, no_enter=False, on_sta
     Note: Sensor #64 has produced incorrect results in past, thus it can be omitted using the omit_True flag
 
     Args: 
-    - N: number of times all 64 (or 63) sensor are read out in series
-    - cube: instance of serial.Serial class, representing the magnetic field sensor.
-    - sub_dirname: name of folder where data files are stored
+    - N (int): number of times all 64 (or 63) sensor are read out in series
+    - cube (serial.Serial): represents the magnetic field sensor.
+    - sub_dirname (string): name of folder where data files are stored
     - no_enter (bool): if True, measurement starts automatically, else the user is asked to press enter to start.
     - on_stage (bool): flag used to set the action upon occurence an error when reading a measurement outcome 
           from the sensor. If False, continue measuring and write a "'Read Failure', 0,0,0,0"-line to file. 
           If True, the measurement is stopped entirely and the output file is deleted. 
-    - omit_64: if True, sensor #64 will be omitted, else all 64 sensors are considered.
-    - verbose: switching on/off print-statements for displaying progress
+    - omit_64 (bool): if True, sensor #64 will be omitted, else all 64 sensors are considered.
+    - verbose (bool): switching on/off print-statements for displaying progress
 
     Return:
     - if on_stage=True: mean_data, std_data, perc_data, directory 
@@ -546,18 +548,18 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=No
     In this case, an according message is printed to the terminal and the actuator does not move. 
 
     Args:
-    - CC_X, CC_Y are instances of conexcc_class for x and y axis
-    - cube: instance of serial.Serial class, representing the magnetic field sensor.
+    - CC_X, CC_Y (conexcc_class instances): represent x,y actuators
+    - cube (serial.Serial): represents the magnetic field sensor.
     - specific_sensor (int in [1,64]): ID of a specific Hall sensor of the whole cube.
-    - height: z-component of the 2d-plane, this value will be carried over to all positions
-    - xlim, ylim: Either None or (min, max) tuple or list as limits for x and y direction.
-        If no limits are provided, the min and max values of the respective actuator is used.
+    - height (float): z-component of the 2d-plane, this value will be carried over to all positions
+    - xlim, ylim (None or tuple/list of floats): Either None or (min, max) as limits for x and y direction.
+    If no limits are provided, the min and max values of the respective actuator is used.
     - grid_number (int): number of points +1 to sweep over per axis per iteration
-    - sampling_size: Number of samples considered for the mean value of the field estimated 
-      with the chosen sensor at a fixed position
-    - verbose: switching on/off print-statements for displaying progress
+    - sampling_size (int): Number of samples considered for the mean value of the field estimated 
+    with the chosen sensor at a fixed position
+    - verbose (bool): switching on/off print-statements for displaying progress
     - save_data (bool): flag to switch on/off saving of data
-    - directory: valid path  of folder in which the data are stored
+    - directory (string): valid path  of folder in which the data are stored
 
     Returns: positions_corrected, B_field
     - positions_corrected is an ndarray of shape ((grid_number+1)**2, 3) containing the stage positions 
@@ -608,10 +610,23 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=No
         print('{} / {} rows'.format(i, grid_number))
 
         if i != 0:
-            CC_X.move_relative(x_step)
+            success = CC_X.move_relative(x_step)
+            # if the actuator would have to move out of bounds, use absolute movement 
+            if not success:
+                if CC_X.read_cur_pos() + x_step < CC_X.min_limit:
+                    CC_X.move_absolute(CC_X.min_limit)
+                elif CC_X.read_cur_pos() + x_step > CC_X.max_limit:
+                    CC_X.move_absolute(CC_X.max_limit)
+
         for j in range(grid_number + 1):    # along y    
             if j != 0:
-                CC_Y.move_relative((-1)**i * y_step)
+                success = CC_Y.move_relative((-1)**i * y_step)
+                # if the actuator would have to move out of bounds, use absolute movement
+                if not success:
+                    if CC_Y.read_cur_pos() + (-1)**i * y_step < CC_Y.min_limit:
+                        CC_Y.move_absolute(CC_Y.min_limit)
+                    elif CC_Y.read_cur_pos() + (-1)**i * y_step > CC_Y.max_limit:
+                        CC_Y.move_absolute(CC_Y.max_limit)
                 
             all_ready(CC_X, CC2=CC_Y, verbose=verbose)
             check_no_motion(CC_X, CC2=CC_Y, verbose=verbose)
@@ -670,31 +685,7 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=No
 
 # %%
 if __name__ == "__main__":
-    # N statistical values
-    N = int(100)
-    mean_data, std_data, perc_data = get_new_mean_data_set(N, no_enter=True)
-
-    x_av_perc = np.mean(perc_data[:, 0])
-    y_av_perc = np.mean(perc_data[:, 1])
-    z_av_perc = np.mean(perc_data[:, 2])
-
-    #print(x_mean, "+-", x_std)
-    #print(y_mean, "+-", y_std)
-    #print(z_mean, "+-", z_std)
-    print()
-    print("Average percentual offset in")
-    print("x direction: ", x_av_perc, " %")
-    print("y direction: ", y_av_perc, " %")
-    print("z direction: ", z_av_perc, " %")
-    print(np.max(norm(mean_data, axis=1)))
-
-    #plot_set(mean_data, Pos=np.array([0,0,0]), Vecs=False, Cont=True, single_comp='x')
-    #plot_set(mean_data, Pos=np.array([0,0,0]), Vecs=False, Cont=True, single_comp='y')
-    #plot_set(mean_data, Pos=np.array([0,0,0]), Vecs=False, Mag_label=True, Cont=True, single_comp='xy')
-    #plot_set(mean_data, Pos=np.array([0,0,0]), Vecs=False, Cont=True, single_comp='z')
-    plot_set(mean_data, Pos=np.array([0, 0, 0]))
-
-    # ------------------------Testing area---------------------------------------------------
+    
     # %%
     # set up actuators
     reset = np.array([3.0, 3.0, 0])  # np.array([0,0,0])
