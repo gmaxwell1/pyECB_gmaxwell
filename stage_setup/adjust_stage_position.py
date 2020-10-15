@@ -35,12 +35,12 @@ finally:
 
 # %%
 # set measurement parameters and folder name
-N = 50  # number of measurements per sensor for averaging
+N = 25  # number of measurements per sensor for averaging
 specific_sensor = 55
 
 # %%
 # initialize actuators
-init_pos = np.array([3.0, 0.01, 15.1])
+init_pos = np.array([6.1869, 2.1585, 15.1])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
@@ -49,14 +49,14 @@ port_sensor = 'COM4'
 
 # %%
 # manually adjust z
-z_offset = 15.8
-new_pos = [9.0, 4.0, z_offset]
+z_offset = 14.7
+new_pos = [6.1869, 2.1585, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
 # set the bounds for x and y that are used during the calibration process
-limits_x = [2.0, 8.0]
-limits_y = [0.01, 4.0]
+limits_x = [6.1, 6.9]
+limits_y = [1.6, 2.2]
 
 # set the bounds for x and y that are used during the calibration process, relative to mid position
 # mid = [6.217,3.022]
@@ -66,7 +66,7 @@ limits_y = [0.01, 4.0]
 
 # set minimum set size, i.e. the precision of the calibration process
 min_step_size = 1e-3
-grid_number = 10
+grid_number = 15
 update_factor = 3
 
 # choose between quick and less quick way 
@@ -93,7 +93,7 @@ with serial.Serial(port_sensor, 256000, timeout=2) as cube:
 # %%
 # plot the current angles theta and phi in a spherical plot
 with serial.Serial(port_sensor, 256000, timeout=2) as cube:
-    while True:
+    for _ in range(1):
         B = get_new_data_set(cube=cube, specific_sensor=15, no_enter=True)
         plot_angle_spherical(B)
 

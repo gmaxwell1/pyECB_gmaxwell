@@ -289,7 +289,12 @@ def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_
         else:
             return 0, str(work_dir), str(output_file_name)
 
-def fast_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data_sets_fast',
+class MeasurementError(Exception):
+    """Simple class used for error handling during measurements."""
+    pass
+         
+
+def direct_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data_sets_fast',
                     directory = './data_sets', verbose=False, save_data=True, 
                     specific_sensor=None, omit_64=False):
     """
@@ -316,6 +321,11 @@ def fast_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data_s
     - meas_time (ndarray of shape (measure_runs, number_sensors)): Contains the time of each measurement relative 
     to start of measurements 
     - meas_data (ndarray of shape (measure_runs, number_sensors, 3)): Contains the measured field components
+
+    Exceptions: 
+    Raise a MeasurementError if something went wrong during measurements. 
+    Possible reasons are that a sensor was skipped or that an incomplete message was received from the sensor. 
+
     """
     # set the last sensor ID, depending on whether sensor 64 is omitted or not
     if omit_64:
@@ -358,20 +368,22 @@ def fast_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data_s
             try:
                 correct_sensor = (sensor + 1 == int(data[0].decode('ascii')))
             except ValueError as e:
-                print(e)
-                print('The first entry of received string is not an integer')
-                print('Due to a ValueError, stop the current readout.')
-                return False
+                if verbose:
+                    print(e)
+                    print('The first entry of received string is not an integer')
+                    print('Due to a ValueError, stop the current readout.')
+                raise MeasurementError
             except Exception as e:
-                print(e)
-                print('The first entry of received string is not an integer')
-                print('Due to a {}, stop the current readout.'.format(type(e)))
-                return False
+                if verbose:
+                    print(e)
+                    print('The first entry of received string is not an integer')
+                    print('Due to a {}, stop the current readout.'.format(type(e)))
+                raise MeasurementError
             else:
                 # if no error occured, continue with saving the data, provided correct sensor=True
                 if not correct_sensor:
                     print('Results of an incorrect sensor have been received, probably a sensor was skipped')
-                    return False
+                    raise MeasurementError
 
                 # save measured magnetic field
                 meas_data[run, sensor, :] = [float(data[1]), float(data[2]), float(data[3])]
@@ -439,4 +451,5 @@ if __name__ == "__main__":
 
 #%%
 
-                    
+
+# %%

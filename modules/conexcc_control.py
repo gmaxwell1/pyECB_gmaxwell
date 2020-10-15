@@ -16,6 +16,8 @@ Date: 09.10.2020
 import numpy as np
 from time import sleep
 import os
+from datetime import datetime
+import pandas as pd
 
 ########## local imports ##########
 from conexcc.conexcc_class import *
@@ -273,10 +275,10 @@ def setup(reset_position, COM_ports=['COM7', 'COM6', 'COM5'], verbose=False):
     return CC_X, CC_Y, CC_Z
 
 
-def save_in_dir(means, directory, label, stds=None, coords=False):
+def save_in_dir(means, directory, label, stds=None, coords=False, now=False):
     """
     Write the provided means and (optional) standard deviations to the file 'means_'+label+'.csv' 
-    in provided directory.
+    or 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv' in provided directory.
 
     The coords flag distinguishes between magnetic field strength (False) and spatial coordinates (True) as source of the data.
 
@@ -288,6 +290,8 @@ def save_in_dir(means, directory, label, stds=None, coords=False):
     Should have at least the same size as means.
     - coords (bool): Flag to switch between B-field (False) and spatial coordinates (True)
     - verbose (bool): switching on/off print-statements for displaying progress
+    - now (bool): if True, the current date time is added to the filename, 
+    such that it reads 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv'
     """
     # Under Linux, user rights can be set with the scheme below,
     # where 755 means read+write+execute for owner and read+execute for group and others.
@@ -295,37 +299,43 @@ def save_in_dir(means, directory, label, stds=None, coords=False):
     access_rights = 0o755
     os.chmod(directory, access_rights)
 
-    output_file_name = 'means_{}.csv'.format(label)
-    with open(os.path.join(directory, output_file_name), 'w') as f:
-        if stds is not None and not coords:
-            # no idea why we need carriage return (\r) is required here
-            # header line
-            f.write(
-                'Mean Bx (mT), +- std dev x (mT), Mean By (mT), +- std dev y (mT), Mean Bz (mT), +- std dev z (mT)\r\n')
-            for i in range(np.shape(means)[0]):
-                f.write('{},{},{},{},{},{}'.format(
-                    means[i, 0], stds[i, 0], means[i, 1], stds[i, 1], means[i, 2], stds[i, 2]) + '\r\n')
-        elif not coords:
-            # header line
-            f.write('Mean Bx (mT), Mean By (mT), Mean Bz (mT)\r\n')
-            for i in range(np.shape(means)[0]):
-                f.write('{},{},{}'.format(
-                    means[i, 0], means[i, 1], means[i, 2]) + '\r\n')
-        elif coords and stds is None:
-            f.write('Index, x [mm], y [mm], z [mm]\r\n')  # header line
-            for i in range(np.shape(means)[0]):
-                f.write('{},{},{},{}'.format(
-                    (i+1), means[i, 0], means[i, 1], means[i, 2]) + '\r\n')
-        elif coords and stds is not None:
-            # header line
-            f.write(
-                'Index, x [mm], +- std x [mm], y [mm], +- std y [mm], z [mm], +- std z [mm]\r\n')
-            for i in range(np.shape(means)[0]):
-                f.write('{},{},{},{},{},{},{}'.format(
-                    (i+1), means[i, 0], stds[i, 0], means[i, 1], stds[i, 1], means[i, 2], stds[i, 2]) + '\r\n')
-        else:
-            f.write('Failed to save!\r\n')
-            print("Failed to save to", directory, "!")
+    if now:
+        time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
+        output_file_name = "{}_means_{}.csv".format(time_stamp, label)
+    else:
+        output_file_name = "means_{}.csv".format(label)
+    data_filepath = os.path.join(directory, output_file_name)
+
+    if stds is not None and not coords:
+        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
+                            'std Bx [mT] ': stds[:, 0], 
+                            'mean By [mT]':  means[:, 1], 
+                            'std By [mT] ': stds[:, 1],
+                            'mean Bz [mT]':  means[:, 2], 
+                            'std Bz [mT] ': stds[:, 2]})
+        df.to_csv(data_filepath, index=False, header=True)
+    
+    elif not coords:
+        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
+                            'mean By [mT]':  means[:, 1], 
+                            'mean Bz [mT]':  means[:, 2]})
+        df.to_csv(data_filepath, index=False, header=True)
+
+    elif coords and stds is None:
+        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
+                            'x [mm]':  means[:, 0], 
+                            'y [mm]':  means[:, 1], 
+                            'z [mm]':  means[:, 2]})
+        df.to_csv(data_filepath, index=False, header=True)
+        
+    elif not coords:
+        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
+                            'x [mm]':  means[:, 0], 
+                            'std x [mm]':  stds[:, 0], 
+                            'y [mm]':  means[:, 1], 
+                            'std y [mm]':  stds[:, 1], 
+                            'z [mm]':  means[:, 2],
+                            'std z [mm]':  stds[:, 2]})
 
 
 def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2, cube=None,
