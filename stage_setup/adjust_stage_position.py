@@ -93,8 +93,11 @@ with serial.Serial(port_sensor, 256000, timeout=2) as cube:
 # %%
 # plot the current angles theta and phi in a spherical plot
 with serial.Serial(port_sensor, 256000, timeout=2) as cube:
-    for _ in range(1):
-        B = get_new_data_set(cube=cube, specific_sensor=15, no_enter=True)
+    for _ in range(10):
+        B = get_new_data_set(cube=cube, specific_sensor=specific_sensor, no_enter=True)
         plot_angle_spherical(B)
 
 # %%
+with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+    B = av_single_sens(cube, specific_sensor, N)
+print(np.round(B,4))
