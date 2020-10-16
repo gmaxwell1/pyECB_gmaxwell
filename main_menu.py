@@ -15,6 +15,7 @@ Date: 09.10.2020
 import numpy as np
 import math
 from time import time, sleep
+import csv
 
 ########## local imports ##########
 from utility_functions import *
@@ -46,53 +47,114 @@ def MainMenu(initialized):
             print('[s]: get ECB status\n[r] roll a die\n')
 
             c1 = input()
+            
             if c1 == '1':
-                inp1 = input(
-                    'configuration (z or x-y direction), acceptable inputs:\n z, xy0...6 (for different directions in xy plane), r for random test = ')
-                inp2 = input('starting current in mA = ')
-                inp3 = input('ending current in mA = ')
-                inp4 = input('# of steps: ')
-                inp5 = input(
-                    'How many measurement runs? (only if config r was chosen): ')
-
-                try:
-                    config = inp1
-                except:
-                    print('expected valid input (z or xy), defaulting to z')
-                    config = 'z'
-                try:
-                    start_val = int(inp2)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    start_val = 0
-                try:
-                    end_val = int(inp3)
-                except:
-                    print('expected numerical value, defaulting to 1')
-                    end_val = 1
-                try:
-                    steps = int(inp4)
-                except:
-                    print('expected numerical value, defaulting to 1')
-                    steps = 1
-                try:
-                    randomRuns = int(inp5)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    randomRuns = 0
+                inp0 = input('File or manual input? (answer with f or m): ')
+                if inp0 == 'f':
+                    # must be a .csv file!
+                    inpFile = input('Enter a valid configuration file path: ')
+                    inp1 = input('starting current in mA = ')
+                    inp2 = input('ending current in mA = ')
+                    inp3 = input('# of steps: ')
+                    # the values for each measurement run should be the same for consistent results
+                    try:
+                        start_val = int(inp4)
+                    except:
+                        print('expected numerical value, defaulting to -4500')
+                        start_val = -4500
+                    try:
+                        end_val = int(inp5)
+                    except:
+                        print('expected numerical value, defaulting to 4500')
+                        end_val = 4500
+                    try:
+                        steps = int(inp6)
+                    except:
+                        print('expected numerical value, defaulting to 200')
+                        steps = 200
+                        
+                    c1 = input('Automatic exit after finish? (x for yes): ')
                     
-                c1 = input('Automatic Termination after finish? (x for yes): ')
+                    with open(inpFile, 'r') as f:
+                        contents = csv.reader(f)
+                        for row in contents:
+                            config = np.array(float(row[0]),float(row[1]),float(row[2]))
+                            sweepCurrents(config, start_val, end_val, steps)
+                        
 
-                if config != 'r':
+
+                elif inp0 == 'm':
+                    inp1 = input('Configuration:\nChannel 1: ')
+                    inp2 = input('Channel 2: ')
+                    inp3 = input('Channel 3: ')
+                    inp4 = input('starting current in mA = ')
+                    inp5 = input('ending current in mA = ')
+                    inp6 = input('# of steps: ')
+                    
+                    try:
+                        a1 = float(inp1)
+                        b1 = float(inp2)
+                        c1 = float(inp3)
+                        config = np.array([a1,b1,c1])
+                    except:
+                        print('expected numbers (float or int), defaulting to (0,0,1)')
+                        config = np.array([0,0,1])
+                    try:
+                        start_val = int(inp4)
+                    except:
+                        print('expected numerical value, defaulting to 0')
+                        start_val = 0
+                    try:
+                        end_val = int(inp5)
+                    except:
+                        print('expected numerical value, defaulting to 1')
+                        end_val = 1
+                    try:
+                        steps = int(inp6)
+                    except:
+                        print('expected numerical value, defaulting to 1')
+                        steps = 1
+                    
+                    c1 = input('Automatic exit after finish? (x for yes): ')
+
                     sweepCurrents(config, start_val, end_val, steps)
-                elif (randomRuns >= 1 and config == 'r'):
-                    while randomRuns > 0:
-                        sweepCurrents(config, start_val, end_val, steps)
-                        randomRuns = randomRuns-1
+  
                 else:
-                    print('please enter a valid combination of inputs.')
+                    print('Using randomized current configuration.')
+                    config = 'r'
+                    inp1 = input('How many measurement runs?: ')
+                    inp2 = input('starting current in mA = ')
+                    inp3 = input('ending current in mA = ')
+                    inp4 = input('# of steps: ')
+                    
+                    try:
+                        randomRuns = int(inp1)
+                    except:
+                        print('expected numerical value, defaulting to 0')
+                        randomRuns = 0                
+                    try:
+                        start_val = int(inp2)
+                    except:
+                        print('expected numerical value, defaulting to 0')
+                        start_val = 0
+                    try:
+                        end_val = int(inp3)
+                    except:
+                        print('expected numerical value, defaulting to 1')
+                        end_val = 1
+                    try:
+                        steps = int(inp4)
+                    except:
+                        print('expected numerical value, defaulting to 1')
+                        steps = 1
+                    
+                    c1 = input('Automatic exit after finish? (x for yes): ')
+                
+                    while randomRuns > 0:
+                            sweepCurrents(config, start_val, end_val, steps)
+                            randomRuns = randomRuns-1
 
-            # tentative implementation. Actual I-to-B actuation matrix needed.
+            # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
                 inp1 = input('Angle to z axis in deg = ')
                 inp2 = input('Angle to x axis in deg = ')
@@ -249,7 +311,5 @@ if __name__ == '__main__':
 
     MainMenu(ecbInit)
     closeConnection()
-    # print(dir())
-    # print(ECB_ACT_CURRENTS)
-    # chkSlewRate([3000,-2000,768,0,0,0,0,0],b'0')
+
     

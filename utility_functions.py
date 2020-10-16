@@ -33,22 +33,17 @@ windings = 508  # windings per coil
 resistance = 0.47  # resistance per coil
 
 
-def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
+def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5):
     """
     sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
     and stores the measured values in various arrays
 
     Args:
-    -config: 
-    -start/end_val: current to start and end with, mA
-    -steps: number of steps
-
-    Args:
-        ch1,ch2,ch3 (float, optional): current ratios (to the maximum number entered)
+        config_list (numpy array of size 3, optional): current configuration entered by user, Defaults to np.array([0,0,1])
         config (str, optional): Choose from multiple possible 'configurations' (coil1, coil2, coil3) of currents. Possible values:
-            - 'z': coil currents all the same
-            - 'xy0', 'xy1',...: one coil on in positive direction, one in negative direction and one off
             - 'r': randomly generated configuration.
+            - 'z': (1,1,1)
+            - 'xy0': (1,0,-1)
         Defaults to 'z'.
         start_val (int, optional): [description]. Defaults to 0.
         end_val (int, optional): [description]. Defaults to 1.
@@ -65,35 +60,19 @@ def sweepCurrents(config='z', start_val=0, end_val=1, steps=5):
     all_curr_vals = np.zeros((steps, 3))
     directory = ''
     # some possible configurations
-    # TODO: read in configuration files with a series of configs
     current_direction = np.ndarray(3)
-    if config == 'z':
+    if config_list is not None:
+        max_val = abs(np.amax(config_list))
+        current_direction[0] = config_list[0] / max_val
+        current_direction[1] = config_list[1] / max_val
+        current_direction[2] = config_list[2] / max_val
+    elif config == 'z':
         current_direction[0] = 1
         current_direction[1] = 1
         current_direction[2] = 1
     elif config == 'xy0':
         current_direction[0] = 1
         current_direction[1] = 0
-        current_direction[2] = -1
-    elif config == 'xy1':
-        current_direction[0] = 1
-        current_direction[1] = -1
-        current_direction[2] = 0
-    elif config == 'xy2':
-        current_direction[0] = -1
-        current_direction[1] = 1
-        current_direction[2] = 0
-    elif config == 'xy3':
-        current_direction[0] = -1
-        current_direction[1] = 0
-        current_direction[2] = 1
-    elif config == 'xy4':
-        current_direction[0] = 0
-        current_direction[1] = -1
-        current_direction[2] = 1
-    elif config == 'xy5':
-        current_direction[0] = 0
-        current_direction[1] = 1
         current_direction[2] = -1
     # r for randomized
     elif config == 'r':
