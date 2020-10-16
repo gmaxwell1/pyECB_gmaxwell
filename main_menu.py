@@ -47,7 +47,7 @@ def MainMenu(initialized):
             print('[s]: get ECB status\n[r] roll a die\n')
 
             c1 = input()
-            
+
             if c1 == '1':
                 inp0 = input('File or manual input? (answer with f or m): ')
                 if inp0 == 'f':
@@ -72,16 +72,15 @@ def MainMenu(initialized):
                     except:
                         print('expected numerical value, defaulting to 200')
                         steps = 200
-                        
+
                     c1 = input('Automatic exit after finish? (x for yes): ')
-                    
+
                     with open(inpFile, 'r') as f:
                         contents = csv.reader(f)
                         for row in contents:
-                            config = np.array(float(row[0]),float(row[1]),float(row[2]))
+                            config = np.array(
+                                float(row[0]), float(row[1]), float(row[2]))
                             sweepCurrents(config, start_val, end_val, steps)
-                        
-
 
                 elif inp0 == 'm':
                     inp1 = input('Configuration:\nChannel 1: ')
@@ -90,15 +89,16 @@ def MainMenu(initialized):
                     inp4 = input('starting current in mA = ')
                     inp5 = input('ending current in mA = ')
                     inp6 = input('# of steps: ')
-                    
+
                     try:
                         a1 = float(inp1)
                         b1 = float(inp2)
                         c1 = float(inp3)
-                        config = np.array([a1,b1,c1])
+                        config = np.array([a1, b1, c1])
                     except:
-                        print('expected numbers (float or int), defaulting to (0,0,1)')
-                        config = np.array([0,0,1])
+                        print(
+                            'expected numbers (float or int), defaulting to (0,0,1)')
+                        config = np.array([0, 0, 1])
                     try:
                         start_val = int(inp4)
                     except:
@@ -114,11 +114,11 @@ def MainMenu(initialized):
                     except:
                         print('expected numerical value, defaulting to 1')
                         steps = 1
-                    
+
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
                     sweepCurrents(config, start_val, end_val, steps)
-  
+
                 else:
                     print('Using randomized current configuration.')
                     config = 'r'
@@ -126,12 +126,12 @@ def MainMenu(initialized):
                     inp2 = input('starting current in mA = ')
                     inp3 = input('ending current in mA = ')
                     inp4 = input('# of steps: ')
-                    
+
                     try:
                         randomRuns = int(inp1)
                     except:
                         print('expected numerical value, defaulting to 0')
-                        randomRuns = 0                
+                        randomRuns = 0
                     try:
                         start_val = int(inp2)
                     except:
@@ -147,12 +147,12 @@ def MainMenu(initialized):
                     except:
                         print('expected numerical value, defaulting to 1')
                         steps = 1
-                    
+
                     c1 = input('Automatic exit after finish? (x for yes): ')
-                
+
                     while randomRuns > 0:
-                            sweepCurrents(config, start_val, end_val, steps)
-                            randomRuns = randomRuns-1
+                        sweepCurrents(config, start_val, end_val, steps)
+                        randomRuns = randomRuns-1
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
@@ -217,13 +217,14 @@ def MainMenu(initialized):
                 else:
                     try:
                         timer = int(inp4)
-                        c1 = input('Automatic Termination after timer? (x for yes): ')
+                        c1 = input(
+                            'Automatic Termination after timer? (x for yes): ')
                     except:
                         print('expected numerical value, defaulting to 0')
                         timer = 0
                     runCurrents(
                         np.array([coil1, coil2, coil3]), timer, direct=b'1')
-                    
+
             # tentative implementation. Actual I-to-B actuation matrix needed.
             elif c1 == '4':
                 inp1 = input('Magnitude in mT = ')
@@ -245,7 +246,7 @@ def MainMenu(initialized):
                 except:
                     print('expected numerical value')
                     phi = 0
-                    
+
                 if inp4 == '':
                     generateMagneticField(mag, theta, phi, t=0, direct=b'1')
                 else:
@@ -255,7 +256,7 @@ def MainMenu(initialized):
                         print('expected numerical value')
                         timer = 0
                     generateMagneticField(mag, theta, phi, timer, direct=b'1')
-                
+
             elif c1 == '5':
                 inp1 = input('configuration 1\nChannel 1: ')
                 inp2 = input('Channel 2: ')
@@ -269,18 +270,18 @@ def MainMenu(initialized):
                     a1 = int(inp1)
                     b1 = int(inp2)
                     c1 = int(inp3)
-                    config1 = np.array([a1,b1,c1])
+                    config1 = np.array([a1, b1, c1])
                 except:
                     print('expected numerical value, defaulting to (0,0,1)')
-                    config1 = np.array([0,0,1])
+                    config1 = np.array([0, 0, 1])
                 try:
                     a2 = int(inp4)
                     b2 = int(inp5)
                     c2 = int(inp6)
-                    config2 = np.array([a2,b2,c2])
+                    config2 = np.array([a2, b2, c2])
                 except:
                     print('expected numerical value(s), defaulting to (0,1,0)')
-                    config2 = np.array([0,1,0])
+                    config2 = np.array([0, 1, 0])
                 try:
                     dt = float(inp7)
                 except:
@@ -311,5 +312,3 @@ if __name__ == '__main__':
 
     MainMenu(ecbInit)
     closeConnection()
-
-    

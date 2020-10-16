@@ -86,7 +86,8 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         return
 
     # create subdirectory to save measurements
-    subDirBase = config+'_field_meas'
+    subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
+        int(10*current_direction[1])), str(int(10*current_direction[0])))
     folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
@@ -100,7 +101,7 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         # tentative estimation of resulting B field
         B_expected = tr.computeMagField(
             current_direction*all_curr_steps[i], windings)
-        
+
         setCurrents(desCurrents, currDirectParam)
         # Let the field stabilize
         sleep(0.1)
