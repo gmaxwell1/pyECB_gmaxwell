@@ -319,10 +319,6 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
 
     plt.show()
 
-
-
-
-
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zmt',
                         plot_delta_sim = False, directory= None, image_name_postfix = 'B_vs_I', 
                         height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
