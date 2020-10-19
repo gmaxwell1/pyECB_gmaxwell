@@ -586,13 +586,15 @@ def abs_lin_and_const(x, x_kink, a):
     """
     return np.abs(lin_and_const(x, x_kink, a))
 
-def extract_time_dependence(filepath, omit_64=False):
+def extract_time_dependence(filepath, omit_64=False, sensorIsMetrolab=True):
     """
     Extract and return time and field data from the provided file.
 
     Args: 
     - filepath (string): valid path of the data file
-    - omit_64 (bool): flag to omit sensor 64 if True
+    - omit_64 (bool): flag to omit sensor 64 if True (only reasonable if sensorIsMetrolab=True)
+    - sensorIsMetrolab (bool): if True, the data originate from Metrolab THM1176 sensor, 
+    else from Calibration Cube
 
     Return:
     - times: ndarray of shape (number_sensors, measure_runs) containing the time estimates of measurements
@@ -606,31 +608,44 @@ def extract_time_dependence(filepath, omit_64=False):
     else:
         data = dataD.values
 
-    # adapt number of sensors depending on omit_64 flag
-    if omit_64:
-        number_sensors = 63
-    else:
-        number_sensors = 64
-    
-    # estimate number of measurement rounds
-    measure_runs = len(data) // number_sensors
-    
-    # initialize arrays for measurement outcomes
-    times = np.zeros((number_sensors, measure_runs))
-    B_fields = np.zeros((number_sensors, measure_runs, 3))
+    if sensorIsMetrolab:
+        # estimate number of measurement rounds
+        measure_runs = len(data)
 
-    # collect results for each sensor and save mean, std and abs(std/mean)
-    for i in range(number_sensors):
-        # collect data for sensor i
-        sensor_i_data = np.zeros((measure_runs, 5))
-        for k in range(measure_runs):
-            if (data[i+k*number_sensors,:].dtype == 'float64'):
-                sensor_i_data[k,:] = data[i+k*number_sensors,:]
-            else:
-                print("could not convert data properly! wrong data type: ", data[i+k*number_sensors,:].dtype)
-                sensor_i_data[k,:] = 0
+        # # initialize arrays for measurement outcomes
+        # times = np.zeros(measure_runs)
+        # B_fields = np.zeros((measure_runs, 3))
+
+        # collect results for each sensor and save mean, std and abs(std/mean)     
+        times = data[:,0]
+        B_fields = data[:, 1:4]
+
+    else:
+        # adapt number of sensors depending on omit_64 flag
+        if omit_64:
+            number_sensors = 63
+        else:
+            number_sensors = 64
         
-        times[i,:] = sensor_i_data[:,0]
-        B_fields[i,:,:] = sensor_i_data[:, 2:5]
+        # estimate number of measurement rounds
+        measure_runs = len(data) // number_sensors
+    
+        # initialize arrays for measurement outcomes
+        times = np.zeros((number_sensors, measure_runs))
+        B_fields = np.zeros((number_sensors, measure_runs, 3))
+
+        # collect results for each sensor and save mean, std and abs(std/mean)
+        for i in range(number_sensors):
+            # collect data for sensor i
+            sensor_i_data = np.zeros((measure_runs, 5))
+            for k in range(measure_runs):
+                if (data[i+k*number_sensors,:].dtype == 'float64'):
+                    sensor_i_data[k,:] = data[i+k*number_sensors,:]
+                else:
+                    print("could not convert data properly! wrong data type: ", data[i+k*number_sensors,:].dtype)
+                    sensor_i_data[k,:] = 0
+            
+            times[i,:] = sensor_i_data[:,0]
+            B_fields[i,:,:] = sensor_i_data[:, 2:5]
         
     return  times, B_fields

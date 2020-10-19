@@ -33,14 +33,14 @@ class MetrolabTHM1176Node(object):
         # if ret != "Metrolab Technology SA,THM1176-MF":
         #         raise(IOError, "Error opening Metrolab device")
 
-        self.average_count = 10
+        self.average_count = 1
         self.unit = "MT"
         self.sense_range_upper = "0.1 T"
 
         # Write settings to device
         #self.sensor.write(":format:data default")
-        #self.sensor.write(":average:count " + str(self.average_count))
-        #self.sensor.write(":unit " + self.unit)
+        self.sensor.write(":average:count " + str(self.average_count))
+        self.sensor.write(":unit " + self.unit)
         self.sensor.write(":sense:range:upper 0.1T")
         self.sensor.write(":sense:flux:range:auto off")
        

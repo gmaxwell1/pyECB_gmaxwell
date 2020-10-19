@@ -5,10 +5,11 @@ The following functions are used for measurements of the magnetic field using th
 
 Date: 19.10.2020
 """
+
 #%%
 import numpy as np
 import os 
-from time import time
+from time import time, sleep
 from datetime import datetime
 import pandas as pd
 
@@ -20,8 +21,6 @@ except ModuleNotFoundError:
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     from modules.serial_reader import MeasurementError, ensure_dir_exists
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
-
-
 
 #%%
 def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postfix='data_sets',
@@ -91,12 +90,19 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
 
 
 #%%
-sensor = MetrolabTHM1176Node()
+if __name__ == '__main__':
 
-meas_times, field = readoutMetrolabSensor(sensor, measure_runs=2, directory='./test_data')
+    sensor = MetrolabTHM1176Node()
+    # sensor.calibrate()
 
-print(field)
 
-del(sensor)
+    meas_times, field = readoutMetrolabSensor(sensor, measure_runs=2, directory='./test_data')
+
+    print(field)
+
+    del(sensor)
+
+
+
 
 # %%
