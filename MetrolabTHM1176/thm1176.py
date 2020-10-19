@@ -138,3 +138,4 @@ if __name__ == '__main__':
         print("Measured Field: [%f,%f,%f]\n"%(1e6*field[0],1e6*field[1],1e6*field[2]))
         
         sleep(1)
+# %%
