@@ -21,6 +21,7 @@ import transformations as tr
 from main_comm import *
 from measurements import *
 from modules.analysis_tools import generate_plots
+import MetrolabTHM1176.thm1176 as sens
 
 ##########  Current parameters ##########
 
@@ -189,7 +190,9 @@ def runCurrents(channels, t=0, direct=b'1'):
     """
     global currDirectParam
     global desCurrents
-
+    
+    node = sens.MetrolabTHM1176Node()
+    
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
@@ -222,7 +225,7 @@ def runCurrents(channels, t=0, direct=b'1'):
         c1 = '0'
         while c1 != 'q':
             c1 = input(
-                '[q] to disable currents\n[c]: get currents\n[r]: Set new currents\n[s]: get ECB status\n[t]: get coil temperature (useless)\n')
+                '[q] to disable currents\n[c]: get currents\n[r]: Set new currents\n[s]: get ECB status\n[f]: get magnetic field measurement\n')
             if c1 == 'c':
                 getCurrents()
             elif c1 == 'r':
@@ -245,8 +248,9 @@ def runCurrents(channels, t=0, direct=b'1'):
 
             elif c1 == 's':
                 print(getStatus())
-            elif c1 == 't':
-                getTemps()
+            elif c1 == 'f':
+                measArr = node.measureFieldArraymT(3)
+                print(measArr)
 
         disableCurrents()
     else:
