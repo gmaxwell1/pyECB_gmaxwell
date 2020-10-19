@@ -306,8 +306,6 @@ def direct_readout(cube: serial.Serial, measure_runs=int(1), fname_postfix='data
     Args:
     - cube (serial.Serial): represents the magnetic field sensor
     - measure_runs (int): Number of samples per fuction call per sensor
-    - runtimelimit_per_run (float): in seconds, waiting time for sensor before error message 
-      per measurment run
     - save_data (bool): if True, the results are stored in a csv-file
     - directory (string): valid path of the folder where data should be stored. The default name of the data file is
     'yy_mm_dd_hh-mm-ss_{fname_postfix}.csv'
