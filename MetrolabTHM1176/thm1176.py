@@ -20,39 +20,45 @@
 import usbtmc
 import numpy as np
 import logging
-from time import sleep
+from time import sleep, time
 
 class MetrolabTHM1176Node(object):
 
-    def __init__(self):
+    def __init__(self, average_count = 10, unit = "MT", sense_range_upper = "0.1 T",
+                 posx = 0.0, posy = 0.0, posz = 0.0, frequency = 5.0):
 
         logging.basicConfig(filename='metrolab.log', level=logging.DEBUG)
+        
+        self.is_open = False
 
         self.sensor = usbtmc.Instrument(0x1bfa, 0x0498)
         ret = self.sensor.ask("*IDN?")
+        print(ret)
         # if ret != "Metrolab Technology SA,THM1176-MF":
-        #         raise(IOError, "Error opening Metrolab device")
+        #     raise(OSError, "Error opening Metrolab device")
+        # else:
+        #     self.is_open = True
 
-        self.average_count = 10
-        self.unit = "MT"
-        self.sense_range_upper = "0.1 T"
+        self.average_count = average_count
+        self.unit = unit
+        self.sense_range_upper = sense_range_upper
 
         # Write settings to device
         #self.sensor.write(":format:data default")
-        #self.sensor.write(":average:count " + str(self.average_count))
+        self.sensor.write(":average:count " + str(self.average_count))
         self.sensor.write(":unit " + self.unit)
-        self.sensor.write(":sense:range:upper 0.1T")
+        self.sensor.write(":sense:range:upper " + self.sense_range_upper)
         self.sensor.write(":sense:flux:range:auto off")
        
         logging.debug('range upper %s', self.sensor.ask(":sense:range:upper?"))
 
-        self.posx = 0.0
-        self.posy = 0.0
-        self.posz = 0.0
-        self.frequency = 5.0
+        self.posx = posx
+        self.posy = posy
+        self.posz = posz
+        self.frequency = frequency
 
         logging.info('... End init')
-
+        
     def calibrate(self):
         self.sensor.write(":calibration:initiate")
         self.sensor.write(":calibration:state on")
@@ -64,7 +70,7 @@ class MetrolabTHM1176Node(object):
             self.sensor.write(":average:count " + str(num_meas))
             return True
         else:
-            print("MetrolabTHM1176:setAveringCount: value has to be between 1 and " + str(avg_max))
+            print("MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
             return False
     
     def getNumMeasurements(self):
@@ -75,6 +81,13 @@ class MetrolabTHM1176Node(object):
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,5').strip('MT'))
         By = float(self.sensor.ask(":measure:y? 0.01T,5").strip('MT'))
         Bz = float(self.sensor.ask(":measure:z? 0.01T,5").strip('MT'))
+        
+        return [Bx, By, Bz]
+    # added by gmaxwell
+    def readFieldmT(self):
+        Bx = float(self.sensor.ask(':read:scalar:flux:x? 0.01T,5').strip('MT'))
+        By = float(self.sensor.ask(":read:y? ,5").strip('MT'))
+        Bz = float(self.sensor.ask(":read:z? 0.01T,5").strip('MT'))
         
         return [Bx, By, Bz]
         
@@ -126,18 +139,31 @@ class MetrolabTHM1176Node(object):
     def isAutoRangeEnabled(self):
         ret = self.sensor.ask(':SENS:AUTO?')
         return ret == 'ON'
+    # added by gmaxwell
+    def readMemory(self):
+        filedir = self.sensor.ask(':MMEM:CAT?')
+        return filedir
+    
+    def getTimestamp(self):
+        timestamp = self.sensor.ask(':FETC:TIM?')
+        return timestamp
+    
+    # context manager to ba able to use a with...as... statement    
+    def __enter__(self):
+        if not self.sensor.connected:
+            self.sensor.open()
+            
+        return self
+    
+    def __exit__(self, type, value, traceback):
+        if self.sensor.connected:
+            self.sensor.close()
+            return not self.sensor.connected
+        else:
+            return isinstance(value, TypeError)
+        
 
 if __name__ == '__main__':
-
-    node = MetrolabTHM1176Node()
-    #node.calibrate()
-    #Continuously measure and publish mag field until shutdown
-    k = 0
-    while k < 10:
-        field=node.measureFieldmT()
-        print(node.getUnit())
-        k = k+1
-        
-        print("Measured Field: [%f,%f,%f]\n"%(field[0],field[1],field[2]))
-        
-        sleep(1)
+    with MetrolabTHM1176Node() as node:
+        triggers = node.sensor.ask(":TRIG:TIM?")
+        print(triggers)
