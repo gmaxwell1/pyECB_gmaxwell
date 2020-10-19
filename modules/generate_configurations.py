@@ -53,26 +53,29 @@ def generate_unique_combinations(num_vals):
                 indices_equivalent_pairs.append(i)
     unique_combinations = np.delete(unique_combinations, indices_equivalent_pairs, axis=0)
 
+    # reverse order for convenience to have 111 at the beginning 
+    unique_combinations = np.flip(unique_combinations, axis=0)
+
     return unique_combinations
 
 #%%
 # set the number of values between (incl) -1 and 1 that should be considered 
 num_vals = 2
 
+for num_vals in range(2,10):
+    # generate the set
+    unique_combinations = generate_unique_combinations(num_vals)
 
-# generate the set
-unique_combinations = generate_unique_combinations(num_vals)
-
-# save the combinations to csv file
-directory = '../config_files'
+    # save the combinations to csv file
+    directory = '../config_files'
 
 
-df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
-                    'ratio coil 2': unique_combinations[:,1], 
-                    'ratio coil 3': unique_combinations[:,2]})
+    df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
+                        'ratio coil 2': unique_combinations[:,1], 
+                        'ratio coil 3': unique_combinations[:,2]})
 
-output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
-data_filepath = os.path.join(directory, output_file_name)
-df.to_csv(data_filepath, index=False, header=True)
+    output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
+    data_filepath = os.path.join(directory, output_file_name)
+    df.to_csv(data_filepath, index=False, header=True)
 
 # %%
