@@ -100,8 +100,6 @@ if __name__ == '__main__':
 
     print(field)
 
-    del(sensor)
-
 
 
 
