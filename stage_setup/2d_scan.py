@@ -32,12 +32,12 @@ finally:
 
 # %%
 # set measurement parameters and folder name
-sampling_size = 10 # number of measurements per sensor for averaging
+sampling_size = 20 # number of measurements per sensor for averaging
 
 directory = './test_data/2d_scans'
 
-# set minimum set size, i.e. the precision of the calibration process
-grid_number = 20
+# number of grid points per dimension
+grid_number = 25
 
 # %%
 # initialize actuators
@@ -71,7 +71,6 @@ with MetrolabTHM1176Node() as node:
     positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, z_offset, 
                                       xlim=limits_x, ylim=limits_y, grid_number=grid_number,
                                       sampling_size=sampling_size, save_data=True, directory=directory)
-
 
 #%%
 # this part uses the Calibration Cube as Sensor
