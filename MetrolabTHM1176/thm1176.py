@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 # Tesla - A ROS-based framework for performing magnetic manipulation
 #
 # Copyright 2018 Multi Scale Robotics Lab
@@ -211,5 +209,7 @@ class MetrolabTHM1176Node(object):
         
 if __name__ == '__main__':
     with MetrolabTHM1176Node(sense_range_upper="0.1 T") as node:
+        a = time()
         print(node.measureFieldArraymT(10))
+        diff = time() - a
         
