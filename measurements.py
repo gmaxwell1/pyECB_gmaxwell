@@ -10,7 +10,6 @@ Author: Nicholas Meinhardt, Maxwell Guerne-Kieferndorf (QZabre)
 
 Date: 08.10.2020
 """
-
 ########## Standard library imports ##########
 import numpy as np
 import serial
@@ -22,10 +21,11 @@ from datetime import datetime
 
 ########## local imports ##########
 from modules.conexcc_control import *
-from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
-from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
-from modules.serial_reader import get_new_data_set, ensure_dir_exists
-
+# from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
+# from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
+# from modules.serial_reader import get_new_data_set, ensure_dir_exists
+import MetrolabTHM1176.thm1176 as metro
+from modules.MetrolabMeasurements import readoutMetrolabSensor, get_mean_dataset_MetrolabSensor
 
 __all__ = [
     'newMeasurementFolder',
@@ -69,29 +69,38 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def measure(dataDir, N=50, specific_sensor=55):
+def measure(dataDir, N=50, average=False):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
     
     Args:
     -dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
     -N: number of data points collected for each average
-    -specific_sensor: sensor from which data will be fetched
+    -specific_sensor: sensor from which data will be fetched, only with hall sensor cube
 
     Returns: 
-    -mean measurement data of 'specific_sensor' (averaged over N measurements)
-    -standard deviation in each averaged measurment
+    -meas_time: measurement time(s)
+    -
+    -mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
+    -std_data: standard deviation in each averaged measurment
     (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
     ensure_dir_exists(dataDir, verbose=False)
 
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
-    with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+    with metro.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
+        char = '0'
+        while char != ''
+            node.calibrate()
+            char = input('Press Enter when done')
+        if average:
         # measure average field with one specific sensor
-        mean_data, std_data = get_new_mean_data_set(measure_runs=N, cube=cube, specific_sensor=specific_sensor)
-
-    # see .\modules\calibrate_cube.py for more details on this function
-    return mean_data, std_data
+            mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=3, save_mean_data=True, directory=dataDir)
+            return mean_data, std_data
+        else:
+            meas_time, meas_data = readoutMetrolabSensor(node, measure_runs=N, directory=dataDir, save_data=True)
+            # see .\modules\MetrolabMeasurements.py for more details on this function
+            return meas_time, meas_data
 
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):

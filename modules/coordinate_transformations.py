@@ -28,7 +28,7 @@ def sensor_to_magnet_coordinates(data):
     data_magnet_coords = np.zeros_like(data)
     
     # treat 1d arrays and multi-dimensional arrays differently
-    if len(data.shape)==1:
+    if len(data.shape) == 1:
         data_magnet_coords[0] = -data[2]
         data_magnet_coords[1] = -data[0]
         data_magnet_coords[2] = data[1]
