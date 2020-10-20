@@ -131,6 +131,9 @@ if __name__ == '__main__':
 
     node = MetrolabTHM1176Node()
 
+    print(node.getSenseRangeUpper())
+    print(node.getAvailableSenseRangeUpper())
+
     #Continuously measure and publish mag field until shutdown
     while True:
         field=node.measureFieldmT()

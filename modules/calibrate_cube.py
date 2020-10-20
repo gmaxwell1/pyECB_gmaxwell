@@ -452,7 +452,7 @@ def get_new_mean_data_set(measure_runs, cube, specific_sensor=None, omit_64=Fals
     - verbose (bool): switching on/off print-statements for displaying progress
 
     Return: 
-    - mean_data, std_data (ndarrays): Mean magnetic field and it the standard deviation as a vector, 
+    - mean_data, std_data (ndarrays): Mean magnetic field and its standard deviation as a vector, 
     either for all sensors or for a single sensor only. If specific_sensor=None, both arrays are of shape (number sensors, 3),
     else they are 1d arrays of length 3.
 
