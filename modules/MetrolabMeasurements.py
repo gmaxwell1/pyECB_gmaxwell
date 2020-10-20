@@ -32,7 +32,7 @@ finally:
 
 #%%
 def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postfix='data_sets',
-                    directory = './data_sets', verbose=False, save_data=True, single_measurements=False):
+                    directory = './data_sets', verbose=False, save_data=True):
     """
     Read measurement outcomes of Metrolab THM1176 sensor and return the estimated B-field [mT] in magnet coordinates, 
     also save data if desired.
@@ -46,8 +46,6 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     - directory (string): valid path of the folder where data should be stored. The default name of the data file is
     'yy_mm_dd_hh-mm-ss_{fname_postfix}.csv'
     - fname_postfix (string): postfix of data file (csv).
-    - single measurements (bool): Flag to choose between measuring the field 
-    with repeated measure-statements (if True) or an measurement:array statement (if False)
 
     Return:
     - meas_time (ndarray of length=measure_runs): Contains the time of each measurement relative 
@@ -59,25 +57,21 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     Possible reasons are that a sensor was skipped or that an incomplete message was received from the sensor. 
 
     """
-    if single_measurements:
+    if measure_runs == 1:
         # initialize ndarray to store the measurement data and time
-        meas_data = np.zeros((measure_runs, 3))
-        meas_time = np.zeros(measure_runs)
+        meas_data = np.zeros(3)
+        meas_time = 0
 
         # get current time before starting
         t_start = time()
 
-        # read in data from sensor for all measurement runs and sensors 
-        for run in range(measure_runs):
+        # read the current output of sensor and save measured magnetic field
+        meas_data = np.array(node.measureFieldmT())
 
-            # read the current output of sensor and save measured magnetic field
-            meas_data[run, :] = node.measureFieldmT()
+        # save the current time
+        meas_time = time() - t_start
 
-            # save the current time
-            current_time = time() - t_start
-            meas_time[run] = current_time
-        
-    else:
+    elif measure_runs > 1:
         # get current time before starting
         t_start = time()
 
@@ -87,6 +81,9 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
         # assume that each measurement took the same time, such that the times of measurements 
         # are equally spaced between initial and final time and offset such that t_start = 0
         meas_time = np.linspace(0, time() - t_start, num=len(meas_data))
+        
+    else:
+        raise ValueError("measure_runs must be >= 1!")
 
     # due to the setup, transform sensor coordinates to magnet coordinates
     meas_data = sensor_to_magnet_coordinates(meas_data)
@@ -140,8 +137,7 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
     # perform measurement and collect the raw data 
     for _ in range(max_num_retrials):
         try:
-            _, meas_data = readoutMetrolabSensor(node, measure_runs=sampling_size, save_data=save_raw_data, 
-                                    directory=directory, fname_postfix='raw_data', verbose=verbose)
+            meas_data = np.array(node.measureFieldArraymT(sampling_size)).swapaxes(0, 1)
         except:
             pass
         else:

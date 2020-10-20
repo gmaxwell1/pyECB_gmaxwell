@@ -24,8 +24,7 @@ from time import sleep, time
 
 class MetrolabTHM1176Node(object):
 
-    def __init__(self, average_count = 10, unit = "MT", sense_range_upper = "0.1 T",
-                 posx = 0.0, posy = 0.0, posz = 0.0, frequency = 5.0):
+    def __init__(self, average_count = 10, unit = "MT", sense_range_upper = "0.1 T"):
 
         logging.basicConfig(filename='metrolab.log', level=logging.DEBUG)
         
@@ -49,13 +48,17 @@ class MetrolabTHM1176Node(object):
         self.sensor.write(":unit " + self.unit)
         self.sensor.write(":sense:range:upper " + self.sense_range_upper)
         self.sensor.write(":sense:flux:range:auto off")
-       
+        
+        self.sensor.write(":TRIG:SOUR DEF")
+        self.sensor.write(":TRIG:TIM DEF")
+        self.sensor.write(":TRIG:COUN DEF")        
+
         logging.debug('range upper %s', self.sensor.ask(":sense:range:upper?"))
 
-        self.posx = posx
-        self.posy = posy
-        self.posz = posz
-        self.frequency = frequency
+        self.posx = 0.0
+        self.posy = 0.0
+        self.posz = 0.0
+        self.frequency = 5
 
         logging.info('... End init')
 
@@ -96,8 +99,13 @@ class MetrolabTHM1176Node(object):
         # else:
         #     arg = trig_period
         
+<<<<<<< HEAD
         # node.sensor.write(":TRIG:TIM " + arg)
         # node.sensor.write(":TRIG:SOUR TIM")
+=======
+        # self.sensor.write(":TRIG:TIM " + arg)
+        # self.sensor.write(":TRIG:SOUR TIM")
+>>>>>>> 67f7529535a0d3e531229976e4183115f09918bc
         
         ret = self.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
         Bx_str = ret.split(",")
@@ -120,7 +128,11 @@ class MetrolabTHM1176Node(object):
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
         
+<<<<<<< HEAD
         # node.sensor.write(":TRIG:SOUR DEF")
+=======
+        # self.sensor.write(":TRIG:SOUR DEF")
+>>>>>>> 67f7529535a0d3e531229976e4183115f09918bc
 
         return [Bx, By, Bz]
     
@@ -130,11 +142,11 @@ class MetrolabTHM1176Node(object):
         direct_vals = []
         
         for k in range(num_meas):
-            node.sensor.write(":INIT")
-            ret1 = node.sensor.ask(":FETC:X? 5")
-            ret2 = node.sensor.ask(":FETC:Y? 5")
-            ret3 = node.sensor.ask(":FETC:Z? 5")
-            ret4 = node.sensor.ask(":FETC:TIM?")
+            self.sensor.write(":INIT")
+            ret1 = self.sensor.ask(":FETC:X? 5")
+            ret2 = self.sensor.ask(":FETC:Y? 5")
+            ret3 = self.sensor.ask(":FETC:Z? 5")
+            ret4 = self.sensor.ask(":FETC:TIM?")
                 
             direct_vals.append([ret1,ret2,ret3,ret4])
         
@@ -207,5 +219,6 @@ class MetrolabTHM1176Node(object):
         
         
 if __name__ == '__main__':
-    with MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
-        node.measureFieldArraymT(35)
+    with MetrolabTHM1176Node(sense_range_upper="0.1 T") as node:
+        print(node.measureFieldArraymT(10))
+        

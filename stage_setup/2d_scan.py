@@ -37,7 +37,7 @@ sampling_size = 10 # number of measurements per sensor for averaging
 directory = './test_data/2d_scans'
 
 # set minimum set size, i.e. the precision of the calibration process
-grid_number = 10
+grid_number = 20
 
 # %%
 # initialize actuators
