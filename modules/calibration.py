@@ -28,6 +28,8 @@ from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 from modules.MetrolabMeasurements import get_mean_dataset_MetrolabSensor
 
 
+#%%
+
 def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, node: MetrolabTHM1176Node, height, xlim=None, ylim=None,
            grid_number=50, sampling_size=10, verbose=False, save_data=False, directory=None):
     """
@@ -104,9 +106,9 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, node: MetrolabTHM1176Node, height, xli
             success = CC_X.move_relative(x_step)
             # if the actuator would have to move out of bounds, use absolute movement 
             if not success:
-                if CC_X.read_cur_pos() + x_step < CC_X.min_limit:
+                if CC_X.read_cur_pos() + x_step <= CC_X.min_limit:
                     CC_X.move_absolute(CC_X.min_limit)
-                elif CC_X.read_cur_pos() + x_step > CC_X.max_limit:
+                elif CC_X.read_cur_pos() + x_step >= CC_X.max_limit:
                     CC_X.move_absolute(CC_X.max_limit)
 
         for j in range(grid_number + 1):    # along y    
@@ -114,9 +116,9 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, node: MetrolabTHM1176Node, height, xli
                 success = CC_Y.move_relative((-1)**i * y_step)
                 # if the actuator would have to move out of bounds, use absolute movement
                 if not success:
-                    if CC_Y.read_cur_pos() + (-1)**i * y_step < CC_Y.min_limit:
+                    if CC_Y.read_cur_pos() + (-1)**i * y_step <= CC_Y.min_limit:
                         CC_Y.move_absolute(CC_Y.min_limit)
-                    elif CC_Y.read_cur_pos() + (-1)**i * y_step > CC_Y.max_limit:
+                    elif CC_Y.read_cur_pos() + (-1)**i * y_step >= CC_Y.max_limit:
                         CC_Y.move_absolute(CC_Y.max_limit)
                 
             all_ready(CC_X, CC2=CC_Y, verbose=verbose)
@@ -345,5 +347,5 @@ def estimate_theta_error(node: MetrolabTHM1176Node, sampling_size=20):
     """
     field_vector = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
     mag = np.linalg.norm(field_vector)
-    theta = np.arccos(field_vector[2]/mag)
+    return  90 - np.degrees(np.arccos(field_vector[2]/mag))
 

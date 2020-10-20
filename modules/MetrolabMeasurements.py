@@ -143,13 +143,18 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
         else:
             break
     
-    # estimate the mean and std from raw data for each sensor
+    
     try:
-        mean_data = np.mean(meas_data, axis=0)
-        std_data = np.std(meas_data, axis=0)
+        # due to the setup, transform sensor coordinates to magnet coordinates
+        meas_data = sensor_to_magnet_coordinates(meas_data)
+        
     # if it was not possible to obtain valid measurement results after max_num_retrials, raise MeasurementError, too
     except UnboundLocalError:
         raise MeasurementError
+
+    # estimate the mean and std from raw data for each sensor
+    mean_data = np.mean(meas_data, axis=0)
+    std_data = np.std(meas_data, axis=0)
     
     # save mean data if desired
     if save_mean_data:

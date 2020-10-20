@@ -20,6 +20,8 @@ import matplotlib.cm as cm
 from datetime import datetime
 from itertools import product
 
+from modules.general_functions import angle_wrt_z, inplane_angle_wrt_x
+
 
 # %%
 def estimate_std_theta(mean_values, std_values):
@@ -136,7 +138,7 @@ def extract_raw_data_from_2d_scan(filepath):
     return positions, B_field
 
 def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Show=True,
-             title_on=True, cmin=None, cmax=None, single_comp=None, center_position=None):
+             title_on=True, cmin=None, cmax=None, plot_component='m', center_position=None):
     """
     Generate 3d plot of 2d-sweep data in the sensor coordinate system.
 
@@ -158,10 +160,12 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     - Cont (bool): flag to switch on/off plotting contours for z=const, i.e. flat surfaces with interpolation 
     between data points and the surfaces are stacked on top of each other.
     - Show (bool): flag to switch on/off plt.show() command 
-    - single_comp (string): flag to choose how data should be plotted, possible values are None,'x','y','z','xy':
-    None (or invalid flag): euclidian norm/magnitude of magnetic field vector. 
+    - plot_component (string): flag to choose how data should be plotted, possible values are:
+    'm' (or any invalid value): euclidian norm/magnitude of magnetic field vector. 
     'x', 'y', 'z': plot the according vector component.
     'xy': euclidian norm of in-plane component of field (i.e. x,y components)
+    'theta': angle wrt z-axis in degrees
+    'phi': inplane angle wrt to x-axis in degrees
     - center_position (None or 1d array of length 2): If an array [x,y] is provided, a red dot is plotted
     at this position. The passed positions are in stage coordinates and will be transformed to 
     sensor coordinates. 
@@ -188,22 +192,30 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     
     # choose which data should be plotted. 
     # abbriviate notation using itertools.product
-    if single_comp == 'x':
+    if plot_component == 'x':
         label = '$B_x$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 0]
-    elif single_comp == 'y':
+    elif plot_component == 'y':
         label = '$B_y$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 1]
-    elif single_comp == 'z':
+    elif plot_component == 'z':
         label = '$B_z$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 2]
-    elif single_comp == 'xy':
+    elif plot_component == 'xy':
         label = 'in-plane magnitude $|B_{xy}|$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = np.sqrt(B_field[i+points_per_side*j, 0]**2 + B_field[i+points_per_side*j, 1]**2)
+    elif plot_component == 'theta':
+        label = '$\theta$ [°]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = np.degrees(angle_wrt_z(B_field[i+points_per_side*j, :]))
+    elif plot_component == 'phi':
+        label = '$\phi$ [°]'
+        for i,j in product(range(points_per_side), range(points_per_side)):
+            mag[j,i] = np.degrees(inplane_angle_wrt_x(B_field[i+points_per_side*j, :]))
     else:
         label = 'total magnitude $|B|$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
@@ -252,7 +264,6 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
                         remove_first_half=True):
     """
     Generate plot of the currents in all three coils vs the magnetude of the magnetic field.
-
 
     Args:   
     - I, mean_values, std_values, expected_values are ndarrays of shape (#measurements, 3), 

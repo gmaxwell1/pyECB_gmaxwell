@@ -29,6 +29,12 @@ def angle_wrt_z(vec):
     mag = norm(vec)
     return np.arccos(vec[2]/mag)
 
+def inplane_angle_wrt_x(vec):
+    """
+    Return angle (radian) of vector with respect to z axis.
+    """
+    return np.arctan2(vec[1], vec[0])
+
 def sensor_to_magnet_coordinates(data):
     """
     Transform from Metrolab sensor coordinates to magnet coordinates, using the following transformation:
@@ -48,9 +54,9 @@ def sensor_to_magnet_coordinates(data):
         data_magnet_coords[1] = -data[0]
         data_magnet_coords[2] = data[1]
     else:
-        data_magnet_coords[:,0] = -data[:,2]
-        data_magnet_coords[:,1] = -data[:,0]
-        data_magnet_coords[:,2] = data[:,1]
+        data_magnet_coords[...,0] = -data[...,2]
+        data_magnet_coords[...,1] = -data[...,0]
+        data_magnet_coords[...,2] = data[...,1]
 
     return data_magnet_coords
 
@@ -73,9 +79,9 @@ def magnet_to_sensor_coordinates(data):
         data_magnet_coords[1] = data[2]
         data_magnet_coords[2] = -data[0]
     else:
-        data_magnet_coords[:,0] = -data[:,1]
-        data_magnet_coords[:,1] = data[:,2]
-        data_magnet_coords[:,2] = -data[:,0]
+        data_magnet_coords[...,0] = -data[...,1]
+        data_magnet_coords[...,1] = data[...,2]
+        data_magnet_coords[...,2] = -data[...,0]
 
     return data_magnet_coords
 
@@ -97,9 +103,9 @@ def transform_between_sensor_stage_coordinates(data):
         data_magnet_coords[1] = -data[0]
         data_magnet_coords[2] = data[2]
     else:
-        data_magnet_coords[:,0] = -data[:,1]
-        data_magnet_coords[:,1] = -data[:,0]
-        data_magnet_coords[:,2] = data[:,2]
+        data_magnet_coords[...,0] = -data[...,1]
+        data_magnet_coords[...,1] = -data[...,0]
+        data_magnet_coords[...,2] = data[...,2]
 
     return data_magnet_coords
 
