@@ -97,13 +97,8 @@ class MetrolabTHM1176Node(object):
         # else:
         #     arg = trig_period
         
-<<<<<<< HEAD
         # self.sensor.write(":TRIG:TIM " + arg)
         # self.sensor.write(":TRIG:SOUR TIM")
-=======
-        # node.sensor.write(":TRIG:TIM " + arg)
-        # node.sensor.write(":TRIG:SOUR TIM")
->>>>>>> 13a292e98dd21452783c78e964969f9b649038f3
         
         ret = self.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
         Bx_str = ret.split(",")
@@ -126,11 +121,7 @@ class MetrolabTHM1176Node(object):
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
         
-<<<<<<< HEAD
         # self.sensor.write(":TRIG:SOUR DEF")
-=======
-        # node.sensor.write(":TRIG:SOUR DEF")
->>>>>>> 13a292e98dd21452783c78e964969f9b649038f3
 
         return [Bx, By, Bz]
     
