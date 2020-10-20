@@ -21,7 +21,6 @@ import transformations as tr
 from main_comm import *
 from measurements import *
 from modules.analysis_tools import generate_plots
-import MetrolabTHM1176.thm1176 as sens
 
 ##########  Current parameters ##########
 
@@ -164,7 +163,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # collect measured magnetic field (of the specified sensor in measurements)
-        mean_data, std_data = measure(filePath, N=15)
+        mean_data, std_data = measure(filePath, N=15, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
@@ -247,9 +246,8 @@ def runCurrents(channels, t=0, direct=b'1'):
             elif c1 == 's':
                 print(getStatus())
             elif c1 == 'f':
-                with sens.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
-                    measArr = node.measureFieldArraymT(3)
-                    print(measArr)
+                measArr = measure(None, 5, True)
+                
 
         disableCurrents()
     else:

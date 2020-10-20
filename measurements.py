@@ -80,24 +80,26 @@ def measure(dataDir, N=50, average=False):
 
     Returns: 
     -meas_time: measurement time(s)
-    -
+    -meas_data: measured fields (x, y, z componenents)
     -mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
     -std_data: standard deviation in each averaged measurment
     (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
-    ensure_dir_exists(dataDir, verbose=False)
+    if dataDir is not None:
+        ensure_dir_exists(dataDir, verbose=False)
 
     # establish temporary connection to calibration cube: open serial port; baud rate = 256000
     with metro.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
-        char = '0'
-        while char != ''
-            node.calibrate()
-            char = input('Press Enter when done')
+        char = input('Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+        if char == '':
+            node.calibrate()        
+            
         if average:
-        # measure average field with one specific sensor
-            mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=3, save_mean_data=True, directory=dataDir)
+            # measure average field at one point with the specific
+            mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N, save_mean_data=True, directory=dataDir)
             return mean_data, std_data
         else:
+            # This option is more for getting time-field measurements.
             meas_time, meas_data = readoutMetrolabSensor(node, measure_runs=N, directory=dataDir, save_data=True)
             # see .\modules\MetrolabMeasurements.py for more details on this function
             return meas_time, meas_data
