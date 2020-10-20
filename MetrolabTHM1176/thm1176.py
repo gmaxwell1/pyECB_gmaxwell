@@ -128,17 +128,10 @@ class MetrolabTHM1176Node(object):
         return ret == 'ON'
 
 if __name__ == '__main__':
-
     node = MetrolabTHM1176Node()
-<<<<<<< HEAD
+    # node.calibrate()
+    # Continuously measure and publish mag field until shutdown
 
-    print(node.getSenseRangeUpper())
-    print(node.getAvailableSenseRangeUpper())
-
-=======
-    #node.calibrate()
->>>>>>> cf8ca2f050158fd16bdeccc81c1b64dff013f3b1
-    #Continuously measure and publish mag field until shutdown
     k = 0
     while k < 10:
         field=node.measureFieldmT()

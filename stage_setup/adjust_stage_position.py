@@ -27,30 +27,37 @@ except ModuleNotFoundError:
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
 finally:
     from modules.conexcc_control import setup, reset_to, get_coords
-    from modules.calibrate_cube import find_center_axis, angle_calib, av_single_sens
+    from modules.calibrate_cube import find_center_axis, angle_calib, av_single_sens, find_center_axis_with_cube
     from modules.plot_hall_cube import plot_angle_spherical, plot_angle
     from modules.serial_reader import get_new_data_set
+    from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
+    from modules.MetrolabMeasurements import get_mean_dataset_MetrolabSensor
     
 
 
 # %%
 # set measurement parameters and folder name
-N = 25  # number of measurements per sensor for averaging
-specific_sensor = 55
+sampling_size = 25  # number of measurements per sensor for averaging
+
+#%%
+# settings when using calibration cube
+# specific_sensor = 55
+
+# # initialize sensor
+# port_sensor = 'COM4'
 
 # %%
 # initialize actuators
-init_pos = np.array([6.1869, 2.1585, 15.1])
+init_pos = np.array([5.5, 12.5, 15.1])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
-# initialize sensor
-port_sensor = 'COM4'
+
 
 # %%
 # manually adjust z
-z_offset = 14.7
-new_pos = [25, 25, z_offset]
+z_offset = 8
+new_pos = [5.5, 14, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
@@ -73,11 +80,10 @@ update_factor = 3
 extended = False
 
 # %%
-# establish permanent connection to calibration cube: open serial port; baud rate = 256000
-with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+with MetrolabTHM1176Node() as node:
 
     # find center axis
-    center_pos, fx = find_center_axis(CC_X, CC_Y, cube, specific_sensor=specific_sensor, extended=extended, 
+    center_pos, fx = find_center_axis(CC_X, CC_Y, node, extended=extended, 
                                       limits_x=limits_x, limits_y=limits_y, grid_number=grid_number,
                                       min_step_size=min_step_size, update_factor=update_factor)
 
@@ -85,19 +91,50 @@ with serial.Serial(port_sensor, 256000, timeout=2) as cube:
     start = np.append(center_pos, z_offset)
     reset_to(start, CC_X, CC2=CC_Y, CC3=CC_Z)
 
-    field = av_single_sens(cube, specific_sensor, 50)
+    field = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
     print('final field: {} mT'.format(np.round(field, 3)))
     print('in-plane field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
 
 
-# %%
+#%%
 # plot the current angles theta and phi in a spherical plot
-with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+with MetrolabTHM1176Node() as node:
     for _ in range(10):
-        B = get_new_data_set(cube=cube, specific_sensor=specific_sensor, no_enter=True)
+        B = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
         plot_angle_spherical(B)
 
+
+
+
+# %% ----------------------------------------------------------------
+# this part is only relevant when using Calibration Cube
+
+
+
+# establish permanent connection to calibration cube: open serial port; baud rate = 256000
+# with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+
+#     # find center axis
+#     center_pos, fx = find_center_axis_with_cube(CC_X, CC_Y, cube, specific_sensor=specific_sensor, extended=extended, 
+#                                       limits_x=limits_x, limits_y=limits_y, grid_number=grid_number,
+#                                       min_step_size=min_step_size, update_factor=update_factor)
+
+#     print('\nEstimated center position: ({:.4f}, {:.4f})'.format(center_pos[0], center_pos[1]))
+#     start = np.append(center_pos, z_offset)
+#     reset_to(start, CC_X, CC2=CC_Y, CC3=CC_Z)
+
+#     field = av_single_sens(cube, specific_sensor, 50)
+#     print('final field: {} mT'.format(np.round(field, 3)))
+#     print('in-plane field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
+
 # %%
-with serial.Serial(port_sensor, 256000, timeout=2) as cube:
-    B = av_single_sens(cube, specific_sensor, N)
-print(np.round(B,4))
+# # plot the current angles theta and phi in a spherical plot
+# with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+#     for _ in range(10):
+#         B = get_new_data_set(cube=cube, specific_sensor=specific_sensor, no_enter=True)
+#         plot_angle_spherical(B)
+
+# # %%
+# with serial.Serial(port_sensor, 256000, timeout=2) as cube:
+#     B = av_single_sens(cube, specific_sensor, N)
+# print(np.round(B,4))

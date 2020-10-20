@@ -44,6 +44,8 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     - directory (string): valid path of the folder where data should be stored. The default name of the data file is
     'yy_mm_dd_hh-mm-ss_{fname_postfix}.csv'
     - fname_postfix (string): postfix of data file (csv).
+    - single measurements (bool): Flag to choose between measuring the field 
+    with repeated measure-statements (if True) or an measurement:array statement (if False)
 
     Return:
     - meas_time (ndarray of length=measure_runs): Contains the time of each measurement relative 
@@ -113,7 +115,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     return meas_time, meas_data
 
 def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, verbose=False, max_num_retrials=5,
-                            save_raw_data= False, save_mean_data=False, directory=None):
+                            save_raw_data= False, save_mean_data=False, directory=None, single_measurements=False):
     """
     Estimate field vectors with Metrolab sensor sampling_size-times and return the mean and std 
     as 1d-ndarrays of length 3. 
@@ -126,6 +128,8 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
     - save_raw_data (bool): if True, the raw data estimated during each measurement round for each sensor are saved as a csv-file.
     - save_mean_data (bool): if True, the mean data averaged over all measurement rounds for each sensor are saved as a csv-file.
     - verbose (bool): switching on/off print-statements for displaying progress
+    - single measurements (bool): Flag to choose between measuring the field 
+    with repeated measure-statements (if True) or an measurement:array statement (if False)
 
     Return: 
     - mean_data, std_data (ndarrays of of shape (number sensors, 3)): Mean magnetic field and 
@@ -178,15 +182,12 @@ if __name__ == '__main__':
     durations = meas_times[1:] - meas_times[:-1]
     print('average duration (single) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
 
-<<<<<<< HEAD
     # then try with array of measurements using measureFieldArraymT method of sensor
     meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data',
                                                 single_measurements=False)
 
     durations = meas_times[1:] - meas_times[:-1]
     print('average duration (arrays) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
-=======
->>>>>>> cf8ca2f050158fd16bdeccc81c1b64dff013f3b1
 
     del(sensor)
 
