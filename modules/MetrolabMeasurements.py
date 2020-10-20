@@ -178,17 +178,13 @@ if __name__ == '__main__':
     durations = meas_times[1:] - meas_times[:-1]
     print('average duration (single) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
 
-<<<<<<< HEAD
     # then try with array of measurements using measureFieldArraymT method of sensor
     meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data',
                                                 single_measurements=False)
 
     durations = meas_times[1:] - meas_times[:-1]
     print('average duration (arrays) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
-=======
->>>>>>> cf8ca2f050158fd16bdeccc81c1b64dff013f3b1
 
-    del(sensor)
 
 
 # %%
