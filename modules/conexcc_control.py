@@ -21,6 +21,7 @@ import pandas as pd
 
 ########## local imports ##########
 from conexcc.conexcc_class import *
+from modules.general_functions import save_in_dir
 
 
 def all_ready(CC1: ConexCC, CC2=None, CC3=None, timeout=30, verbose=False):
@@ -92,7 +93,6 @@ def get_coords(CC1, CC2=None, CC3=None):
     for i in range(len(axes)):
         ret_ax.append(chr(axes[i]))
     return pos, np.asarray(ret_ax)
-
 
 def reset_to(position, CC1, CC2=None, CC3=None):
     """
@@ -274,70 +274,29 @@ def setup(reset_position, COM_ports=['COM7', 'COM6', 'COM5'], verbose=False):
 
     return CC_X, CC_Y, CC_Z
 
-
-def save_in_dir(means, directory, label, stds=None, coords=False, now=False):
+def check_validity(min_val, max_val, CC1: ConexCC):
     """
-    Write the provided means and (optional) standard deviations to the file 'means_'+label+'.csv' 
-    or 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv' in provided directory.
+    Compare min_val and max_val with hard limits of the actuator. If values are within these bounds, 
+    return them. Else replace the invalid boundary with the corresponding limit set by the actuator.
 
-    The coords flag distinguishes between magnetic field strength (False) and spatial coordinates (True) as source of the data.
+    Args: 
+    - min_val < max_val (float)
+    - CC1, CC2 (conexcc_class instances): represent two (e.g. x and y) actuators
 
-    Args:
-    - means (array or list): measured mean values of B-field or coordinates 
-    - directory (string): valid path of the directory in which the file should be stored
-    - label (string or float): used to label the csv file  
-    - stds (array or list): measured standard deviations of B-field or coordinates. 
-    Should have at least the same size as means.
-    - coords (bool): Flag to switch between B-field (False) and spatial coordinates (True)
-    - verbose (bool): switching on/off print-statements for displaying progress
-    - now (bool): if True, the current date time is added to the filename, 
-    such that it reads 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv'
+    Returns: valid_min_val, valid_max_val
     """
-    # Under Linux, user rights can be set with the scheme below,
-    # where 755 means read+write+execute for owner and read+execute for group and others.
-    # However, note that you can only set the file’s read-only flag with it under Windows.
-    access_rights = 0o755
-    os.chmod(directory, access_rights)
-
-    if now:
-        time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
-        output_file_name = "{}_means_{}.csv".format(time_stamp, label)
-    else:
-        output_file_name = "means_{}.csv".format(label)
-    data_filepath = os.path.join(directory, output_file_name)
-
-    if stds is not None and not coords:
-        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
-                            'std Bx [mT] ': stds[:, 0], 
-                            'mean By [mT]':  means[:, 1], 
-                            'std By [mT] ': stds[:, 1],
-                            'mean Bz [mT]':  means[:, 2], 
-                            'std Bz [mT] ': stds[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-    
-    elif not coords:
-        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
-                            'mean By [mT]':  means[:, 1], 
-                            'mean Bz [mT]':  means[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-
-    elif coords and stds is None:
-        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
-                            'x [mm]':  means[:, 0], 
-                            'y [mm]':  means[:, 1], 
-                            'z [mm]':  means[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-        
-    elif not coords:
-        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
-                            'x [mm]':  means[:, 0], 
-                            'std x [mm]':  stds[:, 0], 
-                            'y [mm]':  means[:, 1], 
-                            'std y [mm]':  stds[:, 1], 
-                            'z [mm]':  means[:, 2],
-                            'std z [mm]':  stds[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-
+    #  all correct
+    if min_val >= CC1.min_limit and max_val <= CC1.max_limit:
+        return min_val, max_val
+    # min_val is not valid
+    elif min_val < CC1.min_limit and max_val <= CC1.max_limit:
+        return CC1.min_limit, max_val
+    # max_val is not valid
+    elif min_val >= CC1.min_limit and max_val > CC1.max_limit:
+        return min_val, CC1.max_limit
+    # neither boundary value is valid
+    elif min_val < CC1.min_limit and max_val > CC1.max_limit:
+        return CC1.min_limit, CC1.max_limit
 
 
 def grid(CC_X: ConexCC, CC_Y: ConexCC, CC_Z: ConexCC, step_size=1, sweep_range=2, cube=None, directory = None,

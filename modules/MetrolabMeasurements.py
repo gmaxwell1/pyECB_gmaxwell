@@ -10,12 +10,14 @@ Date: 19.10.2020
 """
 
 #%%
+# standard library imports 
 import numpy as np
 import os 
 from time import time, sleep
 from datetime import datetime
 import pandas as pd
 
+# local imports 
 try:
     from modules.serial_reader import MeasurementError, ensure_dir_exists
 except ModuleNotFoundError:
@@ -25,7 +27,7 @@ except ModuleNotFoundError:
 finally:
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
     from modules.conexcc_control import save_in_dir
-    from modules.coordinate_transformations import sensor_to_magnet_coordinates
+    from modules.general_functions import sensor_to_magnet_coordinates
 
 
 #%%
@@ -81,7 +83,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
 
         # read the current output of sensor and save measured magnetic field
         meas_data = np.array(node.measureFieldArraymT(measure_runs)).swapaxes(0, 1)
-        
+
         # assume that each measurement took the same time, such that the times of measurements 
         # are equally spaced between initial and final time and offset such that t_start = 0
         meas_time = np.linspace(0, time() - t_start, num=len(meas_data))
@@ -115,7 +117,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     return meas_time, meas_data
 
 def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, verbose=False, max_num_retrials=5,
-                            save_raw_data= False, save_mean_data=False, directory=None, single_measurements=False):
+                            save_raw_data= False, save_mean_data=False, directory=None):
     """
     Estimate field vectors with Metrolab sensor sampling_size-times and return the mean and std 
     as 1d-ndarrays of length 3. 
@@ -128,8 +130,6 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
     - save_raw_data (bool): if True, the raw data estimated during each measurement round for each sensor are saved as a csv-file.
     - save_mean_data (bool): if True, the mean data averaged over all measurement rounds for each sensor are saved as a csv-file.
     - verbose (bool): switching on/off print-statements for displaying progress
-    - single measurements (bool): Flag to choose between measuring the field 
-    with repeated measure-statements (if True) or an measurement:array statement (if False)
 
     Return: 
     - mean_data, std_data (ndarrays of of shape (number sensors, 3)): Mean magnetic field and 
@@ -169,27 +169,21 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
 #%%
 if __name__ == '__main__':
 
-    sensor = MetrolabTHM1176Node()
-    # sensor.calibrate()
+    with MetrolabTHM1176Node() as sensor:
+        # first try with single measurements using measureFieldmT method of sensor
+        meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data')
 
-    print(sensor.getAvailableSenseRangeUpper())
-    print(sensor.getSenseRangeUpper())
+        durations = meas_times[1:] - meas_times[:-1]
+        print('average duration (single) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
+        print(field)
 
-    # first try with single measurements using measureFieldmT method of sensor
-    meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data',
-                                                single_measurements=True)
+        # then try with array of measurements using measureFieldArraymT method of sensor
+        # meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data',
+        #                                             single_measurements=False)
+        # durations = meas_times[1:] - meas_times[:-1]
+        # print('average duration (arrays) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
+        # print(field)
 
-    durations = meas_times[1:] - meas_times[:-1]
-    print('average duration (single) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
-
-    # then try with array of measurements using measureFieldArraymT method of sensor
-    meas_times, field = readoutMetrolabSensor(sensor, measure_runs=10, directory='./test_data',
-                                                single_measurements=False)
-
-    durations = meas_times[1:] - meas_times[:-1]
-    print('average duration (arrays) = {:.5f} s +- {:.5f} s'.format(np.mean(durations), np.std(durations)))
-
-    del(sensor)
 
 
 # %%

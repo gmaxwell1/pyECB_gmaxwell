@@ -27,7 +27,8 @@ except ModuleNotFoundError:
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
 finally:
     from modules.conexcc_control import setup, reset_to, get_coords
-    from modules.calibrate_cube import find_center_axis, angle_calib, av_single_sens, find_center_axis_with_cube
+    from modules.calibrate_cube import angle_calib, av_single_sens, find_center_axis_with_cube
+    from modules.calibration import find_center_axis
     from modules.plot_hall_cube import plot_angle_spherical, plot_angle
     from modules.serial_reader import get_new_data_set
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
@@ -39,23 +40,14 @@ finally:
 # set measurement parameters and folder name
 sampling_size = 25  # number of measurements per sensor for averaging
 
-#%%
-# settings when using calibration cube
-# specific_sensor = 55
-
-# # initialize sensor
-# port_sensor = 'COM4'
-
 # %%
 # initialize actuators
 init_pos = np.array([5.5, 12.5, 15.1])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
-
-
 # %%
-# manually adjust z
+# manually adjust stage position
 z_offset = 8
 new_pos = [5.5, 14, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
@@ -106,10 +98,16 @@ with MetrolabTHM1176Node() as node:
 
 
 
-# %% ----------------------------------------------------------------
+#%% 
 # this part is only relevant when using Calibration Cube
+#  -----------------------------------------------------------------
 
 
+# # settings when using calibration cube
+# specific_sensor = 55
+
+# # initialize sensor
+# port_sensor = 'COM4'
 
 # establish permanent connection to calibration cube: open serial port; baud rate = 256000
 # with serial.Serial(port_sensor, 256000, timeout=2) as cube:
@@ -127,7 +125,7 @@ with MetrolabTHM1176Node() as node:
 #     print('final field: {} mT'.format(np.round(field, 3)))
 #     print('in-plane field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
 
-# %%
+#%%
 # # plot the current angles theta and phi in a spherical plot
 # with serial.Serial(port_sensor, 256000, timeout=2) as cube:
 #     for _ in range(10):
