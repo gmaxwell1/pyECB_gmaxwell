@@ -20,6 +20,8 @@ from time import time
 from datetime import datetime
 import pandas as pd
 
+from modules.general_functions import ensure_dir_exists
+
 
 def open_port(numport='4', baudrate=256000, timeout=2):
     """
@@ -38,40 +40,6 @@ def open_port(numport='4', baudrate=256000, timeout=2):
         print('Failed to establish connection.')
         return
 
-
-def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=False):
-    """
-    Ensure that the directory exists and create the respective folders if it doesn't.
-
-    Prints message that either a folder has been created or that it already exists. 
-    Note that only read and write options can be set under Windows, rest ignored.
-
-    Args:
-    - directory (string) is a path which should exist after calling this function
-    - access_rights: set rights for reading and writing.
-    - purpose_text (str): add more information what the dictionary was created for
-
-    Return:
-    - 0 if directory needed to be created
-    - 1 if directory already exists
-    - -1 if there was an exception
-    """
-    try:
-        os.mkdir(directory, access_rights)
-        os.chmod(directory, access_rights)
-        if verbose:
-            print('Created directory {}: {}'.format(
-                purpose_text, os.path.split(directory)[1]))
-        return 0
-    except FileExistsError:
-        if verbose:
-            print('Folder already exists, no new folder created.')
-        return 1
-    except Exception as e:
-        # if verbose:
-        # this is important and should always be printed - gmaxwell, 8.10.2020
-        print('Failed to create new directory due to {} error'.format(e))
-        return -1
 
 
 def get_new_data_set(interactive=False, numport='4', measure_runs=int(1), fname_postfix='measured', 

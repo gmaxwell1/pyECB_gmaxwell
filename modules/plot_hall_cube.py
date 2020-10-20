@@ -23,8 +23,6 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
 import sys
 
-########## local imports ##########
-from modules.serial_reader import get_new_data_set
 
 
 def plot_set(SensorData, fig=None, ax=None, Pos=np.array([0, 0, 0]), Vecs=True,

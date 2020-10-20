@@ -22,40 +22,15 @@ import sys
 from datetime import datetime
 
 ########## local imports ##########
-from modules.serial_reader import get_new_data_set, ensure_dir_exists, direct_readout, MeasurementError
-from modules.conexcc_control import all_ready, save_in_dir, setup, check_no_motion, get_coords
+from modules.serial_reader import get_new_data_set, direct_readout, MeasurementError
+from modules.conexcc_control import all_ready, setup, check_no_motion, get_coords, check_validity
 from conexcc.conexcc_class import *
-from modules.plot_hall_cube import plot_set, plot_angle, plot_angle_spherical
-from modules.coordinate_transformations import transform_between_sensor_stage_coordinates
+from modules.plot_hall_cube import plot_angle, plot_angle_spherical
+from modules.general_functions import angle_wrt_z, transform_between_sensor_stage_coordinates, save_in_dir, ensure_dir_exists
 
 
 # %%
-def check_validity(min_val, max_val, CC1: ConexCC):
-    """
-    Compare min_val and max_val with hard limits of the actuator. If values are within these bounds, 
-    return them. Else replace the invalid boundary with the corresponding limit set by the actuator.
-
-    Args: 
-    - min_val < max_val (float)
-    - CC1, CC2 (conexcc_class instances): represent two (e.g. x and y) actuators
-
-    Returns: valid_min_val, valid_max_val
-    """
-    #  all correct
-    if min_val >= CC1.min_limit and max_val <= CC1.max_limit:
-        return min_val, max_val
-    # min_val is not valid
-    elif min_val < CC1.min_limit and max_val <= CC1.max_limit:
-        return CC1.min_limit, max_val
-    # max_val is not valid
-    elif min_val >= CC1.min_limit and max_val > CC1.max_limit:
-        return min_val, CC1.max_limit
-    # neither boundary value is valid
-    elif min_val < CC1.min_limit and max_val > CC1.max_limit:
-        return CC1.min_limit, CC1.max_limit
-
-
-def search(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
+def search_with_cube(CC1: ConexCC, CC2: ConexCC, cube, specific_sensor, min_step_size=5*1e-3, xlim=None, ylim=None,
            grid_number=10, sampling_size=10, verbose=False, update_factor=1):
     """
     Search the (x,y)-positon with minimum magnetic field along the xy-plane for constant hight z. 
@@ -343,7 +318,7 @@ def av_single_sens(cube, specific_sensor, N, max_number_attempts=10):
     return np.mean(field_samples, axis=0)
 
 
-def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor=54, limits_x=[0, 10],
+def find_center_axis_with_cube(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor=54, limits_x=[0, 10],
                      limits_y=[0, 10], grid_number = 10, verbose=True, extended=True, update_factor=1):
     """
     Find the xy-position of minimum in-plane magnetic field and estimate the field vector at this position.
@@ -371,7 +346,7 @@ def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor
                                    xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number,
                                    update_factor=update_factor)
     else:
-        xpos, ypos, precision = search(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size, 
+        xpos, ypos, precision = search_with_cube(CC1, CC2, cube, specific_sensor, min_step_size=min_step_size, 
                                    xlim=limits_x, ylim=limits_y, verbose=verbose, grid_number=grid_number,
                                    update_factor=update_factor)
     x0 = np.array([xpos, ypos])
@@ -379,16 +354,7 @@ def find_center_axis(CC1, CC2, cube, N=10, min_step_size=5*1e-3, specific_sensor
 
     return x0, f0
 
-
-def angle_wrt_z(vec):
-    """
-    Return angle (radian) of vector with respect to z axis.
-    """
-    mag = norm(vec)
-    return np.arccos(vec[2]/mag)
-
-
-def angle_calib(desired, cube, specific_sensor=54, N=10, visual_feedback=True, eps=0.5,
+def angle_calib_cube(desired, cube, specific_sensor=54, N=10, visual_feedback=True, eps=0.5,
                 max_number_trials=100, spherical=True, verbose=True):
     """
     Compare measured to desired angle in a while-loop. 
@@ -597,7 +563,7 @@ def get_new_mean_data_set_old(N, sub_dirname=None, cube=None, no_enter=False, on
         return mean_data, std_data, perc_data
 
 
-def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=None, ylim=None,
+def grid_2D_cube(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=None, ylim=None,
            grid_number=50, sampling_size=10, verbose=False, save_data=False, directory=None):
     """
     Sweep over xy-plane and measure the field on each grid point, return the field values and coordinates.
