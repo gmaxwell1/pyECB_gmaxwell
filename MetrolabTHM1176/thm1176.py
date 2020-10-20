@@ -41,7 +41,7 @@ class MetrolabTHM1176Node(object):
 
         self.average_count = average_count
         self.unit = unit
-        self.sense_range_upper = sense_range_upper
+        self.sense_range_upper = sense_range_upper # can be 0.1, 0.3, 1 or 3
 
         # Write settings to device
         #self.sensor.write(":format:data default")
@@ -58,10 +58,12 @@ class MetrolabTHM1176Node(object):
         self.frequency = frequency
 
         logging.info('... End init')
+
         
     def calibrate(self):
         self.sensor.write(":calibration:initiate")
         self.sensor.write(":calibration:state on")
+        
     
     def setAveragingCount(self, num_meas):
         avg_max = int(self.sensor.ask(":average:count? maximum"))
@@ -72,10 +74,12 @@ class MetrolabTHM1176Node(object):
         else:
             print("MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
             return False
+
     
     def getNumMeasurements(self):
         ret = self.sensor.ask(':CALC:AVER:COUNT?')
         return int(ret)
+    
             
     def measureFieldmT(self):
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,5').strip('MT'))
@@ -83,29 +87,31 @@ class MetrolabTHM1176Node(object):
         Bz = float(self.sensor.ask(":measure:z? 0.01T,5").strip('MT'))
         
         return [Bx, By, Bz]
-    # added by gmaxwell
-    def readFieldmT(self):
-        Bx = float(self.sensor.ask(':read:scalar:flux:x? 0.01T,5').strip('MT'))
-        By = float(self.sensor.ask(":read:y? ,5").strip('MT'))
-        Bz = float(self.sensor.ask(":read:z? 0.01T,5").strip('MT'))
-        
-        return [Bx, By, Bz]
-        
-    def measureFieldArraymT(self, num_meas):
+    
+    def measureFieldArraymT(self, num_meas=10, trig_period='MIN'):
         #self.setAveragingCount(num_meas)
-        ret = self.sensor.ask(":measure:array:x? " + str(num_meas) + ", 0.01T,5")
+        # num_meas must be between 1 and 2048
+        if isinstance(trig_period, float):
+            arg = str(trig_period) + 'S'
+        else:
+            arg = trig_period
+        
+        node.sensor.write(":TRIG:TIM " + arg)
+        node.sensor.write(":TRIG:SOUR TIM")
+        
+        ret = self.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
         Bx_str = ret.split(",")
         Bx = []
         for val in Bx_str:
             Bx.append(float(val.strip('MT')))
         
-        ret = self.sensor.ask(":measure:array:y? " + str(num_meas) + ", 0.01T,5")
+        ret = self.sensor.ask(":READ:array:y? " + str(num_meas) + ", 0.01T,5")
         By_str = ret.split(",")
         By = []
         for val in By_str:
             By.append(float(val.strip('MT')))
             
-        ret = self.sensor.ask(":measure:array:z? " + str(num_meas) + ", 0.01T,5")
+        ret = self.sensor.ask(":READ:array:z? " + str(num_meas) + ", 0.01T,5")
         Bz_str = ret.split(",")
         Bz = []
         for val in Bz_str:
@@ -114,39 +120,75 @@ class MetrolabTHM1176Node(object):
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
         
+        node.sensor.write(":TRIG:SOUR DEF")
+
         return [Bx, By, Bz]
+    
+    # added by gmaxwell
+    def timeFieldMeas(self, num_meas=10):
+
+        direct_vals = []
+        
+        for k in range(num_meas):
+            node.sensor.write(":INIT")
+            ret1 = node.sensor.ask(":FETC:X? 5")
+            ret2 = node.sensor.ask(":FETC:Y? 5")
+            ret3 = node.sensor.ask(":FETC:Z? 5")
+            ret4 = node.sensor.ask(":FETC:TIM?")
+                
+            direct_vals.append([ret1,ret2,ret3,ret4])
+        
+        B_at_time = []
+        start_time = int(direct_vals[0][3])
+        for item in direct_vals:
+            Bx = float(item[0])
+            By = float(item[1])
+            Bz = float(item[2])
+            abs_time = int(item[3],0)
+            time = round(1e-6 * (abs_time-start_time),2)
+            
+            B_at_time.append([Bx,By,Bz,time])
+            
+        if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
+            raise ValueError("length of Bx, By, Bz do not match num_meas")
+        
+        return B_at_time
+    
         
     def getAvailableUnits(self):
         unit_str = self.sensor.ask(":UNIT:ALL?")
         return unit_str.split(',')
     
+    
     def getUnit(self):
         units_str = self.sensor.ask(":UNIT?")
         return units_str
     
+    
     def getAvailableSenseRangeUpper(self):
         upper_str = self.sensor.ask(':SENS:ALL?')
         return upper_str.split(',')
+    
         
     def getSenseRangeUpper(self):
         upper_str = self.sensor.ask(":SENSE:RANGE:UPPER?")
         return upper_str
     
+    
     def setAutoRangeEnabled(self, on):
         str = 'ON' if on else 'OFF'
         self.sensor.write(':SENS:AUTO ' + str)
+        
     
     def isAutoRangeEnabled(self):
         ret = self.sensor.ask(':SENS:AUTO?')
         return ret == 'ON'
+    
     # added by gmaxwell
     def readMemory(self):
         filedir = self.sensor.ask(':MMEM:CAT?')
         return filedir
-    
-    def getTimestamp(self):
-        timestamp = self.sensor.ask(':FETC:TIM?')
-        return timestamp
+        
     
     # context manager to ba able to use a with...as... statement    
     def __enter__(self):
@@ -155,6 +197,7 @@ class MetrolabTHM1176Node(object):
             
         return self
     
+    
     def __exit__(self, type, value, traceback):
         if self.sensor.connected:
             self.sensor.close()
@@ -162,8 +205,7 @@ class MetrolabTHM1176Node(object):
         else:
             return isinstance(value, TypeError)
         
-
+        
 if __name__ == '__main__':
-    with MetrolabTHM1176Node() as node:
-        triggers = node.sensor.ask(":TRIG:TIM?")
-        print(triggers)
+    with MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
+        node.measureFieldArraymT(35)
