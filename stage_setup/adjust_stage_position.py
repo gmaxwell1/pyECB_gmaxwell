@@ -50,7 +50,7 @@ port_sensor = 'COM4'
 # %%
 # manually adjust z
 z_offset = 14.7
-new_pos = [6.1869, 2.1585, z_offset]
+new_pos = [25, 25, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
