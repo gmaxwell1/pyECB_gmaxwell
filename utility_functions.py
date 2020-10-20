@@ -190,9 +190,7 @@ def runCurrents(channels, t=0, direct=b'1'):
     """
     global currDirectParam
     global desCurrents
-    
-    node = sens.MetrolabTHM1176Node()
-    
+        
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
@@ -249,8 +247,9 @@ def runCurrents(channels, t=0, direct=b'1'):
             elif c1 == 's':
                 print(getStatus())
             elif c1 == 'f':
-                measArr = node.measureFieldArraymT(3)
-                print(measArr)
+                with sens.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
+                    measArr = node.measureFieldArraymT(3)
+                    print(measArr)
 
         disableCurrents()
     else:
