@@ -23,10 +23,10 @@ from datetime import datetime
 
 ########## local imports ##########
 from modules.serial_reader import get_new_data_set, ensure_dir_exists, direct_readout, MeasurementError
-# , get_coords, correct_reset
 from modules.conexcc_control import all_ready, save_in_dir, setup, check_no_motion, get_coords
 from conexcc.conexcc_class import *
 from modules.plot_hall_cube import plot_set, plot_angle, plot_angle_spherical
+from modules.coordinate_transformations import transform_between_sensor_stage_coordinates
 
 
 # %%
@@ -706,9 +706,7 @@ def grid_2D(CC_X: ConexCC, CC_Y: ConexCC, cube, specific_sensor, height, xlim=No
 
     # coordinate systems of sensor and axes differ, account for this and reshuffle the position array
     # x and y must be changed and get an additional (-1)-factor each
-    positions_corrected = np.zeros_like(positions)
-    positions_corrected[:,:,0] = -positions[:,:,1]
-    positions_corrected[:,:,1] = -positions[:,:,0]
+    positions_corrected = transform_between_sensor_stage_coordinates(positions)
 
     # eventually reshape the arrays
     positions_corrected = positions_corrected.reshape((grid_number+1)**2,3)

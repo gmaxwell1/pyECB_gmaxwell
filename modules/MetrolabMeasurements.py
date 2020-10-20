@@ -3,6 +3,9 @@ filename: MetrolabMeasurements.py
 
 The following functions are used for measurements of the magnetic field using the Metrolab THM1176 sensor. 
 
+Author: Nicholas Meinhardt (QZabre)
+        nmeinhar@student.ethz.ch
+
 Date: 19.10.2020
 """
 
@@ -22,53 +25,10 @@ except ModuleNotFoundError:
 finally:
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
     from modules.conexcc_control import save_in_dir
+    from modules.coordinate_transformations import sensor_to_magnet_coordinates
+
 
 #%%
-def sensor_to_magnet_coordinates(data):
-    """
-    Transform from Metrolab sensor coordinates to magnet coordinates, using the following transformation:
-
-    x -> -y
-    y -> z
-    z -> -x
-    """
-    data_magnet_coords = np.zeros_like(data)
-    
-    # treat 1d arrays and multi-dimensional arrays differently
-    if len(data.shape)==1:
-        data_magnet_coords[0] = -data[2]
-        data_magnet_coords[1] = -data[0]
-        data_magnet_coords[2] = data[1]
-    else:
-        data_magnet_coords[:,0] = -data[:,2]
-        data_magnet_coords[:,1] = -data[:,0]
-        data_magnet_coords[:,2] = data[:,1]
-
-    return data_magnet_coords
-
-def magnet_to_sensor_coordinates(data):
-    """
-    Transform from magnet coordinates to Metrolab sensor coordinates, using the following transformation:
-
-    x -> -z
-    y -> -x
-    z -> y
-    """
-    data_magnet_coords = np.zeros_like(data)
-    
-    # treat 1d arrays and multi-dimensional arrays differently
-    if len(data.shape)==1:
-        data_magnet_coords[0] = -data[1]
-        data_magnet_coords[1] = data[2]
-        data_magnet_coords[2] = -data[0]
-    else:
-        data_magnet_coords[:,0] = -data[:,1]
-        data_magnet_coords[:,1] = data[:,2]
-        data_magnet_coords[:,2] = -data[:,0]
-
-    return data_magnet_coords
-
-
 def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postfix='data_sets',
                     directory = './data_sets', verbose=False, save_data=True, single_measurements=False):
     """
