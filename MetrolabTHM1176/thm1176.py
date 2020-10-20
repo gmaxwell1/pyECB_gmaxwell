@@ -33,13 +33,13 @@ class MetrolabTHM1176Node(object):
         # if ret != "Metrolab Technology SA,THM1176-MF":
         #         raise(IOError, "Error opening Metrolab device")
 
-        self.average_count = 1
+        self.average_count = 10
         self.unit = "MT"
         self.sense_range_upper = "0.1 T"
 
         # Write settings to device
         #self.sensor.write(":format:data default")
-        self.sensor.write(":average:count " + str(self.average_count))
+        #self.sensor.write(":average:count " + str(self.average_count))
         self.sensor.write(":unit " + self.unit)
         self.sensor.write(":sense:range:upper 0.1T")
         self.sensor.write(":sense:flux:range:auto off")
@@ -130,15 +130,21 @@ class MetrolabTHM1176Node(object):
 if __name__ == '__main__':
 
     node = MetrolabTHM1176Node()
+<<<<<<< HEAD
 
     print(node.getSenseRangeUpper())
     print(node.getAvailableSenseRangeUpper())
 
+=======
+    #node.calibrate()
+>>>>>>> cf8ca2f050158fd16bdeccc81c1b64dff013f3b1
     #Continuously measure and publish mag field until shutdown
-    while True:
+    k = 0
+    while k < 10:
         field=node.measureFieldmT()
+        print(node.getUnit())
+        k = k+1
         
-        print("Measured Field: [%f,%f,%f]\n"%(1e6*field[0],1e6*field[1],1e6*field[2]))
+        print("Measured Field: [%f,%f,%f]\n"%(field[0],field[1],field[2]))
         
         sleep(1)
-# %%
