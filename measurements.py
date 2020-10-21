@@ -2,13 +2,13 @@
 filename: measurements.py
 
 This script is meant to be used to measure magnetic field values with the Hall
-sensor cube. It is adapted to inteface with the ECB, e.g. to set current values and 
+sensor cube/Metrolab THM1176. It is adapted to interface with the ECB, e.g. to set current values and 
 measure the generated magnetic field of the vector magnet.
 
 Author: Nicholas Meinhardt, Maxwell Guerne-Kieferndorf (QZabre)
         nmeinhar@student.ethz.ch, gmaxwell@student.ethz.ch
 
-Date: 08.10.2020
+Date: 20.10.2020
 """
 ########## Standard library imports ##########
 import numpy as np
@@ -48,7 +48,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
         verbose (bool, optional): Whether it should tell you everything that's going on. Defaults to False.
 
     Returns:
-        [type]: [description]
+        sub_dirname, dataDir (str): name of subdirectory where data is stored and the absolute path to it.
     """
     index = 1
     cwd = os.getcwd()
@@ -79,10 +79,11 @@ def measure(dataDir, N=50, average=False):
     -specific_sensor: sensor from which data will be fetched, only with hall sensor cube
 
     Returns: 
-    -meas_time: measurement time(s)
+    -meas_time: measurement time (s)
     -meas_data: measured fields (x, y, z componenents)
+    xor
     -mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
-    -std_data: standard deviation in each averaged measurment
+    -std_data: standard deviation in each averaged measurement
     (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
     if dataDir is not None:
