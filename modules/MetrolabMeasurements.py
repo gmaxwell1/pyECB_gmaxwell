@@ -114,7 +114,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     return meas_time, meas_data
 
 def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, verbose=False, max_num_retrials=5,
-                            save_raw_data= False, save_mean_data=False, directory=None):
+                            save_raw_data= False, directory=None):
     """
     Estimate field vectors with Metrolab sensor sampling_size-times and return the mean and std 
     as 1d-ndarrays of length 3. 
@@ -156,12 +156,12 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
     mean_data = np.mean(meas_data, axis=0)
     std_data = np.std(meas_data, axis=0)
     
-    # save mean data if desired
-    if save_mean_data:
-        # if no directory is provided, just take current working directory
-        if directory is None:
-            directory = os.getcwd()
-        save_in_dir(mean_data, directory, 'data', stds=std_data, now=True)
+    # # save raw data if desired
+    # if save_mean_data:
+    #     # if no directory is provided, just take current working directory
+    #     if directory is None:
+    #         directory = os.getcwd()
+    #     save_in_dir(meas_data, directory, 'data', now=True)
 
     # return mean and std fields either for only this sensor or for all sensors
     return mean_data, std_data

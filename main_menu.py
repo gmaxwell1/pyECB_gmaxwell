@@ -80,7 +80,7 @@ def MainMenu(initialized):
                         for row in contents:
                             config = np.array(
                                 float(row[0]), float(row[1]), float(row[2]))
-                            sweepCurrents(config, start_val, end_val, steps)
+                            sweepCurrents(config_list=config, start_val=start_val, end_val=end_val, steps=steps)
 
                 elif inp0 == 'm':
                     inp1 = input('Configuration:\nChannel 1: ')
@@ -117,11 +117,11 @@ def MainMenu(initialized):
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
-                    sweepCurrents(config, start_val, end_val, steps)
+                    sweepCurrents(config_list=config, start_val=start_val, end_val=end_val, steps=steps)
 
                 else:
-                    print('Using randomized current configuration.')
-                    config = 'r'
+                    print('Using preset current configuration.')
+                    config = input('Which config (z, xy or r): ')
                     inp1 = input('How many measurement runs?: ')
                     inp2 = input('starting current in mA = ')
                     inp3 = input('ending current in mA = ')
