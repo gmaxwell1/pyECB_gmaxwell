@@ -21,20 +21,31 @@ import logging
 from time import sleep, time
 
 class MetrolabTHM1176Node(object):
-
+    """
+    Class representing the metrolab THM1176-MF magnetometer. Can be used to read out data and adapt the sensor's settings.
+    """
+    # ranges = ["0.1T", '0.3T', '1T', '3T']
+    # trigger_period_bounds = (122e-6, 2.79)
+    # base_fetch_cmd = ':FETC:ARR:'
+    # axes = ['X', 'Y', 'Z']
+    # field_axes = ['Bx', 'By', 'Bz']
+    # fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp',
+    #                'Temperature']  # Order matters, this is linked to the fetch command that is sent to retrived data
+    # units = "MT"
+    # n_digits = 5
+    # defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'format': 'INTEGER', 'unit' : "MT"}
+    # id_fields = ['manufacturer', 'model', 'serial', 'version']
+    
     def __init__(self, average_count = 10, unit = "MT", sense_range_upper = "0.1 T"):
-
+        
         logging.basicConfig(filename='metrolab.log', level=logging.DEBUG)
         
-        self.is_open = False
-
         self.sensor = usbtmc.Instrument(0x1bfa, 0x0498)
+        
+        self.max_transfer_size = 49216  # (4096 samples * 3 axes * 4B/sample + 64B for time&temp&...
+        # Show sensor name in Terminal
         ret = self.sensor.ask("*IDN?")
         print(ret)
-        # if ret != "Metrolab Technology SA,THM1176-MF":
-        #     raise(OSError, "Error opening Metrolab device")
-        # else:
-        #     self.is_open = True
 
         self.average_count = average_count
         self.unit = unit
@@ -45,21 +56,53 @@ class MetrolabTHM1176Node(object):
         self.sensor.write(":average:count " + str(self.average_count))
         self.sensor.write(":unit " + self.unit)
         self.sensor.write(":sense:range:upper " + self.sense_range_upper)
-        self.sensor.write(":sense:flux:range:auto off")
-        
-        self.sensor.write(":TRIG:SOUR DEF")
-        self.sensor.write(":TRIG:TIM DEF")
-        self.sensor.write(":TRIG:COUN DEF")        
+        self.sensor.write(":sense:flux:range:auto off")      
 
         logging.debug('range upper %s', self.sensor.ask(":sense:range:upper?"))
 
-        self.posx = 0.0
-        self.posy = 0.0
-        self.posz = 0.0
-        self.frequency = 5
+        # self.period = 5
 
         logging.info('... End init')
+        
+        
+    # def setup(self, **kwargs):
+    #     '''
+    #     :param kwargs:
+    #     :return:
+    #     '''
+    #     keys = kwargs.keys()
 
+    #     if 'block_size' in keys:
+    #         self.block_size = kwargs['block_size']
+
+    #     if 'period' in keys:
+    #         if self.trigger_period_bounds[0] <= kwargs['period'] <= self.trigger_period_bounds[1]:
+    #             self.period = kwargs['period']
+    #         else:
+    #             print('Invalid trigger period value.')
+    #             print('Setting to default...')
+    #             self.period = self.defaults['period']
+
+    #     if 'range' in keys:
+    #         if kwargs['range'] in self.ranges:
+    #             self.range = kwargs['range']
+
+    #     if 'average' in keys:
+    #         self.average = kwargs['average']
+
+    #     if 'format' in keys:
+    #         self.format = kwargs['format']
+
+    #     self.set_format()
+    #     self.set_range()
+    #     self.set_average()
+    #     self.set_periodic_trigger()
+
+    #     cmd = ''
+    #     for axis in self.axes:
+    #         cmd += self.base_fetch_cmd + axis + '? {},{};'.format(self.block_size, self.n_digits)
+    #     cmd += ':FETCH:TIMESTAMP?;:FETCH:TEMPERATURE?;*STB?'
+    #     self.fetch_cmd = cmd
         
     def calibrate(self):
         self.sensor.write(":calibration:initiate")
@@ -89,17 +132,18 @@ class MetrolabTHM1176Node(object):
         
         return [Bx, By, Bz]
     
-    def measureFieldArraymT(self, num_meas=10, trig_period='MIN'):
-        #self.setAveragingCount(num_meas)
-        # num_meas must be between 1 and 2048
-        # if isinstance(trig_period, float):
-        #     arg = str(trig_period) + 'S'
-        # else:
-        #     arg = trig_period
-        
-        # node.sensor.write(":TRIG:TIM " + arg)
-        # node.sensor.write(":TRIG:SOUR TIM")
-        
+    def measureFieldArraymT(self, num_meas=10):
+        """
+        Make a certain number of measurements of each field direction.
+
+        Args:
+            num_meas (int, optional): How many times to measure each component. Defaults to 10.
+            
+        Raises:
+            ValueError: if not all measurements were made correctly.
+
+        Returns:
+        """
         ret = self.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
         Bx_str = ret.split(",")
         Bx = []
@@ -121,40 +165,26 @@ class MetrolabTHM1176Node(object):
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
         
-        # node.sensor.write(":TRIG:SOUR DEF")
-
         return [Bx, By, Bz]
     
     # added by gmaxwell
-    def timeFieldMeas(self, num_meas=10):
+    # def set_periodic_trigger(self):
+    #     """
+    #     Set the probe to run in periodic trigger mode with a given period, continuously
+    #     - param period
 
-        direct_vals = []
+    #     Returns:
+    #     """
+    #     if self.trigger_period_bounds[0] <= self.period <= self.trigger_period_bounds[1]:
+    #         self.sensor.write(':TRIGger:SOURce TIMer')
+    #         self.sensor.write(':TRIGger:TIMer {:f}S'.format(self.period))
+    #         self.sensor.write(':TRIG:COUNT {}'.format(self.block_size))
+    #         self.sensor.write(':INIT:CONTINUOUS ON')
+    #         return True
+    #     else:
+    #         print('Invalid trigger period value.')
+    #         return False
         
-        for k in range(num_meas):
-            self.sensor.write(":INIT")
-            ret1 = self.sensor.ask(":FETC:X? 5")
-            ret2 = self.sensor.ask(":FETC:Y? 5")
-            ret3 = self.sensor.ask(":FETC:Z? 5")
-            ret4 = self.sensor.ask(":FETC:TIM?")
-                
-            direct_vals.append([ret1,ret2,ret3,ret4])
-        
-        B_at_time = []
-        start_time = int(direct_vals[0][3])
-        for item in direct_vals:
-            Bx = float(item[0])
-            By = float(item[1])
-            Bz = float(item[2])
-            abs_time = int(item[3],0)
-            time = round(1e-6 * (abs_time-start_time),2)
-            
-            B_at_time.append([Bx,By,Bz,time])
-            
-        if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
-            raise ValueError("length of Bx, By, Bz do not match num_meas")
-        
-        return B_at_time
-    
         
     def getAvailableUnits(self):
         unit_str = self.sensor.ask(":UNIT:ALL?")
@@ -208,8 +238,15 @@ class MetrolabTHM1176Node(object):
         
         
 if __name__ == '__main__':
+    num_meas = 10
     with MetrolabTHM1176Node(sense_range_upper="0.1 T") as node:
-        a = time()
-        print(node.measureFieldArraymT(10))
-        diff = time() - a
+        # node.sensor.write(":TRIG:TIM " + arg)
+        # node.sensor.write(":TRIG:SOUR TIM")
         
+        ret = node.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
+        Bx_str = ret.split(",")
+        Bx = []
+        for val in Bx_str:
+            Bx.append(float(val.strip('MT')))
+
+        print(Bx)

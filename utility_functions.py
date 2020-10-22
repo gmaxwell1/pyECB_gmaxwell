@@ -58,7 +58,7 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
     stdd_values = np.zeros((steps, 3))
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
-    directory = ''
+
     # some possible configurations
     current_direction = np.ndarray(3)
     if config_list is not None:
@@ -70,9 +70,9 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         current_direction[0] = 1
         current_direction[1] = 1
         current_direction[2] = 1
-    elif config == 'xy0':
-        current_direction[0] = 1
-        current_direction[1] = 0
+    elif config == 'xy':
+        current_direction[0] = -1
+        current_direction[1] = 2
         current_direction[2] = -1
     # r for randomized
     elif config == 'r':
@@ -86,9 +86,13 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         return
 
     # create subdirectory to save measurements
-    subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
-        int(10*current_direction[1])), str(int(10*current_direction[0])))
-    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
+    # subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
+    #     int(10*current_direction[1])), str(int(10*current_direction[0])))
+    # folder, 
+    filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
+    char = input('Calibrate Metrolab sensor? (y/n): ')
+    if char == 'y':
+        calibration()
 
     enableCurrents()
     # iterate through all possible steps
@@ -108,7 +112,7 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
-        mean_data, std_data = measure(filePath, N=15)
+        mean_data, std_data = measure(filePath, N=15, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
@@ -141,11 +145,14 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     stdd_values = np.zeros((steps, 3))
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
-    directory = ''
 
     # create subdirectory to save measurements
-    subDirBase = '{}_{}_field_meas'.format(theta, phi)
-    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
+    # subDirBase = '{}_{}_field_meas'.format(theta, phi)
+    # folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
+    filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
+    char = input('Calibrate Metrolab sensor? (y/n): ')
+    if char == 'y':
+        calibration()
 
     enableCurrents()
     # iterate through all possible steps
