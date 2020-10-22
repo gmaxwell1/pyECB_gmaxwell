@@ -24,19 +24,20 @@ from conexcc.conexcc_class import *
 # from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
 # from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
 from modules.general_functions import ensure_dir_exists
-import MetrolabTHM1176.thm1176 as metro
+from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 from modules.MetrolabMeasurements import readoutMetrolabSensor, get_mean_dataset_MetrolabSensor
 
 __all__ = [
+    'calibration',
     'newMeasurementFolder',
     'measure',
-    'makePlots',
     'saveDataPoints'
 ]
 
 ########## sensor cube/Conexcc ports ##########
 # port_sensor = 'COM3'
 z_COM_port = 'COM6' # z-coordinate controller
+y_COM_port = 'COM5'
 
 def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas', verbose=False):
     """
@@ -69,77 +70,93 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def calibration():
+def calibration(node: MetrolabTHM1176Node):
     # initialize actuators
     CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
     CC_Z.wait_for_ready()
+    CC_Y.wait_for_ready()
     
-    cal_offset = 20
-    start_pos = CC_Z.read_cur_pos()
-    total_distance = cal_offset-start_pos
+    cal_pos_z = 20
+    start_pos_z = CC_Z.read_cur_pos()
+    total_distance_z = cal_pos_z-start_pos_z
+    
+    cal_pos_y = 0
+    start_pos_y = CC_Y.read_cur_pos()
+    total_distance_y = abs(cal_pos_y-start_pos_y)
     
     print('Moving to calibration position...')
-    CC_Z.move_absolute(new_pos=cal_offset)
-    while not CC_Z.is_ready():
-        sleep(0.2)
-        pos = CC_Z.read_cur_pos()
-        ratio = ((pos-start_pos) / total_distance)
-        left = int(ratio * 30)
-        right = 30-left
-        print('\r[' + '#' * left + ' ' * right + ']', f' {ratio * 100:.0f}%', sep='', end='', flush=True)
+    CC_Z.move_absolute(new_pos=cal_pos_z)
+    CC_Y.move_absolute(new_pos=cal_pos_y)
+    if total_distance_y > total_distance_z:
+        progressBar(CC_Y, start_pos_y, total_distance_y)
+    else:
+        progressBar(CC_Z, start_pos_z, total_distance_z)
 
     char = input('\nPress enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
     if char == '':
         node.calibrate()
     input('Press enter to continue measuring')
         
-    meas_offset = 8.65
-    start_pos = CC_Z.read_cur_pos()
-    total_distance = abs(meas_offset-start_pos)
+    meas_offset_z = 8.55
+    start_pos_z = CC_Z.read_cur_pos()
+    total_distance_z = abs(meas_offset_z-start_pos_z)
     
-    CC_Z.move_absolute(new_pos=meas_offset)
-    k = 1
-    while not CC_Z.is_ready():
+    meas_offset_y = 14.9
+    start_pos_y = CC_Y.read_cur_pos()
+    total_distance_y = abs(meas_offset_y-start_pos_y)
+    
+    CC_Z.move_absolute(new_pos=meas_offset_z)
+    CC_Y.move_absolute(new_pos=meas_offset_y)
+    
+    if total_distance_y > total_distance_z:
+        progressBar(CC_Y, start_pos_y, total_distance_y)
+    else:
+        progressBar(CC_Z, start_pos_z, total_distance_z)
+
+
+def progressBar(CC: ConexCC, start_pos, total_distance):
+    while not CC.is_ready():
             sleep(0.2)
-            pos = CC_Z.read_cur_pos()
+            pos = CC.read_cur_pos()
             ratio = (abs(pos-start_pos) / total_distance)
             left = int(ratio * 30)
             right = 30-left
             print('\r[' + '#' * left + ' ' * right + ']', f' {ratio * 100:.0f}%', sep='', end='', flush=True)
-            print('\n')
+    
+    print('\n')
 
 
-def measure(dataDir=None, N=50, average=False):
+def measure(node: MetrolabTHM1176Node, dataDir=None, N=50, average=False):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
     
     Args:
-    -dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
-    -N: number of data points collected for each average
-    -specific_sensor: sensor from which data will be fetched, only with hall sensor cube
+    - node (MetrolabTHM1176Node): represents the Metrolab THM 1176 sensor
+    - dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
+    - N: number of data points collected for each average
+    - specific_sensor: sensor from which data will be fetched, only with hall sensor cube
 
     Returns: 
-    -meas_time: measurement time (s)
-    -meas_data: measured fields (x, y, z componenents)
-    xor
-    -mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
-    -std_data: standard deviation in each averaged measurement
+    - meas_time: measurement time (s)
+    - meas_data: measured fields (x, y, z componenents)
+    XOR
+    - mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
+    - std_data: standard deviation in each averaged measurement
     (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
     if dataDir is not None:
         ensure_dir_exists(dataDir, verbose=False)
-
-    with metro.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
                
-        if average:
-            # measure average field at one point with the specific
-            mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N, directory=dataDir)
-            ret1, ret2 = mean_data, std_data
-        else:
-            # This option is more for getting time-field measurements.
-            meas_time, meas_data = readoutMetrolabSensor(node, measure_runs=N, directory=dataDir)
-            # see .\modules\MetrolabMeasurements.py for more details on these function
-            ret1, ret2 = meas_time, meas_data
+    if average:
+        # measure average field at one point with the specific
+        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N, directory=dataDir)
+        ret1, ret2 = mean_data, std_data
+    else:
+        # This option is more for getting time-field measurements.
+        meas_time, meas_data = readoutMetrolabSensor(node, measure_runs=N, directory=dataDir)
+        # see .\modules\MetrolabMeasurements.py for more details on these function
+        ret1, ret2 = meas_time, meas_data
 
     return ret1, ret2
 
@@ -193,8 +210,5 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
 
 if __name__ == '__main__':
     
-    a, b = measure(r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets', 
-                   N=10, average=True)
-    print(a)
-    print(b)
+    calibration(MetrolabTHM1176Node(unit="MT", sense_range_upper="0.1 T"))
     

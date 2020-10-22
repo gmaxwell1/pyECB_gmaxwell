@@ -21,6 +21,7 @@ import transformations as tr
 from main_comm import *
 from measurements import *
 from modules.analysis_tools import generate_plots
+from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 ##########  Current parameters ##########
 
@@ -86,36 +87,33 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         return
 
     # create subdirectory to save measurements
-    # subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
-    #     int(10*current_direction[1])), str(int(10*current_direction[0])))
-    # folder, 
-    filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
-    char = input('Calibrate Metrolab sensor? (y/n): ')
-    if char == 'y':
-        calibration()
+    subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
+        int(10*current_direction[1])), str(int(10*current_direction[0])))
+    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
 
     enableCurrents()
-    # iterate through all possible steps
-    for i in range(steps):
-        # set the current on each channel
-        for k in range(3):
-            desCurrents[k] = current_direction[k]*all_curr_steps[i]
-        all_curr_vals[i] = current_direction*all_curr_steps[i]
+    with metro.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
+        # iterate through all possible steps
+        for i in range(steps):
+            # set the current on each channel
+            for k in range(3):
+                desCurrents[k] = current_direction[k]*all_curr_steps[i]
+            all_curr_vals[i] = current_direction*all_curr_steps[i]
 
-        # tentative estimation of resulting B field
-        B_expected = tr.computeMagField(
-            current_direction*all_curr_steps[i], windings)
+            # tentative estimation of resulting B field
+            B_expected = tr.computeMagField(
+                current_direction*all_curr_steps[i], windings)
 
-        setCurrents(desCurrents, currDirectParam)
-        # Let the field stabilize
-        sleep(0.1)
-        # collect measured and expected magnetic field (of the specified sensor in measurements)
-        print('measurement nr. ', i+1)
-        # see measurements.py for more details
-        mean_data, std_data = measure(filePath, N=15, average=True)
-        mean_values[i] = mean_data
-        stdd_values[i] = std_data
-        expected_fields[i] = B_expected
+            setCurrents(desCurrents, currDirectParam)
+            # Let the field stabilize
+            sleep(0.1)
+            # collect measured and expected magnetic field (of the specified sensor in measurements)
+            print('measurement nr. ', i+1)
+            # see measurements.py for more details
+            mean_data, std_data = measure(node, filePath, N=15, average=True)
+            mean_values[i] = mean_data
+            stdd_values[i] = std_data
+            expected_fields[i] = B_expected
 
     # end of measurements
     disableCurrents()

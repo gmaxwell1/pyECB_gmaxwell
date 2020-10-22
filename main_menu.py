@@ -20,6 +20,7 @@ import csv
 ########## local imports ##########
 from utility_functions import *
 from main_comm import *
+from measurements import calibration
 
 
 def MainMenu(initialized):
@@ -74,6 +75,10 @@ def MainMenu(initialized):
                         steps = 200
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
+                    
+                    char = input('Calibrate Metrolab sensor? (y/n): ')
+                    if char == 'y':
+                        calibration()
 
                     with open(inpFile, 'r') as f:
                         contents = csv.reader(f)
@@ -116,6 +121,10 @@ def MainMenu(initialized):
                         steps = 1
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
+                    
+                    char = input('Calibrate Metrolab sensor? (y/n): ')
+                    if char == 'y':
+                        calibration()
 
                     sweepCurrents(config_list=config, start_val=start_val, end_val=end_val, steps=steps)
 
@@ -151,7 +160,7 @@ def MainMenu(initialized):
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
                     while randomRuns > 0:
-                        sweepCurrents(config, start_val, end_val, steps)
+                        sweepCurrents(config=config, start_val=start_val, end_val=end_val, steps=steps)
                         randomRuns = randomRuns-1
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
