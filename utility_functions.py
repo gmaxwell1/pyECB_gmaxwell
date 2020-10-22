@@ -87,12 +87,13 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         return
 
     # create subdirectory to save measurements
-    subDirBase = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
-        int(10*current_direction[1])), str(int(10*current_direction[0])))
-    folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
-
+    fileprefix = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
+        int(10*current_direction[1])), str(int(10*current_direction[2])))
+    # folder, 
+    filePath = '.\data_sets'
+    
     enableCurrents()
-    with metro.MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
+    with MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
         # iterate through all possible steps
         for i in range(steps):
             # set the current on each channel
@@ -119,7 +120,7 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
     disableCurrents()
     # saving data section (prepared for plotting)
     saveDataPoints((all_curr_vals / 1000), mean_values,
-                   stdd_values, expected_fields, filePath)
+                   stdd_values, expected_fields, filePath, fileprefix)
 
 
 def rampVectorField(theta, phi, start_mag, finish_mag, steps):
