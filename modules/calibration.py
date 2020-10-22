@@ -248,7 +248,7 @@ def search_with_Metrolab(CC1: ConexCC, CC2: ConexCC, node: MetrolabTHM1176Node, 
             if verbose:
                 print('Position {}: {:.5f}'.format(
                     i, (xrang/grid_number * i + xmin)))
-                print('Field at position {}: {:.3f}'.format(i, fsx[-1]))
+                print('in-plane field at position {}: {:.3f} mT'.format(i, fsx[-1]))
 
         # move to x-position with smallest (absolute value of) B_y
         fminx = np.argmin(abs(np.asarray(fsx)))
@@ -278,7 +278,7 @@ def search_with_Metrolab(CC1: ConexCC, CC2: ConexCC, node: MetrolabTHM1176Node, 
             if verbose:
                 print('Position {}: {:.5f}'.format(
                     i, (yrang/grid_number * i + ymin)))
-                print('Field at position {}: {:.3f}'.format(i, fsy[-1]))
+                print('in-plane field at position {}: {:.3f} mT'.format(i, fsy[-1]))
 
         # move to x-position with smallest (absolute value of) B_x
         fminy = np.argmin(abs(np.asarray(fsy)))

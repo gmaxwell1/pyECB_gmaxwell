@@ -27,13 +27,13 @@ except ModuleNotFoundError:
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
 finally:
     from modules.conexcc_control import setup, reset_to, get_coords
-    from modules.calibrate_cube import angle_calib, av_single_sens, find_center_axis_with_cube
+    from conexcc.conexcc_class import *
+    from modules.calibrate_cube import angle_calib_cube, av_single_sens, find_center_axis_with_cube
     from modules.calibration import find_center_axis
     from modules.plot_hall_cube import plot_angle_spherical, plot_angle
     from modules.serial_reader import get_new_data_set
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
     from modules.MetrolabMeasurements import get_mean_dataset_MetrolabSensor
-    
 
 
 # %%
@@ -42,20 +42,27 @@ sampling_size = 25  # number of measurements per sensor for averaging
 
 # %%
 # initialize actuators
-init_pos = np.array([5.5, 12.5, 15.1])
+init_pos = np.array([5.0, 14.9, 8.25])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
+#%%
+# optionally only initialize actuator of z-axis
+CC_Z = ConexCC(com_port='COM5',
+                velocity=0.4, set_axis='z', verbose=False)
+CC_Z.wait_for_ready()
+CC_Z.move_absolute(8.65)
+
 # %%
 # manually adjust stage position
-z_offset = 8
-new_pos = [5.5, 14, z_offset]
+z_offset = 8.65
+new_pos = [5.0, 14.9, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
 # set the bounds for x and y that are used during the calibration process
-limits_x = [6.1, 6.9]
-limits_y = [1.6, 2.2]
+limits_x = [0, 15]
+limits_y = [10, 23]
 
 # set the bounds for x and y that are used during the calibration process, relative to mid position
 # mid = [6.217,3.022]

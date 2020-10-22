@@ -23,7 +23,7 @@ from datetime import datetime
 from modules.conexcc_control import *
 # from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
 # from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
-# from modules.serial_reader import get_new_data_set, ensure_dir_exists
+from modules.general_functions import ensure_dir_exists
 import MetrolabTHM1176.thm1176 as metro
 from modules.MetrolabMeasurements import readoutMetrolabSensor, get_mean_dataset_MetrolabSensor
 

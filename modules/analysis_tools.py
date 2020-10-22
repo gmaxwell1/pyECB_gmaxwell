@@ -138,7 +138,7 @@ def extract_raw_data_from_2d_scan(filepath):
     return positions, B_field
 
 def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Show=True,
-             title_on=True, cmin=None, cmax=None, plot_component='m', center_position=None):
+             title_on=True, cmin=None, cmax=None, plot_component='m', center_position=None, levels=None):
     """
     Generate 3d plot of 2d-sweep data in the sensor coordinate system.
 
@@ -169,6 +169,8 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     - center_position (None or 1d array of length 2): If an array [x,y] is provided, a red dot is plotted
     at this position. The passed positions are in stage coordinates and will be transformed to 
     sensor coordinates. 
+    - levels (int or 1d array of increasing numbers): level parameter passed to contourf, 
+    sets the number of color levels
 
     Return: fig, ax: Figure and Axis objects of the created plot. 
     """
@@ -193,15 +195,15 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     # choose which data should be plotted. 
     # abbriviate notation using itertools.product
     if plot_component == 'x':
-        label = '$B_x$ [mT]'
+        label = 'field component $B_x$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 0]
     elif plot_component == 'y':
-        label = '$B_y$ [mT]'
+        label = 'field component $B_y$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 1]
     elif plot_component == 'z':
-        label = '$B_z$ [mT]'
+        label = 'field component $B_z$ [mT]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = B_field[i+points_per_side*j, 2]
     elif plot_component == 'xy':
@@ -209,11 +211,11 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = np.sqrt(B_field[i+points_per_side*j, 0]**2 + B_field[i+points_per_side*j, 1]**2)
     elif plot_component == 'theta':
-        label = '$\theta$ [°]'
+        label = 'angle wrt. z-axis $\\theta$ [°]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = np.degrees(angle_wrt_z(B_field[i+points_per_side*j, :]))
     elif plot_component == 'phi':
-        label = '$\phi$ [°]'
+        label = 'in-plane angle wrt. x-axis $\phi$ [°]'
         for i,j in product(range(points_per_side), range(points_per_side)):
             mag[j,i] = np.degrees(inplane_angle_wrt_x(B_field[i+points_per_side*j, :]))
     else:
@@ -240,7 +242,7 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
 
     # countour plot
     if Cont:
-        cf = ax.contourf(x, y, mag, vmin=cmin, vmax=cmax)  # , levels=20)
+        cf = ax.contourf(x, y, mag, vmin=cmin, vmax=cmax, levels=levels)
         fig.colorbar(cf, ax=ax, boundaries=(cmin, cmax), label=label)
     # scatter plot
     if Scat_Mag:  
@@ -465,19 +467,19 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     if flag_xaxis == 'P':
         R = 0.47    # resistance [Ohm] of each coil
         x_vals = R * np.sum(I**2, axis=1)  # sum over all three coils
-        axs[-1].set_xlabel('$P$ [W]')
+        axs[-1].set_xlabel('total power $P$ [W]')
     elif flag_xaxis == 'B':
         x_vals = mean_magnitudes
-        axs[-1].set_xlabel('$|B|$ [mT]')
+        axs[-1].set_xlabel('total magnitude $|B|$ [mT]')
     elif flag_xaxis == 'I2':
         x_vals = I[:, 1]
-        axs[-1].set_xlabel('$I_2$ [A]')
+        axs[-1].set_xlabel('current in coil 2, $I_2$ [A]')
     elif flag_xaxis == 'I3':
         x_vals = I[:, 2]
-        axs[-1].set_xlabel('$I_3$ [A]')
+        axs[-1].set_xlabel('current in coil 3, $I_3$ [A]')
     else:
         x_vals = I[:, 0]
-        axs[-1].set_xlabel('$I_1$ [A]')
+        axs[-1].set_xlabel('current in coil 1, $I_1$ [A]')
 
     # actual plotting
     for i in range(len(axs)):

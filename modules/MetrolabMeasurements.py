@@ -143,7 +143,6 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
         else:
             break
     
-    
     try:
         # due to the setup, transform sensor coordinates to magnet coordinates
         meas_data = sensor_to_magnet_coordinates(meas_data)
