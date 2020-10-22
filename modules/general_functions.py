@@ -99,13 +99,21 @@ def transform_between_sensor_stage_coordinates(data):
     
     # treat 1d arrays and multi-dimensional arrays differently
     if len(data.shape)==1:
-        data_magnet_coords[0] = -data[1]
-        data_magnet_coords[1] = -data[0]
-        data_magnet_coords[2] = data[2]
+        if len(data) == 2:
+            data_magnet_coords[0] = -data[1]
+            data_magnet_coords[1] = -data[0]
+        else:
+            data_magnet_coords[0] = -data[1]
+            data_magnet_coords[1] = -data[0]
+            data_magnet_coords[2] = data[2]
     else:
-        data_magnet_coords[...,0] = -data[...,1]
-        data_magnet_coords[...,1] = -data[...,0]
-        data_magnet_coords[...,2] = data[...,2]
+        if data.shape[-1] == 2:
+            data_magnet_coords[...,0] = -data[...,1]
+            data_magnet_coords[...,1] = -data[...,0]
+        else:
+            data_magnet_coords[...,0] = -data[...,1]
+            data_magnet_coords[...,1] = -data[...,0]
+            data_magnet_coords[...,2] = data[...,2]
 
     return data_magnet_coords
 
