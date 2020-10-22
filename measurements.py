@@ -70,7 +70,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def calibration(node: MetrolabTHM1176Node):
+def calibration(node: MetrolabTHM1176Node, meas_height=1.5):
     # initialize actuators
     CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
     CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
@@ -97,8 +97,10 @@ def calibration(node: MetrolabTHM1176Node):
     if char == '':
         node.calibrate()
     input('Press enter to continue measuring')
-        
-    meas_offset_z = 8.55
+    
+    # change meas_offset_z according to the following rule: 
+    # height above sensor = meas_offset_z + 0.9 - 7.66524 (last number is "zero")
+    meas_offset_z = meas_height - 0.9 + 7.66524
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
     
@@ -210,5 +212,16 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
 
 if __name__ == '__main__':
     
-    calibration(MetrolabTHM1176Node(unit="MT", sense_range_upper="0.1 T"))
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Z.wait_for_ready()
+    
+    start_pos_z = CC_Z.read_cur_pos()
+    print(start_pos_z)
+    CC_Z.move_absolute(new_pos=8.25)
+    CC_Z.wait_for_ready()
+    print(CC_Z.read_cur_pos())
+
+    #     print(curr_pos_z)
+    #     c = input('raise again?')
+    
     

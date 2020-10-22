@@ -24,19 +24,18 @@ class MetrolabTHM1176Node(object):
     """
     Class representing the metrolab THM1176-MF magnetometer. Can be used to read out data and adapt the sensor's settings.
     """
-    # ranges = ["0.1T", '0.3T', '1T', '3T']
-    # trigger_period_bounds = (122e-6, 2.79)
-    # base_fetch_cmd = ':FETC:ARR:'
-    # axes = ['X', 'Y', 'Z']
+    ranges = ['0.1T', '0.3T', '1T', '3T']
+    trigger_period_bounds = (122e-6, 2.79)
+    base_fetch_cmd = ':FETC:ARR:'
+    axes = ['X', 'Y', 'Z']
     # field_axes = ['Bx', 'By', 'Bz']
     # fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp',
     #                'Temperature']  # Order matters, this is linked to the fetch command that is sent to retrived data
-    # units = "MT"
-    # n_digits = 5
-    # defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'format': 'INTEGER', 'unit' : "MT"}
+    # 
+    defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
     # id_fields = ['manufacturer', 'model', 'serial', 'version']
     
-    def __init__(self, average_count = 10, unit = "MT", sense_range_upper = "0.1 T"):
+    def __init__(self, *args, **kwargs):
         
         logging.basicConfig(filename='metrolab.log', level=logging.DEBUG)
         
@@ -47,16 +46,17 @@ class MetrolabTHM1176Node(object):
         ret = self.sensor.ask("*IDN?")
         print(ret)
 
-        self.average_count = average_count
-        self.unit = unit
-        self.sense_range_upper = sense_range_upper # can be 0.1, 0.3, 1 or 3
+        self.average_count = defaults['average']
+        self.unit = defaults['unit']
+        self.range = defaults['range'] # can be 0.1, 0.3, 1 or 3
+        self.n_digits = defaults['n_digits']
+        self.period = defaults['period']
+        self.block_size = defaults['block_size']
 
         # Write settings to device
         #self.sensor.write(":format:data default")
-        self.sensor.write(":average:count " + str(self.average_count))
         self.sensor.write(":unit " + self.unit)
-        self.sensor.write(":sense:range:upper " + self.sense_range_upper)
-        self.sensor.write(":sense:flux:range:auto off")      
+        self.sensor.write(":sense:range:upper " + self.range)
 
         logging.debug('range upper %s', self.sensor.ask(":sense:range:upper?"))
 
@@ -65,55 +65,62 @@ class MetrolabTHM1176Node(object):
         logging.info('... End init')
         
         
-    # def setup(self, **kwargs):
-    #     '''
-    #     :param kwargs:
-    #     :return:
-    #     '''
-    #     keys = kwargs.keys()
+    def setup(self, **kwargs):
+        '''
+        :param kwargs:
+        :return:
+        '''
+        keys = kwargs.keys()
 
-    #     if 'block_size' in keys:
-    #         self.block_size = kwargs['block_size']
+        if 'block_size' in keys:
+            self.block_size = kwargs['block_size']
 
-    #     if 'period' in keys:
-    #         if self.trigger_period_bounds[0] <= kwargs['period'] <= self.trigger_period_bounds[1]:
-    #             self.period = kwargs['period']
-    #         else:
-    #             print('Invalid trigger period value.')
-    #             print('Setting to default...')
-    #             self.period = self.defaults['period']
+        if 'period' in keys:
+            if self.trigger_period_bounds[0] <= kwargs['period'] <= self.trigger_period_bounds[1]:
+                self.period = kwargs['period']
+            else:
+                print('Invalid trigger period value.')
+                print('Setting to default...')
+                self.period = self.defaults['period']
 
-    #     if 'range' in keys:
-    #         if kwargs['range'] in self.ranges:
-    #             self.range = kwargs['range']
+        if 'range' in keys:
+            if kwargs['range'] in self.ranges:
+                self.range = kwargs['range']
 
-    #     if 'average' in keys:
-    #         self.average = kwargs['average']
+        if 'average' in keys:
+            self.average_count = kwargs['average']
 
-    #     if 'format' in keys:
-    #         self.format = kwargs['format']
-
-    #     self.set_format()
-    #     self.set_range()
-    #     self.set_average()
-    #     self.set_periodic_trigger()
-
-    #     cmd = ''
-    #     for axis in self.axes:
-    #         cmd += self.base_fetch_cmd + axis + '? {},{};'.format(self.block_size, self.n_digits)
-    #     cmd += ':FETCH:TIMESTAMP?;:FETCH:TEMPERATURE?;*STB?'
-    #     self.fetch_cmd = cmd
+        if 'n_digits' in keys:
+            if kwargs['n_digits'] < 5:
+                self.n_digits = kwargs['n_digits']
+            
+        if 'unit' in keys:
+            self.unit = kwargs['unit']
+            
         
+        self.sensor.write(":UNIT " + self.unit)
+        self.sensor.write(":SENS " + self.range)
+        self.sensor.write(":SENS:AUTO OFF")
+        self.setAveragingCount()
+        self.set_periodic_trigger()
+
+        cmd = ''
+        for axis in self.axes:
+            cmd += self.base_fetch_cmd + axis + '? {},{};'.format(self.block_size, self.n_digits)
+        cmd += ':FETC:TIM?;:FETCH:TEMP?;*STB?'
+        self.fetch_cmd = cmd
+        
+
     def calibrate(self):
-        self.sensor.write(":calibration:initiate")
-        self.sensor.write(":calibration:state on")
+        self.sensor.write(":CAL:INIT")
+        self.sensor.write(":CAL:STAT ON")
         
     
-    def setAveragingCount(self, num_meas):
-        avg_max = int(self.sensor.ask(":average:count? maximum"))
+    def setAveragingCount(self):
+        avg_max = int(self.sensor.ask(":AVER:COUN? MAX"))
         
-        if num_meas <= avg_max and num_meas > 0:
-            self.sensor.write(":average:count " + str(num_meas))
+        if average_count <= avg_max and average_count > 0:
+            self.sensor.write(":AVER:COUN {}".format(str(average_count)))
             return True
         else:
             print("MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
@@ -126,9 +133,9 @@ class MetrolabTHM1176Node(object):
     
             
     def measureFieldmT(self):
-        Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,5').strip('MT'))
-        By = float(self.sensor.ask(":measure:y? 0.01T,5").strip('MT'))
-        Bz = float(self.sensor.ask(":measure:z? 0.01T,5").strip('MT'))
+        Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + self.n_digits).strip('MT'))
+        By = float(self.sensor.ask(':measure:y? 0.01T,' + self.n_digits).strip('MT'))
+        Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
         
         return [Bx, By, Bz]
     
@@ -168,22 +175,17 @@ class MetrolabTHM1176Node(object):
         return [Bx, By, Bz]
     
     # added by gmaxwell
-    # def set_periodic_trigger(self):
-    #     """
-    #     Set the probe to run in periodic trigger mode with a given period, continuously
-    #     - param period
+    def set_periodic_trigger(self):
+        """
+        Set the probe to run in periodic trigger mode with a given period, continuously
+        - param period
 
-    #     Returns:
-    #     """
-    #     if self.trigger_period_bounds[0] <= self.period <= self.trigger_period_bounds[1]:
-    #         self.sensor.write(':TRIGger:SOURce TIMer')
-    #         self.sensor.write(':TRIGger:TIMer {:f}S'.format(self.period))
-    #         self.sensor.write(':TRIG:COUNT {}'.format(self.block_size))
-    #         self.sensor.write(':INIT:CONTINUOUS ON')
-    #         return True
-    #     else:
-    #         print('Invalid trigger period value.')
-    #         return False
+        Returns:
+        """
+        self.sensor.write(':TRIG:SOUR TIM')
+        self.sensor.write(':TRIG:TIM {:f}S'.format(self.period))
+        self.sensor.write(':TRIG:COUN {}'.format(self.block_size))
+        self.sensor.write(':INIT:CONT ON')
         
         
     def getAvailableUnits(self):
@@ -194,7 +196,7 @@ class MetrolabTHM1176Node(object):
     def getUnit(self):
         units_str = self.sensor.ask(":UNIT?")
         return units_str
-    
+
     
     def getAvailableSenseRangeUpper(self):
         upper_str = self.sensor.ask(':SENS:ALL?')
@@ -215,11 +217,6 @@ class MetrolabTHM1176Node(object):
         ret = self.sensor.ask(':SENS:AUTO?')
         return ret == 'ON'
     
-    # added by gmaxwell
-    def readMemory(self):
-        filedir = self.sensor.ask(':MMEM:CAT?')
-        return filedir
-        
     
     # context manager to ba able to use a with...as... statement    
     def __enter__(self):
