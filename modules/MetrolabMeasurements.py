@@ -32,7 +32,7 @@ finally:
 
 #%%
 def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postfix='data_sets',
-                    directory = './data_sets', verbose=False, save_data=True):
+                    directory = './data_sets', verbose=False, save_data=True)
     """
     Read measurement outcomes of Metrolab THM1176 sensor and return the estimated B-field [mT] in magnet coordinates, 
     also save data if desired.
@@ -73,7 +73,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
 
     elif measure_runs > 1:
         # get current time before starting
-        t_start = time()
+        # t_start = time()
 
         # read the current output of sensor and save measured magnetic field
         meas_data = np.array(node.measureFieldArraymT(measure_runs)).swapaxes(0, 1)
@@ -113,8 +113,7 @@ def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postf
     
     return meas_time, meas_data
 
-def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, verbose=False, max_num_retrials=5,
-                            save_raw_data= False, directory=None):
+def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, verbose=False, max_num_retrials=5):
     """
     Estimate field vectors with Metrolab sensor sampling_size-times and return the mean and std 
     as 1d-ndarrays of length 3. 
@@ -123,9 +122,6 @@ def get_mean_dataset_MetrolabSensor(node: MetrolabTHM1176Node, sampling_size, ve
     - node (MetrolabTHM1176Node): represents the Metrolab THM 1176 sensor
     - sampling_size (int): sampling size to estimate mean magnetic field vector and std, 
     i.e. number of times the sensor is read out in series before averaging 
-    - directory (string): valid path of the folder where data files can be stored (provided save_mean_data=True)
-    - save_raw_data (bool): if True, the raw data estimated during each measurement round for each sensor are saved as a csv-file.
-    - save_mean_data (bool): if True, the mean data averaged over all measurement rounds for each sensor are saved as a csv-file.
     - verbose (bool): switching on/off print-statements for displaying progress
 
     Return: 

@@ -3,7 +3,7 @@ filename: main_menu.py
 
 This script is meant to be used as an interface with the ECB 820. The user can choose from various
 methods to set currents on the different channels ('coils' in Pantec's terminology) and thus communicate
-with the ECB. The standard interface is the command line, but another option is to integrate this into 
+with the ECB. The standard interface is the command line, but another option is to integrate this into
 a GUI for the best user experience.
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
@@ -21,12 +21,12 @@ import csv
 from utility_functions import *
 from main_comm import *
 from measurements import calibration
-from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node as Metro
+from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 
 def MainMenu(initialized):
     """
-    Main menu for ECB/Vector magnet operation an arbitrary magnitude   
+    Main menu for ECB/Vector magnet operation an arbitrary magnitude
 
     Args:
     - initialized: if the ECB is initialized, this will be 0
@@ -50,7 +50,7 @@ def MainMenu(initialized):
 
             c1 = input()
 
-            if c1 == '1':               
+            if c1 == '1':
                 inp0 = input('File or manual input? (answer with f or m): ')
                 if inp0 == 'f':
                     # must be a .csv file!
@@ -76,20 +76,20 @@ def MainMenu(initialized):
                         steps = 200
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
-                    
-                    with Metro(sense_range_upper="0.3 T") as node:
+
+                    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
                         char = input('Calibrate Metrolab sensor? (y/n): ')
                         if char == 'y':
                             calibration(node)
 
-                    with open(inpFile, 'r') as f:
-                        contents = csv.reader(f)
-                        next(contents)
-                        for row in contents:
-                            config = np.array(
-                                [float(row[0]), float(row[1]), float(row[2])])
-                            sweepCurrents(config_list=config, start_val=start_val,
-                                          end_val=end_val, steps=steps)
+                        with open(inpFile, 'r') as f:
+                            contents = csv.reader(f)
+                            next(contents)
+                            for row in contents:
+                                config = np.array(
+                                    [float(row[0]), float(row[1]), float(row[2])])
+                                sweepCurrents(config_list=config, start_val=start_val,
+                                            end_val=end_val, steps=steps, node=node)
 
                 elif inp0 == 'm':
                     inp1 = input('Configuration:\nChannel 1: ')
@@ -126,13 +126,13 @@ def MainMenu(initialized):
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
-                    with Metro(sense_range_upper="0.3 T") as node:
+                    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
                         char = input('Calibrate Metrolab sensor? (y/n): ')
                         if char == 'y':
                             calibration(node)
 
-                    sweepCurrents(config_list=config, start_val=start_val,
-                                  end_val=end_val, steps=steps)
+                        sweepCurrents(config_list=config, start_val=start_val,
+                                  end_val=end_val, steps=steps, node=node)
 
                 else:
                     print('Using preset current configuration.')
@@ -167,7 +167,7 @@ def MainMenu(initialized):
 
                     while randomRuns > 0:
                         sweepCurrents(config=config, start_val=start_val,
-                                      end_val=end_val, steps=steps)
+                                      end_val=end_val, steps=steps, node=MetrolabTHM1176Node(range='0.3 T', period=0.1))
                         randomRuns = randomRuns-1
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
@@ -204,7 +204,12 @@ def MainMenu(initialized):
                     print('expected numerical value, defaulting to 1')
                     steps = 1
 
-                rampVectorField(theta, phi, start_mag, end_mag, steps)
+                with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
+                    char = input('Calibrate Metrolab sensor? (y/n): ')
+                    if char == 'y':
+                        calibration(node)
+
+                    rampVectorField(node, theta, phi, start_mag, end_mag, steps)
 
             elif c1 == '3':
                 inp1 = input('Channel 1: ')

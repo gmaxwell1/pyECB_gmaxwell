@@ -15,6 +15,7 @@ Date: 12.10.2020
 import numpy as np
 import math
 from time import time, sleep
+import threading
 
 ########## local imports ##########
 import transformations as tr
@@ -33,8 +34,25 @@ currDirectParam = b'1'
 windings = 508  # windings per coil
 resistance = 0.47  # resistance per coil
 
+class myMeasThread(threading.Thread):
+    def __init__(self, **kwargs):
+            """
+            start a new thread with an ID, name and member variable.
 
-def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5):
+            Args:
+                threadID (int): [description]
+                name (str): [description]
+                counter (int): [description]
+            """
+            threading.Thread.__init__(self)
+            self.threadID = threadID
+            self.name = name
+            self.counter = counter
+
+    def run(self):
+        
+
+def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start_val=0, end_val=1, steps=5):
     """
     sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
     and stores the measured values in various arrays
@@ -87,34 +105,34 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
         return
 
     # create subdirectory to save measurements
-    fileprefix = '({}_{}_{})_field_meas'.format(str(int(10*current_direction[0])), str(
-        int(10*current_direction[1])), str(int(10*current_direction[2])))
+    fileprefix = '({}_{}_{})_field_meas'.format(int(10*current_direction[0]), 
+        int(10*current_direction[1]), int(10*current_direction[2]))
     # folder, 
     filePath = '.\data_sets'
     
     enableCurrents()
-    with MetrolabTHM1176Node(sense_range_upper="0.3 T") as node:
-        # iterate through all possible steps
-        for i in range(steps):
-            # set the current on each channel
-            for k in range(3):
-                desCurrents[k] = current_direction[k]*all_curr_steps[i]
-            all_curr_vals[i] = current_direction*all_curr_steps[i]
+    # with MetrolabTHM1176Node() as node:
+    # iterate through all possible steps
+    for i in range(steps):
+        # set the current on each channel
+        for k in range(3):
+            desCurrents[k] = current_direction[k]*all_curr_steps[i]
+        all_curr_vals[i] = current_direction*all_curr_steps[i]
 
-            # tentative estimation of resulting B field
-            B_expected = tr.computeMagField(
-                current_direction*all_curr_steps[i], windings)
+        # tentative estimation of resulting B field
+        B_expected = tr.computeMagField(
+            current_direction*all_curr_steps[i], windings)
 
-            setCurrents(desCurrents, currDirectParam)
-            # Let the field stabilize
-            sleep(0.1)
-            # collect measured and expected magnetic field (of the specified sensor in measurements)
-            print('measurement nr. ', i+1)
-            # see measurements.py for more details
-            mean_data, std_data = measure(node, filePath, N=15, average=True)
-            mean_values[i] = mean_data
-            stdd_values[i] = std_data
-            expected_fields[i] = B_expected
+        setCurrents(desCurrents, currDirectParam)
+        # Let the field stabilize
+        sleep(0.1)
+        # collect measured and expected magnetic field (of the specified sensor in measurements)
+        print('measurement nr. ', i+1)
+        # see measurements.py for more details
+        mean_data, std_data = measure(node, filePath, N=5, average=True)
+        mean_values[i] = mean_data
+        stdd_values[i] = std_data
+        expected_fields[i] = B_expected
 
     # end of measurements
     disableCurrents()
@@ -123,7 +141,7 @@ def sweepCurrents(config_list=None, config='z', start_val=0, end_val=1, steps=5)
                    stdd_values, expected_fields, filePath, fileprefix)
 
 
-def rampVectorField(theta, phi, start_mag, finish_mag, steps):
+def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, finish_mag=20, steps=10):
     """
     Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
     Measure the magnetic field values, save them to a file.
@@ -145,41 +163,39 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
 
-    # create subdirectory to save measurements
-    # subDirBase = '{}_{}_field_meas'.format(theta, phi)
-    # folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
-    filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
-    char = input('Calibrate Metrolab sensor? (y/n): ')
-    if char == 'y':
-        calibration()
-
+     # create subdirectory to save measurements
+    fileprefix = '({}_{})_field_meas'.format(int(theta), int(phi))
+    # folder, 
+    filePath = '.\data_sets'
+    
     enableCurrents()
-    # iterate through all possible steps
+    # with MetrolabTHM1176Node(range="0.3 T", period=0.01) as node:
+        # iterate through all possible steps
     for i in range(steps):
-        # compute the currents theoretically needed to achieve an arbitrary magnetic field
+        # tentative estimation of resulting B field
         B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
-        I_vector = tr.computeCoilCurrents(B_expected, windings, resistance)
-
-        # set the computed currents on each channel
+        current_direction = tr.computeCoilCurrents(B_expected, windings, resistance)
+        # set the current on each channel
         for k in range(3):
-            desCurrents[k] = I_vector[k]
+            desCurrents[k] = current_direction[k]
+        all_curr_vals[i] = current_direction
+
         setCurrents(desCurrents, currDirectParam)
         # Let the field stabilize
         sleep(0.1)
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
-        # collect measured magnetic field (of the specified sensor in measurements)
-        mean_data, std_data = measure(filePath, N=15, average=True)
+        # see measurements.py for more details
+        mean_data, std_data = measure(node, filePath, N=5, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
-        all_curr_vals[i] = I_vector
 
     # end of measurements
     disableCurrents()
-    # plotting section
+    # saving data section (prepared for plotting)
     saveDataPoints((all_curr_vals / 1000), mean_values,
-                   stdd_values, expected_fields, directory)
+                   stdd_values, expected_fields, filePath, fileprefix)
 
 
 def runCurrents(channels, t=0, direct=b'1'):
@@ -252,7 +268,9 @@ def runCurrents(channels, t=0, direct=b'1'):
             elif c1 == 's':
                 print(getStatus())
             elif c1 == 'f':
-                measArr = measure(None, 5, True)
+                params = {'block_size': 5, 'period': 1e-3, 'duration': 10, 'averaging': 1}
+                faden = myMeasThread(**params)
+                faden.start()
                 
 
         disableCurrents()

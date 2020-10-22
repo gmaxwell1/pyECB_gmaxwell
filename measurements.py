@@ -119,7 +119,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5):
 
 def progressBar(CC: ConexCC, start_pos, total_distance):
     while not CC.is_ready():
-            sleep(0.2)
+            sleep(0.02)
             pos = CC.read_cur_pos()
             ratio = (abs(pos-start_pos) / total_distance)
             left = int(ratio * 30)
@@ -129,39 +129,83 @@ def progressBar(CC: ConexCC, start_pos, total_distance):
     print('\n')
 
 
-def measure(node: MetrolabTHM1176Node, dataDir=None, N=50, average=False):
+def measure(node: MetrolabTHM1176Node, N=50, average=False):
     """
     starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
     
     Args:
     - node (MetrolabTHM1176Node): represents the Metrolab THM 1176 sensor
-    - dataDir: directory where measurements will be stored (entire path). Make sure that you know that the directory exists!
     - N: number of data points collected for each average
     - specific_sensor: sensor from which data will be fetched, only with hall sensor cube
 
-    Returns: 
-    - meas_time: measurement time (s)
-    - meas_data: measured fields (x, y, z componenents)
-    XOR
+    Returns:
     - mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
     - std_data: standard deviation in each averaged measurement
     (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
     """
-    if dataDir is not None:
-        ensure_dir_exists(dataDir, verbose=False)
+    # if dataDir is not None:
+    #     ensure_dir_exists(dataDir, verbose=False)
                
     if average:
         # measure average field at one point with the specific
-        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N, directory=dataDir)
+        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N)
         ret1, ret2 = mean_data, std_data
     else:
         # This option is more for getting time-field measurements.
-        meas_time, meas_data = readoutMetrolabSensor(node, measure_runs=N, directory=dataDir)
-        # see .\modules\MetrolabMeasurements.py for more details on these function
-        ret1, ret2 = meas_time, meas_data
+        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=1)
+        ret1, ret2 = mean_data, std_data
 
     return ret1, ret2
 
+def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10, return_temp_data=False):
+    """
+    Measure magnetic flux density over time.
+
+    Args:
+        period (float, optional): Trigger period in seconds. Defaults to 0.001 (1 ms).
+        averaging (int, optional): The arithmetic mean of this number of measurements is taken before they are fetched. 
+                                   Results in smoother measurements. Defaults to 1.
+        block_size (int, optional): How many measurements should be fetched at once. Defaults to 1.
+        duration (int, optional): Total duration of measurement. Defaults to 10.
+        return_temp_data (bool, optional): Temperature measured by sensor will or will not be returned. This is a dimensionless value between 0 and 64k. 
+                                           Not calibrated, mainly useful for detecting problems due to temperature fluctuations. Defaults to False.
+
+    Raises:
+        ValueError: If for some reason the number of time values and B field values is different.
+
+    Returns:
+        lists of floats: Bx, By, Bz, timeline (x, y and z components of B field, times of measurements)
+        list of floats: temp (temperature values as explained above)
+    """
+    with MetrolabTHM1176Node(period=period, block_size=block_size,
+                             range='0.3 T', average=averaging, unit='MT') as node:
+        node.start_acquisition()
+        sleep(duration)
+        node.stop = True
+        
+        flux_temp_data = [node.data_stack[key] for key in item_name]
+        timeline = node.data_stack['Timestamp']
+        
+        t_offset = timeline[0]
+        for ind in range(len(timeline)):
+            timeline[ind] = round(timeline[ind]-t_offset, 3)
+        
+        Bx = flux_temp_data[0]
+        By = flux_temp_data[1]
+        Bz = flux_temp_data[2]
+        temp = flux_temp_data[3]
+        
+        try:
+            if (len(Bx) != timeline or len(By) != timeline or len(Bz) != timeline):
+                raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
+            else:
+                if return_temp_data:
+                    return Bx, By, Bz, temp, timeline
+                
+                return Bx, By, Bz, timeline
+        except:
+            return [0], [0], [0], [0]
+        
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
     """
@@ -175,6 +219,10 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
+    
+    if directory is not None:
+        ensure_dir_exists(directory, verbose=False)
+        
     try:
         if len(I[0]) == 3:
             # depending on which function in main_menu.py was used to measure

@@ -19,21 +19,30 @@ import usbtmc
 import numpy as np
 import logging
 from time import sleep, time
+import threading
+import matplotlib.pyplot as plt
 
 class MetrolabTHM1176Node(object):
     """
     Class representing the metrolab THM1176-MF magnetometer. Can be used to read out data and adapt the sensor's settings.
+    
+    kwargs:
+    - 'block_size': number of measured values to fetch at once. int > 0
+    - 'period': trigger period, should be in the interval (122e-6, 2.79)
+    - 'range': measurment range to use. '0.1T', '0.3T', '1T', '3T' are accepted.
+    - 'average': number of measured values to average over. int > 0
+    - 'n_digits': number of digits results are rounded to. int > 0
+    - 'unit': unit of measured magnetic field. 'T', 'MT', 'UT', 'NT', 'GAUSs', 'KGAUss', 'MGAUss', 'MAHZp' are possible.
+    
+    defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
     """
     ranges = ['0.1T', '0.3T', '1T', '3T']
     trigger_period_bounds = (122e-6, 2.79)
     base_fetch_cmd = ':FETC:ARR:'
     axes = ['X', 'Y', 'Z']
-    # field_axes = ['Bx', 'By', 'Bz']
-    # fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp',
-    #                'Temperature']  # Order matters, this is linked to the fetch command that is sent to retrived data
-    # 
-    defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
-    # id_fields = ['manufacturer', 'model', 'serial', 'version']
+    fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp', 'Temperature']  # Order matters, this is linked to the fetch command that is sent to retrived data
+    
+    defaults = {'block_size': 10, 'period': 0.1, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
     
     def __init__(self, *args, **kwargs):
         
@@ -46,12 +55,12 @@ class MetrolabTHM1176Node(object):
         ret = self.sensor.ask("*IDN?")
         print(ret)
 
-        self.average_count = defaults['average']
-        self.unit = defaults['unit']
-        self.range = defaults['range'] # can be 0.1, 0.3, 1 or 3
-        self.n_digits = defaults['n_digits']
-        self.period = defaults['period']
-        self.block_size = defaults['block_size']
+        self.average_count = self.defaults['average']
+        self.unit = self.defaults['unit']
+        self.range = self.defaults['range'] # can be 0.1, 0.3, 1 or 3
+        self.n_digits = self.defaults['n_digits']
+        self.period = self.defaults['period']
+        self.block_size = self.defaults['block_size']
 
         # Write settings to device
         #self.sensor.write(":format:data default")
@@ -60,11 +69,19 @@ class MetrolabTHM1176Node(object):
 
         logging.debug('range upper %s', self.sensor.ask(":sense:range:upper?"))
 
-        # self.period = 5
-
+        # from online repo for sensor
+        self.stop = False
+        self.last_reading = {fetch_kind: None for fetch_kind in self.fetch_kinds}
+        self.data_stack = {fetch_kind: [] for fetch_kind in self.fetch_kinds}
+        self.errors = []
+        
+        self.setup(**kwargs)
+        
         logging.info('... End init')
-        
-        
+
+
+
+     ### from online repo found for reading sensor!       
     def setup(self, **kwargs):
         '''
         :param kwargs:
@@ -109,8 +126,70 @@ class MetrolabTHM1176Node(object):
             cmd += self.base_fetch_cmd + axis + '? {},{};'.format(self.block_size, self.n_digits)
         cmd += ':FETC:TIM?;:FETCH:TEMP?;*STB?'
         self.fetch_cmd = cmd
-        
+          
+    
+    def start_acquisition(self):
+        """
+        Fetch data from probe buffer
+        Modifies data_stack
+        """
+        self.stop = False
+        self.sensor.write(':INIT')
+        while not self.stop:
+            res = self.sensor.ask(self.fetch_cmd)
+            self.parse_ascii_responses('fetch', res)
 
+            self.data_stack = {key: np.hstack((self.data_stack[key], self.last_reading[key])) for key in
+                               self.fetch_kinds}
+
+        self.stop_acquisition()
+
+
+    def stop_acquisition(self):
+        """
+        Stop fetching data from probe buffer.
+        """
+        res = self.sensor.ask(':ABORT;*STB?')
+        print("Stopping acquisition...")
+        print("THM1176 status: {}".format(res))
+        
+        
+    def str_conv(self, input_str, kind):
+        if kind == 'Timestamp':
+            val = int(input_str, 0) * 1e-9
+            time_offset = val - (self.block_size - 1) * self.period
+            res = np.linspace(time_offset, val, self.block_size)
+        elif kind == 'Temperature':
+            res = int(input_str) * np.ones(self.block_size)
+
+        else:
+            res = np.fromstring(input_str.replace(self.unit, ''), sep=',')
+
+        return res
+
+    def parse_ascii_responses(self, kind, res_in):
+        '''
+        :param kind:
+        :return:
+        '''
+        if kind == 'fetch':
+            parsed = res_in.split(';')
+
+            for idx, key in enumerate(self.fetch_kinds):
+                self.last_reading[key] = self.str_conv(parsed[idx], key)
+
+            if parsed[-1] == '4':
+                res = self.sensor.ask(':SYSTEM:ERROR?;*STB?')
+                self.errors.append(res)
+                while res[0] != '0':
+                    print("Error code: {}".format(res))
+                    res = self.sensor.ask(':SYSTEM:ERROR?;*STB?')
+                    self.errors.append(res)
+                        
+        
+        
+        
+### original
     def calibrate(self):
         self.sensor.write(":CAL:INIT")
         self.sensor.write(":CAL:STAT ON")
@@ -119,8 +198,8 @@ class MetrolabTHM1176Node(object):
     def setAveragingCount(self):
         avg_max = int(self.sensor.ask(":AVER:COUN? MAX"))
         
-        if average_count <= avg_max and average_count > 0:
-            self.sensor.write(":AVER:COUN {}".format(str(average_count)))
+        if self.average_count <= avg_max and self.average_count > 0:
+            self.sensor.write(":AVER:COUN {}".format(str(self.average_count)))
             return True
         else:
             print("MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
@@ -138,7 +217,8 @@ class MetrolabTHM1176Node(object):
         Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
         
         return [Bx, By, Bz]
-    
+                  
+                
     def measureFieldArraymT(self, num_meas=10):
         """
         Make a certain number of measurements of each field direction.
@@ -217,7 +297,6 @@ class MetrolabTHM1176Node(object):
         ret = self.sensor.ask(':SENS:AUTO?')
         return ret == 'ON'
     
-    
     # context manager to ba able to use a with...as... statement    
     def __enter__(self):
         if not self.sensor.connected:
@@ -235,15 +314,186 @@ class MetrolabTHM1176Node(object):
         
         
 if __name__ == '__main__':
-    num_meas = 10
-    with MetrolabTHM1176Node(sense_range_upper="0.1 T") as node:
-        # node.sensor.write(":TRIG:TIM " + arg)
-        # node.sensor.write(":TRIG:SOUR TIM")
-        
-        ret = node.sensor.ask(":READ:array:x? " + str(num_meas) + ", 0.01T,5")
-        Bx_str = ret.split(",")
-        Bx = []
-        for val in Bx_str:
-            Bx.append(float(val.strip('MT')))
+    
+    params = {'block_size': 5, 'period': 1.0 / 20.0, 'range': '0.3T', 'average': 400, 'unit': 'MT'}
 
-        print(Bx)
+    item_name = ['Bx', 'By', 'Bz', 'Temperature']
+    labels = ['Bx', 'By', 'Bz', 'T']
+    curve_type = ['F', 'F', 'F', 'T']
+    to_show = [True, True, True, False]
+    output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'  
+    # You may want to change this to your desired file
+
+    
+    thm = MetrolabTHM1176Node(**params)  # You may want to ahve a smarter way of fetching the resource name
+
+
+    data_stack = []  # list is thread safe
+
+    # Start the monitoring thread
+    thread = threading.Thread(target=thm.start_acquisition)
+    thread.start()
+    sleep(10)
+    # Plotting stuff
+    # initialize figure
+
+    # fig, ax1 = plt.subplots()
+    # ax2 = ax1.twinx()
+    # plt.draw()
+
+    # plt.pause(5)  # Wait for the monitor to start filling data in
+    # plotdata = [thm.data_stack[key] for key in item_name]
+    # timeline = thm.data_stack['Timestamp']
+
+    # # Setup colors
+    # NTemp = curve_type.count('T')
+    # cmap1 = plt.get_cmap('autumn')
+    # colors1 = [cmap1(i) for i in np.linspace(0, 1, NTemp)]
+
+    # NField = curve_type.count('F')
+    # cmap2 = plt.get_cmap('winter')
+    # colors2 = [cmap2(i) for i in np.linspace(0, 1, NField)]
+
+    # colors = []
+    # count1 = 0
+    # count2 = 0
+    # for ct in curve_type:
+    #     if ct == 'T':
+    #         colors.append(colors1[count1])
+    #         count1 += 1
+    #     else:
+    #         colors.append(colors2[count2])
+    #         count2 += 1
+
+    # # Create the matplotlib lines for each curve
+    # lines = []
+    # for k, flag in enumerate(to_show):
+    #     if flag:
+    #         data_to_plot = plotdata[k]
+    #         if curve_type[k] == 'F':
+    #             ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+    #         else:
+    #             ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+    #         lines.append(ln)
+
+    # ax1.legend(lines, labels, loc='best')
+
+    # plt.ion()
+
+    # time_start = time()
+
+    # while time() - time_start < duration:
+    #     try:
+    #         plt.pause(1)
+    #         plotdata = [thm.data_stack[key] for key in item_name]
+    #         timeline = thm.data_stack['Timestamp']
+
+    #         count = 0
+    #         for k, flag in enumerate(to_show):
+    #             if flag:
+    #                 lines[count].set_data(timeline, plotdata[k])
+    #                 count += 1
+
+    #         ax1.relim()
+    #         ax1.autoscale_view()
+    #         ax2.relim()
+    #         ax2.autoscale_view()
+
+    #         plt.draw()
+
+    #     except:
+    #         plt.ioff()
+    #         thm.stop = True
+    #         plt.pause(1)
+    #         sys.exit("Done!")
+
+    thm.stop = True
+    
+    plotdata = [thm.data_stack[key] for key in item_name]
+    timeline = thm.data_stack['Timestamp']
+    
+    t_offset = timeline[0]
+    for ind in range(len(timeline)):
+        timeline[ind] = round(timeline[ind]-t_offset, 3)
+    
+    # print(len(plotdata[0]), plotdata[0])
+    # print(len(plotdata[1]), plotdata[1])
+    # print(len(plotdata[2]), plotdata[2])
+    # print(len(timeline), timeline)
+    
+    # Plotting stuff
+    # initialize figure
+
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    plt.draw()
+
+    # plt.pause(5)  # Wait for the monitor to start filling data in
+    # plotdata = [thm.data_stack[key] for key in item_name]
+    # timeline = thm.data_stack['Timestamp']
+
+    # Setup colors
+    NTemp = curve_type.count('T')
+    cmap1 = plt.get_cmap('autumn')
+    colors1 = [cmap1(i) for i in np.linspace(0, 1, NTemp)]
+
+    NField = curve_type.count('F')
+    cmap2 = plt.get_cmap('winter')
+    colors2 = [cmap2(i) for i in np.linspace(0, 1, NField)]
+
+    colors = []
+    count1 = 0
+    count2 = 0
+    for ct in curve_type:
+        if ct == 'T':
+            colors.append(colors1[count1])
+            count1 += 1
+        else:
+            colors.append(colors2[count2])
+            count2 += 1
+
+    # Create the matplotlib lines for each curve
+    lines = []
+    for k, flag in enumerate(to_show):
+        if flag:
+            data_to_plot = plotdata[k]
+            if curve_type[k] == 'F':
+                ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+            else:
+                ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+            lines.append(ln)
+
+    ax1.legend(lines, labels, loc='best')
+
+    # plt.ion()
+
+    # time_start = time()
+
+    # while time() - time_start < duration:
+    #     try:
+    #         plt.pause(1)
+    #         plotdata = [thm.data_stack[key] for key in item_name]
+    #         timeline = thm.data_stack['Timestamp']
+
+    #         count = 0
+    #         for k, flag in enumerate(to_show):
+    #             if flag:
+    #                 lines[count].set_data(timeline, plotdata[k])
+    #                 count += 1
+
+    #         ax1.relim()
+    #         ax1.autoscale_view()
+    #         ax2.relim()
+    #         ax2.autoscale_view()
+
+    #         plt.draw()
+
+    #     except:
+    #         plt.ioff()
+    #         thm.stop = True
+    #         plt.pause(1)
+    #         sys.exit("Done!")
+
+    # # This is to keep the figure open when everything is done
+    # plt.ioff()
+    plt.show()
