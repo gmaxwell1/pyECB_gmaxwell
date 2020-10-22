@@ -20,6 +20,8 @@ import csv
 ########## local imports ##########
 from utility_functions import *
 from main_comm import *
+from measurements import calibration
+from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node as Metro
 
 
 def MainMenu(initialized):
@@ -48,7 +50,7 @@ def MainMenu(initialized):
 
             c1 = input()
 
-            if c1 == '1':
+            if c1 == '1':               
                 inp0 = input('File or manual input? (answer with f or m): ')
                 if inp0 == 'f':
                     # must be a .csv file!
@@ -58,29 +60,36 @@ def MainMenu(initialized):
                     inp3 = input('# of steps: ')
                     # the values for each measurement run should be the same for consistent results
                     try:
-                        start_val = int(inp4)
+                        start_val = int(inp1)
                     except:
                         print('expected numerical value, defaulting to -4500')
                         start_val = -4500
                     try:
-                        end_val = int(inp5)
+                        end_val = int(inp2)
                     except:
                         print('expected numerical value, defaulting to 4500')
                         end_val = 4500
                     try:
-                        steps = int(inp6)
+                        steps = int(inp3)
                     except:
                         print('expected numerical value, defaulting to 200')
                         steps = 200
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
+                    
+                    with Metro(sense_range_upper="0.3 T") as node:
+                        char = input('Calibrate Metrolab sensor? (y/n): ')
+                        if char == 'y':
+                            calibration(node)
 
                     with open(inpFile, 'r') as f:
                         contents = csv.reader(f)
+                        next(contents)
                         for row in contents:
                             config = np.array(
-                                float(row[0]), float(row[1]), float(row[2]))
-                            sweepCurrents(config_list=config, start_val=start_val, end_val=end_val, steps=steps)
+                                [float(row[0]), float(row[1]), float(row[2])])
+                            sweepCurrents(config_list=config, start_val=start_val,
+                                          end_val=end_val, steps=steps)
 
                 elif inp0 == 'm':
                     inp1 = input('Configuration:\nChannel 1: ')
@@ -117,7 +126,13 @@ def MainMenu(initialized):
 
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
-                    sweepCurrents(config_list=config, start_val=start_val, end_val=end_val, steps=steps)
+                    with Metro(sense_range_upper="0.3 T") as node:
+                        char = input('Calibrate Metrolab sensor? (y/n): ')
+                        if char == 'y':
+                            calibration(node)
+
+                    sweepCurrents(config_list=config, start_val=start_val,
+                                  end_val=end_val, steps=steps)
 
                 else:
                     print('Using preset current configuration.')
@@ -151,7 +166,8 @@ def MainMenu(initialized):
                     c1 = input('Automatic exit after finish? (x for yes): ')
 
                     while randomRuns > 0:
-                        sweepCurrents(config, start_val, end_val, steps)
+                        sweepCurrents(config=config, start_val=start_val,
+                                      end_val=end_val, steps=steps)
                         randomRuns = randomRuns-1
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
@@ -312,3 +328,13 @@ if __name__ == '__main__':
 
     MainMenu(ecbInit)
     closeConnection()
+    # inpFile = input('Enter a valid configuration file path: ')
+    # type(inpFile)
+    # print(inpFile)
+    # with open(inpFile, 'r') as f:
+    #     contents = csv.reader(f)
+    #     next(contents)
+    #     for row in contents:
+    #         config = np.array([
+    #             float(row[0]), float(row[1]), float(row[2])])
+    #         print(config)

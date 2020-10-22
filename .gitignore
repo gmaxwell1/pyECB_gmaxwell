@@ -1,6 +1,7 @@
 # Data from measurements
 data_sets/
 test_data/
+config_files/
 0_measurement.py
 analysis.py
 update_old_data_files.py
