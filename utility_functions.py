@@ -16,12 +16,13 @@ import numpy as np
 import math
 from time import time, sleep
 import threading
+import matplotlib.pyplot as plt
 
 ########## local imports ##########
 import transformations as tr
 from main_comm import *
 from measurements import *
-from modules.analysis_tools import generate_plots
+# from modules.analysis_tools import generate_plots
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 ##########  Current parameters ##########
@@ -34,23 +35,81 @@ currDirectParam = b'1'
 windings = 508  # windings per coil
 resistance = 0.47  # resistance per coil
 
-class myMeasThread(threading.Thread):
-    def __init__(self, **kwargs):
-            """
-            start a new thread with an ID, name and member variable.
+########## list for storing measured values ##########
+returnDict = {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
+# order of data: Bx list, By list, Bz list, time list
+# threadLock = threading.Lock()
 
-            Args:
-                threadID (int): [description]
-                name (str): [description]
-                counter (int): [description]
-            """
-            threading.Thread.__init__(self)
-            self.threadID = threadID
-            self.name = name
-            self.counter = counter
+class myMeasThread(threading.Thread):
+    """
+    Start a new thread for measuring magnetic field over time with the Metrolab sensor.
+    Thread has a name name and multiple member variables.
+
+    kwargs:
+        name (str): thread name (default: 'MeasureThread')
+        period (float): trigger period, should be in the interval (122e-6, 2.79)
+                        (default: 0.1)
+        averaging (int): number of measured values to average over.
+                            (default: 1)            
+        block_size (int): number of measured values to fetch at once.
+                            (default: 1)
+        duration (float): duration of measurement series
+                            (default: 10)
+        tempData (bool): Fetch temperature data or not?
+                            (default: False)
+                            
+        self.returnList is a tuple containing the returned values from the measurement.
+    """
+    def __init__(self, **kwargs):
+        threading.Thread.__init__(self)
+        keys = kwargs.keys()
+        
+        if 'name' in keys:
+            self.name = kwargs['name']
+        else:
+            self.name = 'MeasureThread'
+            
+        if 'period' in keys:
+            self.period = kwargs['period']
+        else:
+            self.period = 0.1
+        
+        if 'averaging' in keys:
+            self.averaging = kwargs['averaging']
+        else:
+            self.averaging = 1
+        
+        if 'block_size' in keys:
+            self.block_size = kwargs['block_size']
+        else:
+            self.block_size = 1
+            
+        if 'duration' in keys:
+            self.duration = kwargs['duration']
+        else:
+            self.duration = 10
+            
+        if 'tempData' in keys:
+            self.tempData = kwargs['tempData']
+        else:
+            self.tempData = False
 
     def run(self):
+        global returnDict
         
+        # threadLock.acquire()
+        print("Starting " + self.name)
+        
+        try:
+            returnDict = timeResolvedMeasurement(period=self.period, averaging=self.averaging,
+                                                block_size=self.block_size, duration=self.duration,
+                                                return_temp_data=self.tempData)
+        except Exception as e:
+            print('There was a problem!')
+            print(e)
+        # threadLock.release()
+        print("Finished measuring. {} exiting.".format(self.name))
+
 
 def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start_val=0, end_val=1, steps=5):
     """
@@ -267,10 +326,13 @@ def runCurrents(channels, t=0, direct=b'1'):
 
             elif c1 == 's':
                 print(getStatus())
-            elif c1 == 'f':
-                params = {'block_size': 5, 'period': 1e-3, 'duration': 10, 'averaging': 1}
-                faden = myMeasThread(**params)
-                faden.start()
+            #elif c1 == 'f':
+                # params = {'block_size': 5, 'period': 1e-3, 'duration': 10, 'averaging': 1}
+
+                # faden = threading.Thread(timeResolvedMeasurement, **params)
+                # faden.start()
+                # for key in returnDict.keys:
+                #     print(key, 'measured values: ', returnDict[key])
                 
 
         disableCurrents()
@@ -420,3 +482,62 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
         rounds = rounds-1
 
     disableCurrents()
+    
+    
+    
+if __name__ == "__main__":
+    params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 3}
+    
+    faden = myMeasThread(**params)
+    faden.start()
+    openConnection()
+    sleep(1)
+    generateMagneticField(60, 90, 0, 4)
+    closeConnection()
+    faden.join()
+    
+    item_name = ['Bx', 'By', 'Bz']
+    labels = ['Bx', 'By', 'Bz', 'T']
+    curve_type = ['F', 'F', 'F', 'T']
+    to_show = [True, True, True, False]
+    
+    plotdata = [returnDict[key] for key in item_name]
+    timeline = returnDict['time']
+    
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    plt.draw()
+
+    # Setup colors
+    NTemp = curve_type.count('T')
+    cmap1 = plt.get_cmap('autumn')
+    colors1 = [cmap1(i) for i in np.linspace(0, 1, NTemp)]
+
+    NField = curve_type.count('F')
+    cmap2 = plt.get_cmap('winter')
+    colors2 = [cmap2(i) for i in np.linspace(0, 1, NField)]
+
+    colors = []
+    count1 = 0
+    count2 = 0
+    for ct in curve_type:
+        if ct == 'T':
+            colors.append(colors1[count1])
+            count1 += 1
+        else:
+            colors.append(colors2[count2])
+            count2 += 1
+
+    # Create the matplotlib lines for each curve
+    lines = []
+    for k, flag in enumerate(to_show):
+        if flag:
+            data_to_plot = plotdata[k]
+            if curve_type[k] == 'F':
+                ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+            else:
+                ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+            lines.append(ln)
+
+    ax1.legend(lines, labels, loc='best')
+    plt.show()

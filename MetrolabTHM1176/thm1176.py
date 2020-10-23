@@ -185,9 +185,20 @@ class MetrolabTHM1176Node(object):
                     print("Error code: {}".format(res))
                     res = self.sensor.ask(':SYSTEM:ERROR?;*STB?')
                     self.errors.append(res)
-                        
-        
-        
+                    
+    # added by gmaxwell
+    def set_periodic_trigger(self):
+        """
+        Set the probe to run in periodic trigger mode with a given period, continuously
+        - param period
+
+        Returns:
+        """
+        self.sensor.write(':TRIG:SOUR TIM')
+        self.sensor.write(':TRIG:TIM {:f}S'.format(self.period))
+        self.sensor.write(':TRIG:COUN {}'.format(self.block_size))
+        self.sensor.write(':INIT:CONT ON')
+                            
         
 ### original
     def calibrate(self):
@@ -215,6 +226,8 @@ class MetrolabTHM1176Node(object):
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + self.n_digits).strip('MT'))
         By = float(self.sensor.ask(':measure:y? 0.01T,' + self.n_digits).strip('MT'))
         Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
+        
+        self.set_periodic_trigger()
         
         return [Bx, By, Bz]
                   
@@ -251,22 +264,9 @@ class MetrolabTHM1176Node(object):
         
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
-        
+                
         return [Bx, By, Bz]
-    
-    # added by gmaxwell
-    def set_periodic_trigger(self):
-        """
-        Set the probe to run in periodic trigger mode with a given period, continuously
-        - param period
 
-        Returns:
-        """
-        self.sensor.write(':TRIG:SOUR TIM')
-        self.sensor.write(':TRIG:TIM {:f}S'.format(self.period))
-        self.sensor.write(':TRIG:COUN {}'.format(self.block_size))
-        self.sensor.write(':INIT:CONT ON')
-        
         
     def getAvailableUnits(self):
         unit_str = self.sensor.ask(":UNIT:ALL?")
@@ -315,7 +315,7 @@ class MetrolabTHM1176Node(object):
         
 if __name__ == '__main__':
     
-    params = {'block_size': 5, 'period': 1.0 / 20.0, 'range': '0.3T', 'average': 400, 'unit': 'MT'}
+    params = {'block_size': 5, 'period': 1.0 / 100.0, 'range': '0.3T', 'average': 20, 'unit': 'MT'}
 
     item_name = ['Bx', 'By', 'Bz', 'Temperature']
     labels = ['Bx', 'By', 'Bz', 'T']

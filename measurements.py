@@ -12,12 +12,13 @@ Date: 20.10.2020
 """
 ########## Standard library imports ##########
 import numpy as np
-import serial
+# import serial
 from time import sleep, time
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
 from datetime import datetime
+import threading
 
 ########## local imports ##########
 from conexcc.conexcc_class import *
@@ -25,13 +26,14 @@ from conexcc.conexcc_class import *
 # from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
 from modules.general_functions import ensure_dir_exists
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
-from modules.MetrolabMeasurements import readoutMetrolabSensor, get_mean_dataset_MetrolabSensor
+
 
 __all__ = [
     'calibration',
     'newMeasurementFolder',
     'measure',
-    'saveDataPoints'
+    'saveDataPoints',
+    'timeResolvedMeasurement'
 ]
 
 ########## sensor cube/Conexcc ports ##########
@@ -71,6 +73,14 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
 
 
 def calibration(node: MetrolabTHM1176Node, meas_height=1.5):
+    """
+    move the stage into position to calibrate the sensor. After successful calibration, the sensor is moved to the desired measuring position.
+
+    Args:
+        node (MetrolabTHM1176Node): [description]
+        meas_height (float, optional): [description]. Defaults to 1.5.
+    """
+    
     # initialize actuators
     CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
     CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
@@ -129,31 +139,52 @@ def progressBar(CC: ConexCC, start_pos, total_distance):
     print('\n')
 
 
-def measure(node: MetrolabTHM1176Node, N=50, average=False):
+def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
     """
-    starts communication with hall sensor cube, measures the magnetic field with the specified sensor (change specific_sensor variable if necessary)
-    
+    Measures the magnetic field with the Metrolab sensor. Returns either raw measured values of field components (x, y, z) 
+    or mean and standard deviation in each direction.
+
     Args:
-    - node (MetrolabTHM1176Node): represents the Metrolab THM 1176 sensor
-    - N: number of data points collected for each average
-    - specific_sensor: sensor from which data will be fetched, only with hall sensor cube
+        node (MetrolabTHM1176Node): represents the Metrolab THM 1176 sensor
+        N (int, optional): number of data points collected for each average. Defaults to 10.
+        max_num_retrials (int, optional): How many times to reattempt measurement before raising an exception. Defaults to 5.
+        average (bool, optional): Average over the N measurements. Defaults to False.
+
+    Raises:
+        MeasurementError: a problem occured during measurement.
 
     Returns:
-    - mean_data: mean measurement data of 'specific_sensor' (averaged over N measurements)
-    - std_data: standard deviation in each averaged measurement
-    (where mean, std are returned as ndarrays of shape (1, 3) for the 3 field directions)
+        tuple of 2 np.array(3): This is returned if average is true. mean and std of the three field componenents over N measurements.
+        tuple (np.ndarray((N,3)), 0): This is returned if average is false. N measured values of each component are contained. Second return is 0.
     """
     # if dataDir is not None:
     #     ensure_dir_exists(dataDir, verbose=False)
-               
+
+    # perform measurement and collect the raw data 
+    for _ in range(max_num_retrials):
+        try:
+            # an N by 3 array
+            meas_data = np.array(node.measureFieldArraymT(N)).swapaxes(0, 1)
+        except:
+            pass
+        else:
+            break
+    
+    try:
+        # due to the setup, transform sensor coordinates to magnet coordinates
+        meas_data = sensor_to_magnet_coordinates(meas_data) 
+    # if it was not possible to obtain valid measurement results after max_num_retrials, raise MeasurementError, too
+    except UnboundLocalError:
+        raise MeasurementError
+    
     if average:
-        # measure average field at one point with the specific
-        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=N)
+        # compute the mean and std from raw data for each sensor
+        mean_data = np.mean(meas_data, axis=0)
+        std_data = np.std(meas_data, axis=0)
         ret1, ret2 = mean_data, std_data
     else:
         # This option is more for getting time-field measurements.
-        mean_data, std_data = get_mean_dataset_MetrolabSensor(node, sampling_size=1)
-        ret1, ret2 = mean_data, std_data
+        ret1, ret2 = meas_data, 0
 
     return ret1, ret2
 
@@ -174,37 +205,35 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         ValueError: If for some reason the number of time values and B field values is different.
 
     Returns:
-        lists of floats: Bx, By, Bz, timeline (x, y and z components of B field, times of measurements)
+        dictionary containing lists of floats: Bx, By, Bz, timeline 
+        (x, y and z components of B field, times of measurements)
         list of floats: temp (temperature values as explained above)
     """
-    with MetrolabTHM1176Node(period=period, block_size=block_size,
-                             range='0.3 T', average=averaging, unit='MT') as node:
-        node.start_acquisition()
-        sleep(duration)
-        node.stop = True
+    node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=averaging, unit='MT')
+    
+    thread = threading.Thread(target=node.start_acquisition)
+    thread.start()
+    sleep(duration)
+    node.stop = True
         
-        flux_temp_data = [node.data_stack[key] for key in item_name]
-        timeline = node.data_stack['Timestamp']
-        
-        t_offset = timeline[0]
-        for ind in range(len(timeline)):
-            timeline[ind] = round(timeline[ind]-t_offset, 3)
-        
-        Bx = flux_temp_data[0]
-        By = flux_temp_data[1]
-        Bz = flux_temp_data[2]
-        temp = flux_temp_data[3]
-        
-        try:
-            if (len(Bx) != timeline or len(By) != timeline or len(Bz) != timeline):
-                raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
-            else:
-                if return_temp_data:
-                    return Bx, By, Bz, temp, timeline
-                
-                return Bx, By, Bz, timeline
-        except:
-            return [0], [0], [0], [0]
+    timeline = node.data_stack['Timestamp']
+    
+    t_offset = timeline[0]
+    for ind in range(len(timeline)):
+        timeline[ind] = round(timeline[ind]-t_offset, 3)
+    
+    node.data_stack['Timestamp'] = timeline
+    
+    try:
+        if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
+            raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
+        else:
+            if return_temp_data:
+                return node.data_stack
+            
+            return {'Bx': node.data_stack['Bx'], 'By': node.data_stack['By'], 'Bz': node.data_stack['Bz'], 'time': timeline}
+    except:
+        return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
         
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
@@ -260,16 +289,20 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
 
 if __name__ == '__main__':
     
-    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    CC_Z.wait_for_ready()
+    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    # CC_Z.wait_for_ready()
     
-    start_pos_z = CC_Z.read_cur_pos()
-    print(start_pos_z)
-    CC_Z.move_absolute(new_pos=8.25)
-    CC_Z.wait_for_ready()
-    print(CC_Z.read_cur_pos())
+    # start_pos_z = CC_Z.read_cur_pos()
+    # print(start_pos_z)
+    # CC_Z.move_absolute(new_pos=8.25)
+    # CC_Z.wait_for_ready()
+    # print(CC_Z.read_cur_pos())
 
-    #     print(curr_pos_z)
-    #     c = input('raise again?')
+    # #     print(curr_pos_z)
+    # #     c = input('raise again?')
+    returnDict = timeResolvedMeasurement(period=0.04, averaging=20, block_size=10)
+    
+    for key in returnDict.keys():
+        print(key, 'measured values: ', returnDict[key])
     
     

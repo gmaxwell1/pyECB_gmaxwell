@@ -32,7 +32,7 @@ finally:
 
 #%%
 def readoutMetrolabSensor(node: MetrolabTHM1176Node, measure_runs=1, fname_postfix='data_sets',
-                    directory = './data_sets', verbose=False, save_data=True)
+                          directory = './data_sets', verbose=False, save_data=True):
     """
     Read measurement outcomes of Metrolab THM1176 sensor and return the estimated B-field [mT] in magnet coordinates, 
     also save data if desired.
