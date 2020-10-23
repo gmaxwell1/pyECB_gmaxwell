@@ -321,7 +321,7 @@ if __name__ == '__main__':
     labels = ['Bx', 'By', 'Bz', 'T']
     curve_type = ['F', 'F', 'F', 'T']
     to_show = [True, True, True, False]
-    output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'  
+    # output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'  
     # You may want to change this to your desired file
 
     
@@ -334,6 +334,9 @@ if __name__ == '__main__':
     thread = threading.Thread(target=thm.start_acquisition)
     thread.start()
     sleep(10)
+    '''
+    This commented part is the original plotting code. I copied part of it down below.
+    '''
     # Plotting stuff
     # initialize figure
 
@@ -406,6 +409,8 @@ if __name__ == '__main__':
     #         thm.stop = True
     #         plt.pause(1)
     #         sys.exit("Done!")
+    #
+    # plt.ioff()
 
     thm.stop = True
     
@@ -427,10 +432,6 @@ if __name__ == '__main__':
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
     plt.draw()
-
-    # plt.pause(5)  # Wait for the monitor to start filling data in
-    # plotdata = [thm.data_stack[key] for key in item_name]
-    # timeline = thm.data_stack['Timestamp']
 
     # Setup colors
     NTemp = curve_type.count('T')
@@ -465,35 +466,4 @@ if __name__ == '__main__':
 
     ax1.legend(lines, labels, loc='best')
 
-    # plt.ion()
-
-    # time_start = time()
-
-    # while time() - time_start < duration:
-    #     try:
-    #         plt.pause(1)
-    #         plotdata = [thm.data_stack[key] for key in item_name]
-    #         timeline = thm.data_stack['Timestamp']
-
-    #         count = 0
-    #         for k, flag in enumerate(to_show):
-    #             if flag:
-    #                 lines[count].set_data(timeline, plotdata[k])
-    #                 count += 1
-
-    #         ax1.relim()
-    #         ax1.autoscale_view()
-    #         ax2.relim()
-    #         ax2.autoscale_view()
-
-    #         plt.draw()
-
-    #     except:
-    #         plt.ioff()
-    #         thm.stop = True
-    #         plt.pause(1)
-    #         sys.exit("Done!")
-
-    # # This is to keep the figure open when everything is done
-    # plt.ioff()
     plt.show()
