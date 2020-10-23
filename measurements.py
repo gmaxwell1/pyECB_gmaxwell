@@ -24,7 +24,7 @@ import threading
 from conexcc.conexcc_class import *
 # from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
 # from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
-from modules.general_functions import ensure_dir_exists
+from modules.general_functions import ensure_dir_exists, sensor_to_magnet_coordinates
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 
@@ -72,7 +72,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def calibration(node: MetrolabTHM1176Node, meas_height=1.5):
+def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     """
     move the stage into position to calibrate the sensor. After successful calibration, the sensor is moved to the desired measuring position.
 
@@ -87,26 +87,27 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5):
     CC_Z.wait_for_ready()
     CC_Y.wait_for_ready()
     
-    cal_pos_z = 20
-    start_pos_z = CC_Z.read_cur_pos()
-    total_distance_z = cal_pos_z-start_pos_z
-    
-    cal_pos_y = 0
-    start_pos_y = CC_Y.read_cur_pos()
-    total_distance_y = abs(cal_pos_y-start_pos_y)
-    
-    print('Moving to calibration position...')
-    CC_Z.move_absolute(new_pos=cal_pos_z)
-    CC_Y.move_absolute(new_pos=cal_pos_y)
-    if total_distance_y > total_distance_z:
-        progressBar(CC_Y, start_pos_y, total_distance_y)
-    else:
-        progressBar(CC_Z, start_pos_z, total_distance_z)
+    if calibrate:
+        cal_pos_z = 20
+        start_pos_z = CC_Z.read_cur_pos()
+        total_distance_z = cal_pos_z-start_pos_z
+        
+        cal_pos_y = 0
+        start_pos_y = CC_Y.read_cur_pos()
+        total_distance_y = abs(cal_pos_y-start_pos_y)
+        
+        print('Moving to calibration position...')
+        CC_Z.move_absolute(new_pos=cal_pos_z)
+        CC_Y.move_absolute(new_pos=cal_pos_y)
+        if total_distance_y > total_distance_z:
+            progressBar(CC_Y, start_pos_y, total_distance_y)
+        else:
+            progressBar(CC_Z, start_pos_z, total_distance_z)
 
-    char = input('\nPress enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
-    if char == '':
-        node.calibrate()
-    input('Press enter to continue measuring')
+        char = input('\nPress enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+        if char == '':
+            node.calibrate()
+        input('Press enter to continue measuring')
     
     # change meas_offset_z according to the following rule: 
     # height above sensor = meas_offset_z + 0.9 - 7.66524 (last number is "zero")
@@ -210,7 +211,8 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         list of floats: temp (temperature values as explained above)
     """
     with MetrolabTHM1176Node(period=period, block_size=block_size, range='1 T', average=averaging, unit='MT') as node:
-    
+        calibration(node, meas_height=1.5)
+        
         thread = threading.Thread(target=node.start_acquisition)
         thread.start()
         sleep(duration)
@@ -218,10 +220,16 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         
         # Sensor coordinates to preferred coordinates transformation
         xValues = np.array(node.data_stack['Bz'])
-        xValues = -xValues
-        # Sensor coordinates to preferred coordinates transformation
+        #xOffset = 0.55
+        xValues = -xValues # np.subtract(-xValues, xOffset)
+        print
+        # Sensor coordinates to preferred coordinates transformation, offset correction
         yValues = np.array(node.data_stack['Bx'])
-        yValues = -yValues
+        #yOffset = 2.40
+        yValues = -yValues# np.subtract(-yValues, yOffset)
+        # Sensor coordinates to preferred coordinates transformation, offset correction
+        zValues = node.data_stack['By']
+        # zValues = np.subtract(zValues, -1.11)
             
         timeline = node.data_stack['Timestamp']
         
@@ -236,9 +244,9 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
                 raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
             else:
                 if return_temp_data:
-                    return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': node.data_stack['By'], 'temp': node.data_stack['Temperature'],'time': timeline}
+                    return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'temp': node.data_stack['Temperature'],'time': timeline}
                 
-                return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': node.data_stack['By'], 'time': timeline}
+                return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'time': timeline}
         except:
             return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
         

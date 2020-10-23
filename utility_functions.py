@@ -24,6 +24,7 @@ from main_comm import *
 from measurements import *
 # from modules.analysis_tools import generate_plots
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
+from modules.general_functions import save_time_resolved_measurement as strm
 
 ##########  Current parameters ##########
 
@@ -188,7 +189,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
-        mean_data, std_data = measure(node, filePath, N=5, average=True)
+        mean_data, std_data = measure(node, N=5, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
@@ -200,9 +201,10 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
                    stdd_values, expected_fields, filePath, fileprefix)
 
 
-def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, finish_mag=20, steps=10):
+def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, finish_mag=30, rotate=None, steps=10):
     """
     Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
+    or rotates (i.e. 360°) the field vector (start_mag, theta, phi) around the axis given by rotate[0] and rotate[1] (angles in degrees) in that number of steps.
     Measure the magnetic field values, save them to a file.
 
 
@@ -211,20 +213,33 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, fin
         phi (float): angle between field vector projection on xy plane and x axis
         start_mag (float): Magnitude in mT
         finish_mag (float): Magnitude in mT, finish_mag > start_mag must hold!!!
+        rotate (float, float): tuple of angles which define the axis to rotate around (if at all). rotate[0] is the polar angle (to z axis),
+                               rotate[1] is the azimuthal ('xy plane') angle. In degrees (°)
         steps (int): number of measurement steps
     """
     global currDirectParam
     global desCurrents
 
-    magnitudes = np.linspace(start_mag, finish_mag, steps)
+    if rotate is None:
+        magnitudes = np.linspace(start_mag, finish_mag, steps)
+    else:
+        gamma, psi = rotate
+        angles = np.linspace(0, 359.9, steps) # rotation around axis
+        magnitude = start_mag
+        BStartVector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+
     mean_values = np.zeros((steps, 3))
     stdd_values = np.zeros((steps, 3))
     expected_fields = np.zeros((steps, 3))
     all_curr_vals = np.zeros((steps, 3))
 
-     # create subdirectory to save measurements
-    fileprefix = '({}_{})_field_meas'.format(int(theta), int(phi))
-    # folder, 
+    # create filename under which to save measurements
+    if rotate is None:
+        fileprefix = '({}_{})_ramp_meas'.format(int(theta), int(phi))
+    else:
+        fileprefix = '({}_{})_rotato_meas'.format(int(theta), int(phi))
+    
+    # folder
     filePath = '.\data_sets'
     
     enableCurrents()
@@ -232,8 +247,13 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, fin
         # iterate through all possible steps
     for i in range(steps):
         # tentative estimation of resulting B field
-        B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
+        if rotate is None:
+            B_expected = tr.computeMagneticFieldVector(magnitudes[i], theta, phi)
+        else:
+            B_expected = tr.rotationMatrix(BStartVector, psi=psi, theta=gamma, alpha=angles[i])
+            
         current_direction = tr.computeCoilCurrents(B_expected, windings, resistance)
+        
         # set the current on each channel
         for k in range(3):
             desCurrents[k] = current_direction[k]
@@ -245,7 +265,7 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, fin
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
-        mean_data, std_data = measure(node, filePath, N=5, average=True)
+        mean_data, std_data = measure(node, N=5, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
@@ -259,7 +279,9 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=0, fin
 
 def runCurrents(channels, t=0, direct=b'1'):
     """
-    run arbitrary currents (less than maximum current) on each channel 
+    run arbitrary currents (less than maximum current) on each channel
+    when running without a timer, the current can be changed in a menu and the magnetic field can
+    be measured with the metrolab sensor.
 
 
     Args:
@@ -275,9 +297,6 @@ def runCurrents(channels, t=0, direct=b'1'):
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
     for i in range(len(channels)):
-        if np.abs(channels[i]) > ECB_MAX_CURR:
-            print("desired current exceeds limit")
-            return
         desCurrents[i] = int(channels[i])
 
     # user specified time
@@ -312,9 +331,6 @@ def runCurrents(channels, t=0, direct=b'1'):
                 channels[2] = input('Channel 3 current: ')
                 # handle new inputs
                 for i in range(len(channels)):
-                    if np.abs(channels[i]) > ECB_MAX_CURR:
-                        print("desired current exceeds limit")
-                        return
                     try:
                         desCurrents[i] = int(channels[i])
                     except:
@@ -326,13 +342,14 @@ def runCurrents(channels, t=0, direct=b'1'):
 
             elif c1 == 's':
                 print(getStatus())
-            #elif c1 == 'f':
-                # params = {'block_size': 5, 'period': 1e-3, 'duration': 10, 'averaging': 1}
+            elif c1 == 'f':
+                params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 5}
 
-                # faden = threading.Thread(timeResolvedMeasurement, **params)
-                # faden.start()
-                # for key in returnDict.keys:
-                #     print(key, 'measured values: ', returnDict[key])
+                faden = myMeasThread(**params)
+                faden.start()
+                
+                faden.join()
+                strm(returnDict, r'.\data_sets\time_measurements_23_10', now=True)
                 
 
         disableCurrents()
@@ -362,10 +379,6 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
     for i in range(len(I_vector)):
-        # make sure that the current is not too high
-        if np.amax(I_vector) > ECB_MAX_CURR:
-            print("desired current exceeds limit")
-            return
         desCurrents[i] = int(I_vector[i])
 
     # user specified on time
@@ -420,10 +433,6 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                     B_vector, windings, resistance)
 
                 for i in range(len(I_vector)):
-                    if np.abs(I_vector[i]) > ECB_MAX_CURR:
-                        print("desired current exceeds limit")
-                        return
-
                     desCurrents[i] = int(I_vector[i])
 
                 setCurrents(desCurrents, currDirectParam)
@@ -458,10 +467,6 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
 
     while rounds > 0:
         for i in range(len(config1)):
-            # make sure that the current is not too high
-            if np.amax(config1) > ECB_MAX_CURR:
-                print("desired current exceeds limit")
-                return
             desCurrents[i] = int(config1[i])
 
         setCurrents(desCurrents, currDirectParam)
@@ -469,10 +474,6 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
         sleep(dt)
 
         for i in range(len(config2)):
-            # make sure that the current is not too high
-            if np.amax(config2) > ECB_MAX_CURR:
-                print("desired current exceeds limit")
-                return
             desCurrents[i] = int(config2[i])
 
         setCurrents(desCurrents, currDirectParam)
@@ -486,15 +487,20 @@ def switchConfigsAndMeasure(config1, config2, dt=0, rounds=10):
     
     
 if __name__ == "__main__":
-    params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 3}
+    params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 15}
     
+   
     faden = myMeasThread(**params)
     faden.start()
+    
     # openConnection()
     # sleep(1)
-    # generateMagneticField(60, 90, 0, 4)
+    # generateMagneticField(60, 90, 0, 6)
     # closeConnection()
+    
     faden.join()
+    
+    #strm(returnDict, r'.\data_sets\time_measurements_23_10', now=True)
     
     item_name = ['Bx', 'By', 'Bz']
     labels = ['Bx', 'By', 'Bz', 'T']
@@ -505,7 +511,7 @@ if __name__ == "__main__":
     timeline = returnDict['time']
     
     fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
+    # ax2 = ax1.twinx()
     plt.draw()
 
     # Setup colors
@@ -535,8 +541,8 @@ if __name__ == "__main__":
             data_to_plot = plotdata[k]
             if curve_type[k] == 'F':
                 ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
-            else:
-                ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
+            # else:
+            #     ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
             lines.append(ln)
 
     ax1.legend(lines, labels, loc='best')

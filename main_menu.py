@@ -80,7 +80,7 @@ def MainMenu(initialized):
                     with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
                         char = input('Calibrate Metrolab sensor? (y/n): ')
                         if char == 'y':
-                            calibration(node)
+                            calibration(node, calibrate=True)
 
                         with open(inpFile, 'r') as f:
                             contents = csv.reader(f)
@@ -129,7 +129,7 @@ def MainMenu(initialized):
                     with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
                         char = input('Calibrate Metrolab sensor? (y/n): ')
                         if char == 'y':
-                            calibration(node)
+                            calibration(node, calibrate=True)
 
                         sweepCurrents(config_list=config, start_val=start_val,
                                   end_val=end_val, steps=steps, node=node)
@@ -175,7 +175,24 @@ def MainMenu(initialized):
                 inp1 = input('Angle to z axis in deg = ')
                 inp2 = input('Angle to x axis in deg = ')
                 inp3 = input('starting magnitude in mT = ')
-                inp4 = input('ending magnitude in mT = ')
+                rot = input('Rotate constant magnitude field around a specified axis? (otherwise ramp field magnitude in a constant direction): ')
+                if rot == 'y':
+                    axisang1 = input('Axis polar angle: ')
+                    axisang2 = input('Axis azimuthal angle: ')
+                    try:
+                        axis = (int(axisang1), int(axisang2))
+                    except:
+                        print('expected numerical value, defaulting to (0,0) or z-axis')
+                        rotate = (0,0)
+                    
+                else:    
+                    inp4 = input('ending magnitude in mT = ')
+                    try:
+                        end_mag = int(inp4)
+                    except:
+                        print('expected numerical value, defaulting to 1')
+                        end_mag = 1
+                    
                 inp5 = input('# of steps: ')
 
                 try:
@@ -194,22 +211,20 @@ def MainMenu(initialized):
                     print('expected numerical value, defaulting to 0')
                     start_mag = 0
                 try:
-                    end_mag = int(inp4)
-                except:
-                    print('expected numerical value, defaulting to 1')
-                    end_mag = 1
-                try:
                     steps = int(inp5)
                 except:
                     print('expected numerical value, defaulting to 1')
                     steps = 1
 
                 with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
+                # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
                     char = input('Calibrate Metrolab sensor? (y/n): ')
                     if char == 'y':
-                        calibration(node)
-
-                    rampVectorField(node, theta, phi, start_mag, end_mag, steps)
+                        calibration(node, calibrate=True)
+                    if rot == 'y':
+                        rampVectorField(node, theta, phi, start_mag, steps=steps, rotate=axis)
+                    else:
+                        rampVectorField(node, theta, phi, start_mag, end_mag, steps)
 
             elif c1 == '3':
                 inp1 = input('Channel 1: ')
