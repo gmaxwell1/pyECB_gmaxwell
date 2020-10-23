@@ -215,65 +215,28 @@ def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=F
         print('Failed to create new directory due to {} error'.format(e))
         return -1
 
-def save_time_resolved_measurement(times, fields, directory, stds=None, now=False):
+def save_time_resolved_measurement(results_dict, directory, now=False):
     """
     Write the provided times and field (optionally also standard deviations) to the file 'time_resolved.csv' 
     or 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv' in provided directory.
 
-    The coords flag distinguishes between magnetic field strength (False) and spatial coordinates (True) as source of the data.
-
     Args:
-    - means (array or list): measured mean values of B-field or coordinates 
+    - results_dict (dictionary): Contains 'time', 'Bx', 'By' and 'Bz' as keys, which are 1dimensional lists containing 
+    the times of measurements and the measured mean values of B-field
     - directory (string): valid path of the directory in which the file should be stored
-    - label (string or float): used to label the csv file  
-    - stds (array or list): measured standard deviations of B-field or coordinates. 
-    Should have at least the same size as means.
-    - coords (bool): Flag to switch between B-field (False) and spatial coordinates (True)
-    - verbose (bool): switching on/off print-statements for displaying progress
     - now (bool): if True, the current date time is added to the filename, 
     such that it reads 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv'
     """
-    # Under Linux, user rights can be set with the scheme below,
-    # where 755 means read+write+execute for owner and read+execute for group and others.
-    # However, note that you can only set the file’s read-only flag with it under Windows.
-    access_rights = 0o755
-    os.chmod(directory, access_rights)
-
     if now:
         time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
-        output_file_name = "{}_means_{}.csv".format(time_stamp, label)
+        output_file_name = "{}_time_resolved.csv".format(time_stamp)
     else:
-        output_file_name = "means_{}.csv".format(label)
+        output_file_name = 'time_resolved.csv'
     data_filepath = os.path.join(directory, output_file_name)
-
-    if stds is not None and not coords:
-        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
-                            'std Bx [mT] ': stds[:, 0], 
-                            'mean By [mT]':  means[:, 1], 
-                            'std By [mT] ': stds[:, 1],
-                            'mean Bz [mT]':  means[:, 2], 
-                            'std Bz [mT] ': stds[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
     
-    elif not coords:
-        df = pd.DataFrame({ 'mean Bx [mT]':  means[:, 0], 
-                            'mean By [mT]':  means[:, 1], 
-                            'mean Bz [mT]':  means[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-
-    elif coords and stds is None:
-        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
-                            'x [mm]':  means[:, 0], 
-                            'y [mm]':  means[:, 1], 
-                            'z [mm]':  means[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
-        
-    elif not coords:
-        df = pd.DataFrame({ 'Index':  np.arange(len(means[:, 0])) + 1, 
-                            'x [mm]':  means[:, 0], 
-                            'std x [mm]':  stds[:, 0], 
-                            'y [mm]':  means[:, 1], 
-                            'std y [mm]':  stds[:, 1], 
-                            'z [mm]':  means[:, 2],
-                            'std z [mm]':  stds[:, 2]})
-        df.to_csv(data_filepath, index=False, header=True)
+    df = pd.DataFrame({ 'time [s]': results_dict['time'], 
+                        'mean Bx [mT]':  results_dict['Bx'], 
+                        'mean By [mT]':  results_dict['By'], 
+                        'mean Bz [mT]':  results_dict['Bz']})
+    df.to_csv(data_filepath, index=False, header=True)
+    
