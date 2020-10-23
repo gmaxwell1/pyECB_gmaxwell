@@ -204,6 +204,11 @@ def MainMenu(initialized):
                     print('expected numerical value, defaulting to 1')
                     steps = 1
 
+                with Metro(sense_range_upper="0.3 T") as node:
+                    char = input('Calibrate Metrolab sensor? (y/n): ')
+                    if char == 'y':
+                        calibration(node)
+
                 rampVectorField(theta, phi, start_mag, end_mag, steps)
 
             elif c1 == '3':

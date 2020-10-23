@@ -148,10 +148,12 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     # create subdirectory to save measurements
     # subDirBase = '{}_{}_field_meas'.format(theta, phi)
     # folder, filePath = newMeasurementFolder(sub_dir_base=subDirBase)
-    filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
-    char = input('Calibrate Metrolab sensor? (y/n): ')
-    if char == 'y':
-        calibration()
+    # filePath = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets'
+    
+    # create subdirectory to save measurements
+    fileprefix = '({}_{}_{})_field_meas'.format(1,1,1)
+    # folder, 
+    filePath = '.\data_sets'
 
     enableCurrents()
     # iterate through all possible steps
@@ -179,7 +181,7 @@ def rampVectorField(theta, phi, start_mag, finish_mag, steps):
     disableCurrents()
     # plotting section
     saveDataPoints((all_curr_vals / 1000), mean_values,
-                   stdd_values, expected_fields, directory)
+                   stdd_values, expected_fields, filePath, fileprefix)
 
 
 def runCurrents(channels, t=0, direct=b'1'):

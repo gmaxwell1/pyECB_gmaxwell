@@ -17,6 +17,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator
 from datetime import datetime
 from itertools import product
 
@@ -253,7 +254,8 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
     # if provided, plot the center position after converting it to sensor coordintates
     if center_position is not None:
         center_position = [-center_position[1], -center_position[0]]
-        ax.plot(center_position[0]+ origin[0], center_position[1]+ origin[1], marker='+', color='r')  
+        ax.plot(center_position[0]+ origin[0], center_position[1]+ origin[1], 
+                                marker='+', color='r', label='determined center')  
 
     # final axis settings
     ax.set_xlabel("x [mm]")
@@ -263,7 +265,7 @@ def plot_2d_scan(positions, B_field, origin=None, Cont=False, Scat_Mag=False, Sh
 
 def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_image = True, 
                         show_labels=True, ylim=None, xlim=None, image_name_postfix='I_vs_B',
-                        remove_first_half=True):
+                        remove_half=0):
     """
     Generate plot of the currents in all three coils vs the magnetude of the magnetic field.
 
@@ -277,18 +279,26 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
     - ylim: tuple of floats containing (ymin, ymax). If None, the default limits are taken
     - xlim: tuple of floats containing (xmin, xmax). If None, the default limits are taken
     - image_name_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ image_name_postfix +'.png'
-    - remove_first_half (bool): ignore first half of all input data arrays, 
+    - remove_half (int): if 1, ignore first half of all input data arrays, 
     which would correspond to a magnetic field pointing towards the negative direction
-    compared to the desired direction
+    compared to the desired direction. If 2, ignore second half. Default is 0, 
+    no data are ignored.
     """
-    if remove_first_half:
+    number_data = I.shape[0]
+    if remove_half == 1:
         # if measurements range from negative to positive direction of B-field
         # filter out the first half of all measurements and only keep rest for uniqueness
-        number_data = I.shape[0]
         I = I[number_data//2 + 1:,:]
         mean_values = mean_values[number_data//2 + 1:,:]
         std_values = std_values[number_data//2 + 1:,:]
         expected_values = expected_values[number_data//2 + 1:,:]
+    elif remove_half == 2:
+        # if measurements range from negative to positive direction of B-field
+        # filter out the second half of all measurements and only keep rest for uniqueness
+        I = I[:number_data//2 + 1,:]
+        mean_values = mean_values[:number_data//2 + 1,:]
+        std_values = std_values[:number_data//2 + 1,:]
+        expected_values = expected_values[:number_data//2 + 1,:]
 
     # calculate magnitudes of measured and expected magnetic field and their standard deviations
     mean_magnitudes = np.linalg.norm(mean_values, axis=1)
@@ -329,13 +339,27 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi=300)
 
-
     plt.show()
 
+def get_phi(values, cut_phi_at_0=False):
+    """
+    Return the in-plane angle phi with respect to x-axis.
+    """
+    angles =  np.degrees(np.arctan2(values[:,1], values[:,0]))
+
+    # if cut should be at 0 degrees, add 360 degrees to all negative values
+    if cut_phi_at_0:
+        mask = angles < 0
+        angles[mask] = 360 + angles[mask]
+
+    return angles
+
 def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1', flags_yaxis = 'zmt',
-                        plot_delta_sim = False, directory= None, image_name_postfix = 'B_vs_I', 
-                        height_per_plot = 2, save_image = True, distance=3.0, xlim = None, 
-                        ylim_field_abs = None, ylim_field_z = None, show_labels=True, remove_first_half=True):
+                        plot_delta_sim = False, directory = None, image_name_postfix = 'B_vs_I', 
+                        height_per_plot = 2, save_image = True, distance = 3.0, xlim = None, 
+                        ylim_field_abs = None, ylim_field_single = None, ylim_theta = None, ylim_phi = None,
+                        show_labels = True, remove_half = 0, ygrid = False, cut_phi_at_0 = False,
+                        show_image = True):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
 
@@ -356,7 +380,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     a plot is generated with the according quantity plotted on the y-axis. The plots are generated
     in the same order as the flag-letters are passed. 
-        - 'z': Bz-component of magnetic field
+        - 'x', 'y', 'z': single component of magnetic field, p.e. B_z
         - 'm': magnitude of magnetic field
         - 'p': in-plane magnitude |B_xy| of magnetic field in xy-plane
         - 't': angle theta with respect to z-axis
@@ -370,14 +394,21 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     - save_image (bool): flag to save or not save the image
     - distance (float): distance between sensor and tip [mm], which is added as plot label 
     - xlim (float): tuple containing (xmin, xmax) of plots. If None, the default limits are taken
-    - ylim_field_abs, ylim_field_z: tuple of floats containing (ymin, ymax) for the plots of magnetic field,
-    where '_abs' indicates magnitudes (only positive) and '_z' indicates the field along z (positive and negative)
+    - ylim_field_abs, ylim_field_z, ylim_theta, ylim_phi: tuple of floats containing (ymin, ymax) 
+    for the plots of magnetic field or angle, where '_abs' indicates magnitudes (only positive),
+    '_z' indicates the field along z (positive and negative) and '_phi' and '_theta' the respective angles
     - show_labels (bool): flag to switch on/off labels of plots
-    - remove_first_half (bool): ignore first half of all input data arrays, 
+    - remove_half (int): if 1, ignore first half of all input data arrays, 
     which would correspond to a magnetic field pointing towards the negative direction
-    compared to the desired direction
+    compared to the desired direction. If 2, ignore second half. Default is 0, 
+    no data are ignored.
+    - ygrid (bool): flag for switching on/off grid lines for y-axis
+    - cut_phi_at_0 (bool): if True, the values of phi are in [0,360], else in [-180, +180]
+    - show_image (bool): if True, plt.show() is added at the end
 
-    Return: 
+    Return: fig, axs, x_vals, plot_mean_data, plot_std_data, plot_expected_data
+
+    - fig, axs: plt.Figure object and array of plt.Axes objects that represent the figure and subplots, respectively
     - x_vals: ndarray of length = #measurements, containing the x-values of all plots
     - plot_mean_data, plot_std_data, plot_expected_data
     which are ndarrays of shape (#plots, #measurements, 1).
@@ -388,7 +419,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     Else, if plot_delta_sim==True, plot_mean_data is the difference between expected and measured data, 
     i.e. plot_mean_data = plot_expected_data - (measurement data).   
     """
-    if remove_first_half:
+    if remove_half==1:
         # if measurements range from negative to positive direction of B-field
         # filter out the first half of all measurements and only keep rest for uniqueness
         number_data = I.shape[0]
@@ -396,6 +427,14 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         mean_values = mean_values[number_data//2 + 1:,:]
         std_values = std_values[number_data//2 + 1:,:]
         expected_values = expected_values[number_data//2 + 1:,:]
+    elif remove_half == 2:
+        # if measurements range from negative to positive direction of B-field
+        # filter out the second half of all measurements and only keep rest for uniqueness
+        number_data = I.shape[0]
+        I = I[:number_data//2 + 1,:]
+        mean_values = mean_values[:number_data//2 + 1,:]
+        std_values = std_values[:number_data//2 + 1,:]
+        expected_values = expected_values[:number_data//2 + 1,:]
 
     # if an empty string is passed as flags_yaxis, set it to 'm'
     if len(flags_yaxis) == 0:
@@ -424,7 +463,17 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     ylabels = []
     for flag in flags_yaxis:
         # magnetic field in z-direction
-        if flag == 'z':
+        if flag == 'x':
+            plot_mean_data.append(mean_values[:, 0])
+            plot_std_data.append(std_values[:, 0])
+            plot_expected_data.append(expected_values[:, 0])
+            ylabels.append('$B_x$ [mT]')
+        elif flag == 'y':
+            plot_mean_data.append(mean_values[:, 1])
+            plot_std_data.append(std_values[:, 1])
+            plot_expected_data.append(expected_values[:, 1])
+            ylabels.append('$B_y$ [mT]')
+        elif flag == 'z':
             plot_mean_data.append(mean_values[:, 2])
             plot_std_data.append(std_values[:, 2])
             plot_expected_data.append(expected_values[:, 2])
@@ -446,9 +495,9 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             ylabels.append('$\\theta$ [°]')
         # angle phi (wrt to x-axis)
         elif flag == 'f':
-            plot_mean_data.append(np.degrees(np.arctan2(mean_values[:,1], mean_values[:,0])))
+            plot_mean_data.append(get_phi(mean_values, cut_phi_at_0=cut_phi_at_0))
             plot_std_data.append(np.degrees(estimate_std_phi(mean_values, std_values)))
-            plot_expected_data.append(np.degrees(np.arctan2(expected_values[:,1], expected_values[:,0])))
+            plot_expected_data.append(get_phi(expected_values, cut_phi_at_0=cut_phi_at_0))
             ylabels.append('$\\phi$ [°]')
         # in-plane component (along xy) of magnetic field
         elif flag == 'p':
@@ -461,13 +510,13 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         # account for invalid flags:
         else:
             raise ValueError(
-                '{} is not a valid flag, it should be in [\'z\', \'m\', \'a\', \'p\']!'.format(flag))
+                '{} is not a valid flag, it should be in [\'x\', \'y\', \'z\', \'m\', \'a\', \'p\']!'.format(flag))
 
     # plot current ('I'), power ('P') or magnitude of magnetic field ('B') on xaxis, depending on flag_xaxis
     if flag_xaxis == 'P':
         R = 0.47    # resistance [Ohm] of each coil
         x_vals = R * np.sum(I**2, axis=1)  # sum over all three coils
-        axs[-1].set_xlabel('total power $P$ [W]')
+        axs[-1].set_xlabel('overall power $P$ [W]')
     elif flag_xaxis == 'B':
         x_vals = mean_magnitudes
         axs[-1].set_xlabel('total magnitude $|B|$ [mT]')
@@ -495,7 +544,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                                     linestyle='', marker='.', capsize = 2, 
                                     label = 'measured @ {:.1f} mm'.format(distance))
             axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
-                                    label = 'simulation @ 3 mm')
+                                    label = 'actuation matrix method @ 3mm')
             if show_labels:
                 axs[i].legend()
 
@@ -508,18 +557,66 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         if flags_yaxis[i] == 't':
             # if the angle is plotted on one of the axes, set the limits to (-5, 185)
             if not plot_delta_sim:
-                axs[i].set_ylim((-5,185))
-                axs[i].yaxis.set_ticks(np.arange(0, 210, 30))
+                if ylim_theta is None:
+                    data_min = np.min(plot_mean_data[i])
+                    data_max = np.max(plot_mean_data[i])
+                    ylim_lower = -0.05 if data_min < 10 else 0.9 * data_min
+                    ylim_upper =  1.1 * data_max
+                    axs[i].set_ylim(ylim_lower, ylim_upper)
+                else:
+                    axs[i].set_ylim((-5,185))
+                    axs[i].yaxis.set_ticks(np.arange(0, 210, 30))
+            max_angle_diff = np.max(plot_mean_data[i]) - np.min(plot_mean_data[i]) 
+            # if max_angle_diff > 60:
+            #     axs[i].yaxis.set_major_locator(MultipleLocator(30))
+            # elif max_angle_diff > 30:
+
+            axs[i].yaxis.set_major_locator(MaxNLocator(nbins='auto', steps=[1,3,6,10]))
+            axs[i].yaxis.set_minor_locator(AutoMinorLocator(3))
+            
         elif flags_yaxis[i] == 'f':
             # if the angle is plotted on one of the axes, set the limits to (-5, 365)
             if not plot_delta_sim:
-                axs[i].set_ylim((-190,190))
-                axs[i].yaxis.set_ticks(np.arange(-180, 240, 60))
-        elif flags_yaxis[i] == 'z':
-            axs[i].set_ylim(ylim_field_z)
+                if ylim_phi is None:
+                    data_min = np.min(plot_mean_data[i])
+                    data_max = np.max(plot_mean_data[i])
+                    ylim_lower = 1.1 * data_min if data_min < 0 else 0.9 * data_min
+                    ylim_upper = 0.9 * data_max if data_max < 0 else 1.1 * data_max
+                    axs[i].set_ylim(ylim_lower, ylim_upper)
+                else:
+                    axs[i].set_ylim((-190,190))
+                    axs[i].yaxis.set_ticks(np.arange(-180, 240, 60))
+            # axs[i].yaxis.set_major_locator(MultipleLocator(90))
+            axs[i].yaxis.set_major_locator(MaxNLocator(nbins='auto', steps=[1,3,6,10]))
+            axs[i].yaxis.set_minor_locator(AutoMinorLocator(3))
+
+        elif flags_yaxis[i] in ['x', 'y', 'z']:
+            # either match limits and data or take the passed argument
+            if (ylim_field_single is None) and (not plot_delta_sim):
+                data_min = np.min(plot_mean_data[i])
+                data_max = np.max(plot_mean_data[i])
+                ylim_lower = 1.1 * data_min if data_min < 0 else 0.9 * data_min
+                ylim_upper = 0.9 * data_max if data_max < 0 else 1.1 * data_max
+                axs[i].set_ylim(ylim_lower, ylim_upper)
+            else:
+                axs[i].set_ylim(ylim_field_single)
         else:
-            axs[i].set_ylim(ylim_field_abs)
-    
+            # either match limits and data or take the passed argument
+            if (ylim_field_abs is None) and (not plot_delta_sim):
+                data_min = np.min(plot_mean_data[i])
+                data_max = np.max(plot_mean_data[i])
+                ylim_lower = -0.05 if data_min < 1 else 0.9 * data_min
+                ylim_upper = 1.05* data_max
+                axs[i].set_ylim(ylim_lower, ylim_upper)
+            else:
+                axs[i].set_ylim(ylim_field_abs)
+
+
+        # add grid lines if desired
+        if ygrid:
+            axs[i].yaxis.grid()
+            
+
     # set limits for x-axis 
     axs[-1].set_xlim(xlim)
 
@@ -537,10 +634,37 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         file_path = os.path.join(directory, output_file_name)
         fig.savefig(file_path, dpi=300)
 
-    plt.show()
+    if show_image:
+        plt.show()
 
-    return x_vals, plot_mean_data, plot_std_data, plot_expected_data
+    return fig, axs, x_vals, np.array(plot_mean_data), np.array(plot_std_data), np.array(plot_expected_data)
 
+def estimate_power(ratios, value, coil_number=1, R = 0.47 ):
+    """
+    Return the total power [W] of all three coils when the current in the passed coil (1, 2 or 3) is value [A].
+
+    Args:
+    - ratios (nonzero 1d-ndarray of length 3): ratios of the currents in the three coils. This can be the first element of 
+    the current array of shape (number measurements, 3). Note that the entry corresponding to the provided coil_number
+    must not be 0, because this coil would have zero current for the whole measurement series. 
+    - value (float): current value [A] in coil with number coil_number
+    - coil_number (int): number of the coil for which value is provided, can be 1, 2 or 3.
+    - R (float): resistance [Ohm] of a coil 
+
+    Return: power (float)
+    """
+    # check reasonability of inputs
+    if np.all(ratios == 0):
+        raise ValueError('ratios must be non-zero!')
+    if coil_number not in [1,2,3]:
+        raise ValueError('coil_number must be in \{1,2,3\}, not {}!'.format(coil_number))
+    if ratios[coil_number-1] == 0:
+        raise ValueError('The provided ratios are invalid, since coil {} has zero current.'.format(coil_number))
+    
+    # normalize ratios, such that the desired coil has a factor 1, and multiply by value
+    currents = value * ratios/ratios[coil_number-1]
+
+    return R * np.sum(currents**2)  # sum over all three coils
 
 def sigmoid(x, k, a):
     """
@@ -599,20 +723,21 @@ def abs_lin_and_const(x, x_kink, a):
     """
     return np.abs(lin_and_const(x, x_kink, a))
 
-def extract_time_dependence(filepath, omit_64=False, sensorIsMetrolab=True):
+def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     """
     Extract and return time and field data from the provided file.
 
     Args: 
     - filepath (string): valid path of the data file
-    - omit_64 (bool): flag to omit sensor 64 if True (only reasonable if sensorIsMetrolab=True)
     - sensorIsMetrolab (bool): if True, the data originate from Metrolab THM1176 sensor, 
     else from Calibration Cube
+    - omit_64 (bool): flag to omit sensor 64 if True (only reasonable if sensorIsMetrolab=False)
 
     Return:
-    - times: ndarray of shape (number_sensors, measure_runs) containing the time estimates of measurements
-    - B_fields: ndarray of shape (number_sensors, measure_runs, 3) containing measured x,y,z-components 
-    of magnetic field
+    - times (1d-ndarray of length measure_runs): containing the time estimates of measurements.
+    If sensorIsMetrolab=False, times is an ndarray of shape (number_sensors, measure_runs)
+    - B_fields (ndarray of shape (measure_runs, 3)): contains measured x,y,z-components of magnetic field. 
+    If , B_fields is an ndarray of shape (number_sensors, measure_runs, 3)
     """
     # import the measurement data from csv file 
     dataD = pd.read_csv(filepath)
@@ -624,10 +749,6 @@ def extract_time_dependence(filepath, omit_64=False, sensorIsMetrolab=True):
     if sensorIsMetrolab:
         # estimate number of measurement rounds
         measure_runs = len(data)
-
-        # # initialize arrays for measurement outcomes
-        # times = np.zeros(measure_runs)
-        # B_fields = np.zeros((measure_runs, 3))
 
         # collect results for each sensor and save mean, std and abs(std/mean)     
         times = data[:,0]
@@ -681,6 +802,29 @@ def distance_to_center(pos, field, a, b):
     # take the measured field at the position that is closest to [a,b]
     closest_field = find_closest_measured_field(pos, field, a, b)
     return  np.sqrt((field[:,0] - closest_field[0])**2 + (field[:,1] - closest_field[1])**2 + (field[:,2]- closest_field[2])**2)
+
+def weighted_distances(pos, field, a, b):
+    """
+    Estimate |B_i - B_ab|_2 for magnetic field vectors B_i at position i and B_ab at position 
+    [a,b] for all i in range(len(i)).
+    """
+    # take the measured field at the position that is closest to [a,b]
+    distances = np.sqrt((pos[:,0]-a)**2 + (pos[:,1]-b)**2)
+    inplane_fields = np.sqrt((field[:,0])**2 + (field[:,1])**2)
+    return distances*inplane_fields**2
+
+def find_center_of_mass(pos, field):
+    """
+    Estimate the resulting weights for each position in pos when assuming that this position is the center, 
+    using the distance_to_center function to estimate the weights. 
+    Return the position with smalles weight. 
+    """
+    objectives = np.zeros(len(pos))
+    for i in range(len(pos)):
+        objectives[i] = np.sum(weighted_distances(pos, field, pos[i,0], pos[i,1]))
+
+    index_min = np.argmin(objectives)
+    return pos[index_min, :2]
 
 def find_center(pos, field):
     """
