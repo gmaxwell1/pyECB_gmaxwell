@@ -99,13 +99,21 @@ def transform_between_sensor_stage_coordinates(data):
     
     # treat 1d arrays and multi-dimensional arrays differently
     if len(data.shape)==1:
-        data_magnet_coords[0] = -data[1]
-        data_magnet_coords[1] = -data[0]
-        data_magnet_coords[2] = data[2]
+        if len(data) == 2:
+            data_magnet_coords[0] = -data[1]
+            data_magnet_coords[1] = -data[0]
+        else:
+            data_magnet_coords[0] = -data[1]
+            data_magnet_coords[1] = -data[0]
+            data_magnet_coords[2] = data[2]
     else:
-        data_magnet_coords[...,0] = -data[...,1]
-        data_magnet_coords[...,1] = -data[...,0]
-        data_magnet_coords[...,2] = data[...,2]
+        if data.shape[-1] == 2:
+            data_magnet_coords[...,0] = -data[...,1]
+            data_magnet_coords[...,1] = -data[...,0]
+        else:
+            data_magnet_coords[...,0] = -data[...,1]
+            data_magnet_coords[...,1] = -data[...,0]
+            data_magnet_coords[...,2] = data[...,2]
 
     return data_magnet_coords
 
@@ -206,3 +214,29 @@ def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=F
         # this is important and should always be printed - gmaxwell, 8.10.2020
         print('Failed to create new directory due to {} error'.format(e))
         return -1
+
+def save_time_resolved_measurement(results_dict, directory, now=False):
+    """
+    Write the provided times and field (optionally also standard deviations) to the file 'time_resolved.csv' 
+    or 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv' in provided directory.
+
+    Args:
+    - results_dict (dictionary): Contains 'time', 'Bx', 'By' and 'Bz' as keys, which are 1dimensional lists containing 
+    the times of measurements and the measured mean values of B-field
+    - directory (string): valid path of the directory in which the file should be stored
+    - now (bool): if True, the current date time is added to the filename, 
+    such that it reads 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv'
+    """
+    if now:
+        time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
+        output_file_name = "{}_time_resolved.csv".format(time_stamp)
+    else:
+        output_file_name = 'time_resolved.csv'
+    data_filepath = os.path.join(directory, output_file_name)
+    
+    df = pd.DataFrame({ 'time [s]': results_dict['time'], 
+                        'mean Bx [mT]':  results_dict['Bx'], 
+                        'mean By [mT]':  results_dict['By'], 
+                        'mean Bz [mT]':  results_dict['Bz']})
+    df.to_csv(data_filepath, index=False, header=True)
+    

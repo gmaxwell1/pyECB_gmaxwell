@@ -37,25 +37,26 @@ sampling_size = 20 # number of measurements per sensor for averaging
 directory = './test_data/2d_scans'
 
 # number of grid points per dimension
-grid_number = 25
+grid_number = 15
 
 # %%
 # initialize actuators
-init_pos = np.array([0., 0, 8])
+init_pos = np.array([0., 6, 10])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
 
 # %%
 # manually adjust stage position
-z_offset = 8
-new_pos = [0, 0, z_offset]
+z_offset = 8.25
+new_pos = [0, 6, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
+
 
 # %%
 # set the bounds for x and y that are used for the scan
-limits_x = [0.0, 25]
-limits_y = [0.0, 25]
+limits_x = [0.0, 16.0]
+limits_y = [6.0, 20.0]
 
 # set the bounds for x and y that are used for the scan, relative to mid position
 # mid = [7.8866, 0.0166]
@@ -67,6 +68,22 @@ limits_y = [0.0, 25]
 #%%
 # perform actual 2d scan
 with MetrolabTHM1176Node() as node:
+
+    CC_Z.move_absolute(15.0)
+    state = False
+    while not state:
+        state = CC_Z.is_ready()
+
+    enter = input('press enter to calibrate')
+    if enter == '':
+        node.calibrate()
+
+    input('press any key to continue')
+
+    CC_Z.move_absolute(z_offset)
+    state = False
+    while not state:
+        state = CC_Z.is_ready()
 
     positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, z_offset, 
                                       xlim=limits_x, ylim=limits_y, grid_number=grid_number,
