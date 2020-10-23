@@ -490,10 +490,10 @@ if __name__ == "__main__":
     
     faden = myMeasThread(**params)
     faden.start()
-    openConnection()
-    sleep(1)
-    generateMagneticField(60, 90, 0, 4)
-    closeConnection()
+    # openConnection()
+    # sleep(1)
+    # generateMagneticField(60, 90, 0, 4)
+    # closeConnection()
     faden.join()
     
     item_name = ['Bx', 'By', 'Bz']

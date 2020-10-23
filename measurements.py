@@ -209,31 +209,38 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         (x, y and z components of B field, times of measurements)
         list of floats: temp (temperature values as explained above)
     """
-    node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=averaging, unit='MT')
+    with MetrolabTHM1176Node(period=period, block_size=block_size, range='1 T', average=averaging, unit='MT') as node:
     
-    thread = threading.Thread(target=node.start_acquisition)
-    thread.start()
-    sleep(duration)
-    node.stop = True
+        thread = threading.Thread(target=node.start_acquisition)
+        thread.start()
+        sleep(duration)
+        node.stop = True
         
-    timeline = node.data_stack['Timestamp']
-    
-    t_offset = timeline[0]
-    for ind in range(len(timeline)):
-        timeline[ind] = round(timeline[ind]-t_offset, 3)
-    
-    node.data_stack['Timestamp'] = timeline
-    
-    try:
-        if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
-            raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
-        else:
-            if return_temp_data:
-                return node.data_stack
+        # Sensor coordinates to preferred coordinates transformation
+        xValues = np.array(node.data_stack['Bz'])
+        xValues = -xValues
+        # Sensor coordinates to preferred coordinates transformation
+        yValues = np.array(node.data_stack['Bx'])
+        yValues = -yValues
             
-            return {'Bx': node.data_stack['Bx'], 'By': node.data_stack['By'], 'Bz': node.data_stack['Bz'], 'time': timeline}
-    except:
-        return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
+        timeline = node.data_stack['Timestamp']
+        
+        t_offset = timeline[0]
+        for ind in range(len(timeline)):
+            timeline[ind] = round(timeline[ind]-t_offset, 3)
+        
+        node.data_stack['Timestamp'] = timeline
+        
+        try:
+            if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
+                raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
+            else:
+                if return_temp_data:
+                    return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': node.data_stack['By'], 'temp': node.data_stack['Temperature'],'time': timeline}
+                
+                return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': node.data_stack['By'], 'time': timeline}
+        except:
+            return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
         
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
@@ -289,20 +296,18 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
 
 if __name__ == '__main__':
     
-    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    # CC_Z.wait_for_ready()
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Z.wait_for_ready()
     
-    # start_pos_z = CC_Z.read_cur_pos()
-    # print(start_pos_z)
-    # CC_Z.move_absolute(new_pos=8.25)
-    # CC_Z.wait_for_ready()
-    # print(CC_Z.read_cur_pos())
+    start_pos_z = CC_Z.read_cur_pos()
+    print(start_pos_z)
+    CC_Z.move_absolute(new_pos=20)
+    CC_Z.wait_for_ready()
+    print(CC_Z.read_cur_pos())
 
     # #     print(curr_pos_z)
     # #     c = input('raise again?')
-    returnDict = timeResolvedMeasurement(period=0.04, averaging=20, block_size=10)
-    
-    for key in returnDict.keys():
-        print(key, 'measured values: ', returnDict[key])
+    with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
+        node.calibrate()
     
     
