@@ -968,3 +968,73 @@ def find_center_of_rays_all(pos, field, phi=30, length=20, num=20):
     index_min = np.argmin(objectives)
 
     return pos[index_min, :2]
+
+def generate_time_resolved_plot(times, fields, plot_components='xyz', show_image=True, 
+                                show_dev_from_mean=False):
+    """
+    Generate a plot of field components on the y-axis vs. time on the x-axis.
+
+    Args: 
+    - times (1d ndarray of floats): contains the time values [s]
+    - fields (ndarray of shape (len(time), 3)): contains the Bx, By and Bz components of the measured magnetic field
+    - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm' and 'p'
+    The number of letters may vary, but at least one valid letter should be contained. For each flag,
+    the according quantity is added to the plot. Each quantity is plotted at most once.  
+        - 'x', 'y', 'z': single component of magnetic field, p.e. B_z
+        - 'm': magnitude of magnetic field
+        - 'p': in-plane magnitude |B_xy| of magnetic field in xy-plane
+    - show_image (bool): If True, plt.show() is executed at the end
+    - show_dev_from_mean (bool): If False, the absolute values of the desired components are plotted.
+    If True, the deviation from their mean values are plotted. 
+
+    Return:
+    - fig (plt.Figure): figure instance of the plot 
+    - axs (plt.Axes): axes instance of the plot
+    """
+    # estimate the number of measurements
+    num_measurements = len(times)
+    
+    # generate Figure and Axis instances
+    fig, ax = plt.subplots()
+    
+    # plot the desired contents
+    if show_dev_from_mean:
+        ax.set_ylabel('deviation from mean, $\Delta B$=$B$ - $\overline{B}$ [mT]')
+        ax.hlines
+        if 'x' in plot_components:
+            ax.plot(times, fields[:,0] - np.mean(fields[:,0]), label = '$\Delta$ $B_x$')
+        if 'y' in plot_components:
+            ax.plot(times, fields[:,1] - np.mean(fields[:,1]), label = '$\Delta$ $B_y$')
+        if 'z' in plot_components:
+            ax.plot(times, fields[:,2] - np.mean(fields[:,2]), label = '$\Delta$ $B_z$')
+        if 'm' in plot_components:
+            magn_B_fields = np.linalg.norm(fields, axis=1)
+            ax.plot(times, magn_B_fields - np.mean(magn_B_fields), label = '$\Delta$ $|B|$')
+        if 'p' in plot_components:
+            inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
+            ax.plot(times, inplane_B_fields - np.mean(inplane_B_fields), label = '$\Delta$ $|B_{xy}|$')
+    else:
+        ax.set_ylabel('magnetic field, $B$ [mT]')
+        if 'x' in plot_components:
+            ax.plot(times, fields[:,0], label = '$B_x$')
+        if 'y' in plot_components:
+            ax.plot(times, fields[:,1], label = '$B_y$')
+        if 'z' in plot_components:
+            ax.plot(times, fields[:,2], label = '$B_z$')
+        if 'm' in plot_components:
+            magn_B_fields = np.linalg.norm(fields, axis=1)
+            ax.plot(times, magn_B_fields, label = '$|B|$')
+        if 'p' in plot_components:
+            inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
+            ax.plot(times, inplane_B_fields, label = '|$B_{xy}$|')
+
+    # label axes
+    ax.set_xlabel('time, $t$ [s]')
+
+    # show legend
+    ax.legend()
+
+    if show_image:
+        plt.show()
+    
+    return fig, ax
