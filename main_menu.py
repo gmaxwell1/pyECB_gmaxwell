@@ -3,8 +3,8 @@ filename: main_menu.py
 
 This script is meant to be used as an interface with the ECB 820. The user can choose from various
 methods to set currents on the different channels ('coils' in Pantec's terminology) and thus communicate
-with the ECB. The standard interface is the command line, but another option is to integrate this into
-a GUI for the best user experience.
+with the ECB. The standard interface for now is the command line, but the ultimate goal is to integrate this into
+QS3.
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
@@ -26,7 +26,8 @@ from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 def MainMenu(initialized):
     """
-    Main menu for ECB/Vector magnet operation an arbitrary magnitude
+    Main menu for ECB/Vector magnet operation. An arbitrary combination of currents can be set with this menu, thus
+    any magnetic field may be generated as well.
 
     Args:
     - initialized: if the ECB is initialized, this will be 0
@@ -45,301 +46,346 @@ def MainMenu(initialized):
             print(
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
             print(
-                '[5]: Switch from one operating point to another multiple times while measuring\n')
-            print('[s]: get ECB status\n[r] roll a die\n')
+                '[5]: Switch from one operating point to another multiple times while measuring')
+            print('[6]: get ECB status\n')
+            print('[r] roll a die\n')
 
             c1 = input()
 
             if c1 == '1':
-                inp0 = input('File or manual input? (answer with f or m): ')
-                if inp0 == 'f':
-                    # must be a .csv file!
-                    inpFile = input('Enter a valid configuration file path: ')
-                    inp1 = input('starting current in mA = ')
-                    inp2 = input('ending current in mA = ')
-                    inp3 = input('# of steps: ')
-                    # the values for each measurement run should be the same for consistent results
-                    try:
-                        start_val = int(inp1)
-                    except:
-                        print('expected numerical value, defaulting to -4500')
-                        start_val = -4500
-                    try:
-                        end_val = int(inp2)
-                    except:
-                        print('expected numerical value, defaulting to 4500')
-                        end_val = 4500
-                    try:
-                        steps = int(inp3)
-                    except:
-                        print('expected numerical value, defaulting to 200')
-                        steps = 200
-
-                    c1 = input('Automatic exit after finish? (x for yes): ')
-
-                    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
-                        char = input('Calibrate Metrolab sensor? (y/n): ')
-                        if char == 'y':
-                            calibration(node, calibrate=True)
-
-                        with open(inpFile, 'r') as f:
-                            contents = csv.reader(f)
-                            next(contents)
-                            for row in contents:
-                                config = np.array(
-                                    [float(row[0]), float(row[1]), float(row[2])])
-                                sweepCurrents(config_list=config, start_val=start_val,
-                                            end_val=end_val, steps=steps, node=node)
-
-                elif inp0 == 'm':
-                    inp1 = input('Configuration:\nChannel 1: ')
-                    inp2 = input('Channel 2: ')
-                    inp3 = input('Channel 3: ')
-                    inp4 = input('starting current in mA = ')
-                    inp5 = input('ending current in mA = ')
-                    inp6 = input('# of steps: ')
-
-                    try:
-                        a1 = float(inp1)
-                        b1 = float(inp2)
-                        c1 = float(inp3)
-                        config = np.array([a1, b1, c1])
-                    except:
-                        print(
-                            'expected numbers (float or int), defaulting to (0,0,1)')
-                        config = np.array([0, 0, 1])
-                    try:
-                        start_val = int(inp4)
-                    except:
-                        print('expected numerical value, defaulting to 0')
-                        start_val = 0
-                    try:
-                        end_val = int(inp5)
-                    except:
-                        print('expected numerical value, defaulting to 1')
-                        end_val = 1
-                    try:
-                        steps = int(inp6)
-                    except:
-                        print('expected numerical value, defaulting to 1')
-                        steps = 1
-
-                    c1 = input('Automatic exit after finish? (x for yes): ')
-
-                    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
-                        char = input('Calibrate Metrolab sensor? (y/n): ')
-                        if char == 'y':
-                            calibration(node, calibrate=True)
-
-                        sweepCurrents(config_list=config, start_val=start_val,
-                                  end_val=end_val, steps=steps, node=node)
-
-                else:
-                    print('Using preset current configuration.')
-                    config = input('Which config (z, xy or r): ')
-                    inp1 = input('How many measurement runs?: ')
-                    inp2 = input('starting current in mA = ')
-                    inp3 = input('ending current in mA = ')
-                    inp4 = input('# of steps: ')
-
-                    try:
-                        randomRuns = int(inp1)
-                    except:
-                        print('expected numerical value, defaulting to 0')
-                        randomRuns = 0
-                    try:
-                        start_val = int(inp2)
-                    except:
-                        print('expected numerical value, defaulting to 0')
-                        start_val = 0
-                    try:
-                        end_val = int(inp3)
-                    except:
-                        print('expected numerical value, defaulting to 1')
-                        end_val = 1
-                    try:
-                        steps = int(inp4)
-                    except:
-                        print('expected numerical value, defaulting to 1')
-                        steps = 1
-
-                    c1 = input('Automatic exit after finish? (x for yes): ')
-
-                    while randomRuns > 0:
-                        sweepCurrents(config=config, start_val=start_val,
-                                      end_val=end_val, steps=steps, node=MetrolabTHM1176Node(range='0.3 T', period=0.1))
-                        randomRuns = randomRuns-1
+                inp0 = input('File or manual input? (answer with f, m or nothing): ')
+                callCurrentSweep(inp0)
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
-                inp1 = input('Angle to z axis in deg = ')
-                inp2 = input('Angle to x axis in deg = ')
-                inp3 = input('starting magnitude in mT = ')
-                rot = input('Rotate constant magnitude field around a specified axis? (otherwise ramp field magnitude in a constant direction): ')
-                if rot == 'y':
-                    axisang1 = input('Axis polar angle: ')
-                    axisang2 = input('Axis azimuthal angle: ')
-                    try:
-                        axis = (int(axisang1), int(axisang2))
-                    except:
-                        print('expected numerical value, defaulting to (0,0) or z-axis')
-                        rotate = (0,0)
-                    
-                else:    
-                    inp4 = input('ending magnitude in mT = ')
-                    try:
-                        end_mag = int(inp4)
-                    except:
-                        print('expected numerical value, defaulting to 1')
-                        end_mag = 1
-                    
-                inp5 = input('# of steps: ')
-
-                try:
-                    theta = int(inp1)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    theta = 0
-                try:
-                    phi = int(inp2)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    phi = 0
-                try:
-                    start_mag = int(inp3)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    start_mag = 0
-                try:
-                    steps = int(inp5)
-                except:
-                    print('expected numerical value, defaulting to 1')
-                    steps = 1
-
-                with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001) as node:
-                # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
-                    char = input('Calibrate Metrolab sensor? (y/n): ')
-                    if char == 'y':
-                        calibration(node, calibrate=True)
-                    if rot == 'y':
-                        rampVectorField(node, theta, phi, start_mag, steps=steps, rotate=axis)
-                    else:
-                        rampVectorField(node, theta, phi, start_mag, end_mag, steps)
-
+                callSweepVectorField()
+                
             elif c1 == '3':
-                inp1 = input('Channel 1: ')
-                inp2 = input('Channel 2: ')
-                inp3 = input('Channel 3: ')
-                inp4 = input('timer (leave empty -> manual termination) = ')
-                try:
-                    coil1 = int(inp1)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    coil1 = 0
-                try:
-                    coil2 = int(inp2)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    coil2 = 0
-                try:
-                    coil3 = int(inp3)
-                except:
-                    print('expected numerical value, defaulting to 0')
-                    coil3 = 0
-
-                if inp4 == '':
-                    runCurrents(
-                        np.array([coil1, coil2, coil3]), t=0, direct=b'1')
-                else:
-                    try:
-                        timer = int(inp4)
-                        c1 = input(
-                            'Automatic Termination after timer? (x for yes): ')
-                    except:
-                        print('expected numerical value, defaulting to 0')
-                        timer = 0
-                    runCurrents(
-                        np.array([coil1, coil2, coil3]), timer, direct=b'1')
-
+                callRunCurrents()
+               
             # tentative implementation. Actual I-to-B actuation matrix needed.
             elif c1 == '4':
-                inp1 = input('Magnitude in mT = ')
-                inp2 = input('Angle to z axis in deg = ')
-                inp3 = input('Angle to x axis in deg = ')
-                inp4 = input('timer (leave empty -> manual termination) = ')
-                try:
-                    mag = int(inp1)
-                except:
-                    print('expected numerical value')
-                    mag = 0
-                try:
-                    theta = int(inp2)
-                except:
-                    print('expected numerical value')
-                    theta = 0
-                try:
-                    phi = int(inp3)
-                except:
-                    print('expected numerical value')
-                    phi = 0
-
-                if inp4 == '':
-                    generateMagneticField(mag, theta, phi, t=0, direct=b'1')
-                else:
-                    try:
-                        timer = int(inp4)
-                    except:
-                        print('expected numerical value')
-                        timer = 0
-                    generateMagneticField(mag, theta, phi, timer, direct=b'1')
+                callGenerateVectorField()
 
             elif c1 == '5':
-                inp1 = input('configuration 1\nChannel 1: ')
-                inp2 = input('Channel 2: ')
-                inp3 = input('Channel 3: ')
-                inp4 = input('configuration 2\nChannel 1: ')
-                inp5 = input('Channel 2: ')
-                inp6 = input('Channel 3: ')
-                inp7 = input('time in each state (add 1.5s): ')
-                inp8 = input('how many times to switch: ')
-                try:
-                    a1 = int(inp1)
-                    b1 = int(inp2)
-                    c1 = int(inp3)
-                    config1 = np.array([a1, b1, c1])
-                except:
-                    print('expected numerical value, defaulting to (0,0,1)')
-                    config1 = np.array([0, 0, 1])
-                try:
-                    a2 = int(inp4)
-                    b2 = int(inp5)
-                    c2 = int(inp6)
-                    config2 = np.array([a2, b2, c2])
-                except:
-                    print('expected numerical value(s), defaulting to (0,1,0)')
-                    config2 = np.array([0, 1, 0])
-                try:
-                    dt = float(inp7)
-                except:
-                    print('expected numerical value(s), defaulting to 0')
-                    dt = 0
-                try:
-                    rounds = int(inp8)
-                except:
-                    print('expected numerical value(s), defaulting to 10')
-                    rounds = 10
-
-                switchConfigsAndMeasure(config1, config2, dt, rounds)
-
-            elif c1 == 's':
+                callSwitchingConfigs()
+                
+            elif c1 == '6':
                 print(getStatus())
+                
             elif c1 == 'r':
-                print(np.random.randint(1, 7))
+                # just for fun :D
+                c1 = np.random.randint(1, 7)
+                print('doing option ', c1, ': ')
 
     else:
         print('not connected')
         return
 
+
+def callCurrentSweep(input='m'):
+    """
+    Setup function to call the utility function 'sweepCurrents', see 'utility_functions.py'. Manages necessary inputs.
+
+    Args:
+        input (str, optional): Decides whether a file with configurations or a manual input will be read. The third option is
+        using default configurations, such as the x, y or z direction. Defaults to 'm'.
+    """
+    if input == 'f':
+        # must be a .csv file!
+        inpFile = input('Enter a valid configuration file path: ')
+        inp1 = input('starting current in mA = ')
+        inp2 = input('ending current in mA = ')
+        inp3 = input('# of steps: ')
+        # the values for each measurement run should be the same for consistent results
+        try:
+            start_val = int(inp1)
+        except:
+            print('expected numerical value, defaulting to -4500')
+            start_val = -4500
+        try:
+            end_val = int(inp2)
+        except:
+            print('expected numerical value, defaulting to 4500')
+            end_val = 4500
+        try:
+            steps = int(inp3)
+        except:
+            print('expected numerical value, defaulting to 200')
+            steps = 200
+
+        c1 = input('Automatic exit after finish? (x for yes): ')
+
+        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
+            char = input('Calibrate Metrolab sensor? (y/n): ')
+            if char == 'y':
+                calibration(node, calibrate=True)
+
+            with open(inpFile, 'r') as f:
+                contents = csv.reader(f)
+                next(contents)
+                for row in contents:
+                    config = np.array(
+                        [float(row[0]), float(row[1]), float(row[2])])
+                    sweepCurrents(config_list=config, start_val=start_val,
+                                end_val=end_val, steps=steps, node=node)
+
+    elif input == 'm':
+        inp1 = input('Configuration:\nChannel 1: ')
+        inp2 = input('Channel 2: ')
+        inp3 = input('Channel 3: ')
+        inp4 = input('starting current in mA = ')
+        inp5 = input('ending current in mA = ')
+        inp6 = input('# of steps: ')
+
+        try:
+            a1 = float(inp1)
+            b1 = float(inp2)
+            c1 = float(inp3)
+            config = np.array([a1, b1, c1])
+        except:
+            print(
+                'expected numbers (float or int), defaulting to (0,0,1)')
+            config = np.array([0, 0, 1])
+        try:
+            start_val = int(inp4)
+        except:
+            print('expected numerical value, defaulting to 0')
+            start_val = 0
+        try:
+            end_val = int(inp5)
+        except:
+            print('expected numerical value, defaulting to 1')
+            end_val = 1
+        try:
+            steps = int(inp6)
+        except:
+            print('expected numerical value, defaulting to 1')
+            steps = 1
+
+        c1 = input('Automatic exit after finish? (x for yes): ')
+
+        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
+            char = input('Calibrate Metrolab sensor? (y/n): ')
+            if char == 'y':
+                calibration(node, calibrate=True)
+
+            sweepCurrents(config_list=config, start_val=start_val,
+                        end_val=end_val, steps=steps, node=node)
+
+    else:
+        print('Using preset current configuration.')
+        config = input('Which config (z, xy or r): ')
+        inp1 = input('How many measurement runs?: ')
+        inp2 = input('starting current in mA = ')
+        inp3 = input('ending current in mA = ')
+        inp4 = input('# of steps: ')
+
+        try:
+            randomRuns = int(inp1)
+        except:
+            print('expected numerical value, defaulting to 0')
+            randomRuns = 0
+        try:
+            start_val = int(inp2)
+        except:
+            print('expected numerical value, defaulting to 0')
+            start_val = 0
+        try:
+            end_val = int(inp3)
+        except:
+            print('expected numerical value, defaulting to 1')
+            end_val = 1
+        try:
+            steps = int(inp4)
+        except:
+            print('expected numerical value, defaulting to 1')
+            steps = 1
+
+        c1 = input('Automatic exit after finish? (x for yes): ')
+
+        while randomRuns > 0:
+            sweepCurrents(config=config, start_val=start_val,
+                            end_val=end_val, steps=steps, node=MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01))
+            randomRuns = randomRuns-1
+            
+            
+def callSweepVectorField():
+    """
+    Setup function to call the utility function 'rampVectorField', see 'utility_functions.py'. Manages necessary inputs.
+    """
+    inp1 = input('Angle to z axis in deg = ')
+    inp2 = input('Angle to x axis in deg = ')
+    inp3 = input('starting magnitude in mT = ')
+    rot = input('Rotate constant magnitude field around a specified axis? (otherwise ramp field magnitude in a constant direction): ')
+    
+    if rot == 'y':
+        axisang1 = input('Axis polar angle: ')
+        axisang2 = input('Axis azimuthal angle: ')
+        try:
+            axis = (int(axisang1), int(axisang2))
+        except:
+            print('expected numerical value, defaulting to (0,0) or z-axis')
+            rotate = (0,0)
+        
+    else:    
+        inp4 = input('ending magnitude in mT = ')
+        try:
+            end_mag = int(inp4)
+        except:
+            print('expected numerical value, defaulting to 1')
+            end_mag = 1
+        
+    inp5 = input('# of steps: ')
+
+    try:
+        theta = int(inp1)
+    except:
+        print('expected numerical value, defaulting to 0')
+        theta = 0
+    try:
+        phi = int(inp2)
+    except:
+        print('expected numerical value, defaulting to 0')
+        phi = 0
+    try:
+        start_mag = int(inp3)
+    except:
+        print('expected numerical value, defaulting to 0')
+        start_mag = 0
+    try:
+        steps = int(inp5)
+    except:
+        print('expected numerical value, defaulting to 1')
+        steps = 1
+
+    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
+    # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+        char = input('Calibrate Metrolab sensor? (y/n): ')
+        if char == 'y':
+            calibration(node, calibrate=True)
+            
+        if rot == 'y':
+            rampVectorField(node, theta, phi, start_mag, steps=steps, rotate=axis)
+        else:
+            rampVectorField(node, theta, phi, start_mag, end_mag, steps)
+            
+
+def callRunCurrents():
+    """
+    Setup function to call the utility function 'runCurrents', see 'utility_functions.py'. Manages necessary inputs.
+    """
+    inp1 = input('Channel 1: ')
+    inp2 = input('Channel 2: ')
+    inp3 = input('Channel 3: ')
+    inp4 = input('timer (leave empty -> manual termination) = ')
+    try:
+        coil1 = int(inp1)
+    except:
+        print('expected numerical value, defaulting to 0')
+        coil1 = 0
+    try:
+        coil2 = int(inp2)
+    except:
+        print('expected numerical value, defaulting to 0')
+        coil2 = 0
+    try:
+        coil3 = int(inp3)
+    except:
+        print('expected numerical value, defaulting to 0')
+        coil3 = 0
+
+    if inp4 == '':
+        runCurrents(
+            np.array([coil1, coil2, coil3]), t=0, direct=b'1')
+    else:
+        try:
+            timer = int(inp4)
+            c1 = input(
+                'Automatic Termination after timer? (x for yes): ')
+        except:
+            print('expected numerical value, defaulting to 0')
+            timer = 0
+        runCurrents(
+            np.array([coil1, coil2, coil3]), timer, direct=b'1')
+        
+        
+def callGenerateVectorField():
+    """
+    Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
+    """
+    inp1 = input('Magnitude in mT = ')
+    inp2 = input('Angle to z axis in deg = ')
+    inp3 = input('Angle to x axis in deg = ')
+    inp4 = input('timer (leave empty -> manual termination) = ')
+    try:
+        mag = int(inp1)
+    except:
+        print('expected numerical value')
+        mag = 0
+    try:
+        theta = int(inp2)
+    except:
+        print('expected numerical value')
+        theta = 0
+    try:
+        phi = int(inp3)
+    except:
+        print('expected numerical value')
+        phi = 0
+
+    if inp4 == '':
+        generateMagneticField(mag, theta, phi, t=0, direct=b'1')
+    else:
+        try:
+            timer = int(inp4)
+        except:
+            print('expected numerical value')
+            timer = 0
+        generateMagneticField(mag, theta, phi, timer, direct=b'1')
+        
+        
+def callSwitchingConfigs():
+    """
+    Setup function to call the utility function 'switchConfigsAndMeasure', see 'utility_functions.py'. Manages necessary inputs.
+    """
+    inp1 = input('configuration 1\nChannel 1: ')
+    inp2 = input('Channel 2: ')
+    inp3 = input('Channel 3: ')
+    inp4 = input('configuration 2\nChannel 1: ')
+    inp5 = input('Channel 2: ')
+    inp6 = input('Channel 3: ')
+    inp7 = input('time in each state (add 1.5s): ')
+    inp8 = input('how many times to switch: ')
+    try:
+        a1 = int(inp1)
+        b1 = int(inp2)
+        c1 = int(inp3)
+        config1 = np.array([a1, b1, c1])
+    except:
+        print('expected numerical value, defaulting to (0,0,1)')
+        config1 = np.array([0, 0, 1])
+    try:
+        a2 = int(inp4)
+        b2 = int(inp5)
+        c2 = int(inp6)
+        config2 = np.array([a2, b2, c2])
+    except:
+        print('expected numerical value(s), defaulting to (0,1,0)')
+        config2 = np.array([0, 1, 0])
+    # try:
+    #     dt = float(inp7)
+    # except:
+    #     print('expected numerical value(s), defaulting to 0')
+    #     dt = 0
+    # try:
+    #     rounds = int(inp8)
+    # except:
+    #     print('expected numerical value(s), defaulting to 10')
+    #     rounds = 10
+
+    functionGenerator(config1, config2, function='sqr', frequency=10)
+    
 
 if __name__ == '__main__':
     ecbInit = openConnection()

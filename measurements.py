@@ -40,6 +40,7 @@ __all__ = [
 # port_sensor = 'COM3'
 z_COM_port = 'COM6' # z-coordinate controller
 y_COM_port = 'COM5'
+x_COM_port = 'COM4'
 
 def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas', verbose=False):
     """
@@ -111,11 +112,11 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     
     # change meas_offset_z according to the following rule: 
     # height above sensor = meas_offset_z + 0.9 - 7.66524 (last number is "zero")
-    meas_offset_z = meas_height - 0.9 + 7.66524
+    meas_offset_z = meas_height - 0.9 + 7.5
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
     
-    meas_offset_y = 14.9
+    meas_offset_y = 15.9
     start_pos_y = CC_Y.read_cur_pos()
     total_distance_y = abs(meas_offset_y-start_pos_y)
     
@@ -211,7 +212,7 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         list of floats: temp (temperature values as explained above)
     """
     with MetrolabTHM1176Node(period=period, block_size=block_size, range='1 T', average=averaging, unit='MT') as node:
-        calibration(node, meas_height=1.5)
+        # calibration(node, meas_height=1.5)
         
         thread = threading.Thread(target=node.start_acquisition)
         thread.start()
@@ -251,7 +252,7 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
             return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
         
 
-def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_filename_postfix='B_field_vs_I'):
+def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_sets', data_filename_postfix='B_field_vs_I'):
     """
     Saves input data points to a .csv file
 
@@ -304,18 +305,27 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory, data_file
 
 if __name__ == '__main__':
     
-    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    CC_Z.wait_for_ready()
+    # CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
+    # CC_X.wait_for_ready()
     
-    start_pos_z = CC_Z.read_cur_pos()
-    print(start_pos_z)
-    CC_Z.move_absolute(new_pos=20)
-    CC_Z.wait_for_ready()
-    print(CC_Z.read_cur_pos())
+    # start_pos_z = CC_X.read_cur_pos()
+    # print(start_pos_z)
+    # CC_X.move_absolute(new_pos=5.0)
+    # CC_X.wait_for_ready()
+    # print(CC_X.read_cur_pos())
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
+    CC_Y.wait_for_ready()
+    
+    start_pos_y = CC_Y.read_cur_pos()
+    print(start_pos_y)
+    CC_Y.move_absolute(new_pos=15.9)
+    CC_Y.wait_for_ready()
+    print(CC_Y.read_cur_pos())
+
 
     # #     print(curr_pos_z)
     # #     c = input('raise again?')
-    with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
-        node.calibrate()
+    # with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
+    #     print(node.measureFieldArraymT())
     
     
