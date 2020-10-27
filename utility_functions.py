@@ -238,7 +238,7 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
     if rotate is None:
         fileprefix = '({}_{})_ramp_meas'.format(int(theta), int(phi))
     else:
-        fileprefix = '({}_{})_rotato_meas'.format(int(theta), int(phi))
+        fileprefix = '({}_{})_rotate_meas'.format(int(theta), int(phi))
     
     # folder
     filePath = r'.\data_sets\rotation_around_x'
