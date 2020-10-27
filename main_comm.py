@@ -333,11 +333,11 @@ def demagnetizeCoils():
     global ECB_ACT_CURRENTS
     
     tspan = np.linspace(0, 5*np.pi, 41) # change current every ~0.5 s
-    func1 = ECB_ACT_CURRENTS[0] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    func2 = ECB_ACT_CURRENTS[1] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    func3 = ECB_ACT_CURRENTS[2] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    func1 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    func2 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    func3 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
     
-    print(func1)
+    # print(func1)
     desCurrents = [0,0,0,0,0,0,0,0]
     
     for k in range(len(tspan)):
