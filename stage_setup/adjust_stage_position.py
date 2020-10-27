@@ -42,7 +42,7 @@ sampling_size = 25  # number of measurements per sensor for averaging
 
 # %%
 # initialize actuators
-init_pos = np.array([5.0, 14.9, 8.25])
+init_pos = np.array([5.0, 15.9, 8.25])
 COM_ports = ['COM7', 'COM6', 'COM5']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
@@ -51,12 +51,12 @@ CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 CC_Z = ConexCC(com_port='COM5',
                 velocity=0.4, set_axis='z', verbose=False)
 CC_Z.wait_for_ready()
-CC_Z.move_absolute(8.65)
+CC_Z.move_absolute(8.0)
 
 # %%
 # manually adjust stage position
-z_offset = 8.65
-new_pos = [5.0, 14.9, z_offset]
+z_offset = 7.6
+new_pos = [5.0, 15.9, z_offset]
 _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
