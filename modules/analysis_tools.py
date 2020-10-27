@@ -462,17 +462,19 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     plot_expected_data = []
     ylabels = []
     for flag in flags_yaxis:
-        # magnetic field in z-direction
+        # magnetic field in x-direction
         if flag == 'x':
             plot_mean_data.append(mean_values[:, 0])
             plot_std_data.append(std_values[:, 0])
             plot_expected_data.append(expected_values[:, 0])
             ylabels.append('$B_x$ [mT]')
+        # magnetic field in y-direction
         elif flag == 'y':
             plot_mean_data.append(mean_values[:, 1])
             plot_std_data.append(std_values[:, 1])
             plot_expected_data.append(expected_values[:, 1])
             ylabels.append('$B_y$ [mT]')
+        # magnetic field in z-direction
         elif flag == 'z':
             plot_mean_data.append(mean_values[:, 2])
             plot_std_data.append(std_values[:, 2])
@@ -544,9 +546,9 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                                     linestyle='', marker='.', capsize = 2, 
                                     label = 'measured @ {:.1f} mm'.format(distance))
             axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
-                                    label = 'actuation matrix method @ 3mm')
-            if show_labels:
-                axs[i].legend()
+                                    label = 'linear model @ 3mm')
+    if show_labels:
+        axs[0].legend()
 
     # add a Delta at the front of each label if differences should be plotted
     if plot_delta_sim:
@@ -600,6 +602,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                 axs[i].set_ylim(ylim_lower, ylim_upper)
             else:
                 axs[i].set_ylim(ylim_field_single)
+            axs[i].yaxis.set_minor_locator(AutoMinorLocator())
         else:
             # either match limits and data or take the passed argument
             if (ylim_field_abs is None) and (not plot_delta_sim):
@@ -610,6 +613,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                 axs[i].set_ylim(ylim_lower, ylim_upper)
             else:
                 axs[i].set_ylim(ylim_field_abs)
+            axs[i].yaxis.set_minor_locator(AutoMinorLocator())
 
 
         # add grid lines if desired
@@ -638,6 +642,267 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
         plt.show()
 
     return fig, axs, x_vals, np.array(plot_mean_data), np.array(plot_std_data), np.array(plot_expected_data)
+
+def add_annotations(axs, x_vals, plot_data, flags_yaxis, mask_selected_plots = None, 
+                fontweight = 'bold', fraction_arrow_length = 0.18, fraction_alignment = 0.05):
+    """ 
+    Add annotations for the maximum and minimum values as arrows pointing at these values.
+
+    Args:
+    - axs (ndarray of plt.Axes objectes): represent the subplots, returned by generate_functions
+    - x_vals (ndarray of length = #measurements): contain the x-values of all plots, 
+    returned by generate_functions
+    - plot_data, plot_std_data, plot_exp_data (nbdarrays): plot data that are returned 
+    by the generate_plots function, they are of shape (#plots, #measurements, 1)
+    - flags_yaxis (str): contains letters as flags, which indicate which quantity is plotted 
+    on which axis. Hence, the len(flags_yaxis) = len(axs) = #plots. For this function, 
+    only the two following flags are relevant: 
+    't': angle theta with respect to z-axis, 
+    'f': in-plane angle phi with respect to x-axis
+    - mask_selected_plots (ndarray of bools or None): Mask of the same length as axs, only for the 
+    subplots where mask_selected_plots is True annotations are added. This allows to avoid annotations
+    for certain subplots. Default is None, in which case annotations are added for all subplots. 
+    - fontweight (str): valid argument for fontweight of the label containing the actual value of a 
+    maximum (minimum), is passed to plt.annotate()
+    - fraction_arrow_length (float): ratio of arrow length and the plotted yrange in data coordinates
+    - fraction_alignment (float): if a maximum (minimum) value is close to the left or right side of the 
+    plot, the label is aligned to the left/right, such that it does not overlap with the axes. 
+    Here, fraction_alignment determines what 'close' means: if a current is within a distance of
+    fraction_alignment*xrange from the axes, the alignment is set to right or left. 
+    In all other cases, the alignment is set to 'center'.
+    """
+    if mask_selected_plots is None:
+        mask_selected_plots = np.ones(len(axs), dtype=bool)
+
+    for i in range(len(axs)):
+        # for plots of total or in-plane magnetudes, only add one arrow where the maximum value is reached
+        if mask_selected_plots[i] and flags_yaxis[i] in ['p','m']:
+            # find the maximum value first
+            i_max = np.argmax(plot_data[i])
+            max_B_val = plot_data[i, i_max]
+            corresponding_current = x_vals[i_max]
+            
+            # on left side of plot align towards right, on the other side towards left and keep the center in the middle
+            xlim = axs[i].get_xlim()
+            x_range = xlim[1] - xlim[0]
+            if corresponding_current < xlim[0] + fraction_alignment*x_range:
+                text_alignment = 'left'
+            elif corresponding_current > xlim[1] - fraction_alignment*x_range:
+                text_alignment = 'right'
+            else:
+                text_alignment = 'center'
+
+            # find a good length for arrow
+            ylim = axs[i].get_ylim()
+            arrow_length = abs(fraction_arrow_length * (ylim[1] - ylim[0]))
+
+            # draw the arrow and text
+            axs[i].annotate('{:.1f} mT'.format(max_B_val), xy=(corresponding_current, max_B_val), 
+                    xytext=(corresponding_current, max_B_val - arrow_length), 
+                    horizontalalignment=text_alignment, fontweight = fontweight,
+                    arrowprops=dict(facecolor='black', shrink=0.05, width= 2, headwidth=8))
+        
+        # for plots of single magnetic field components, add two arrows 
+        elif mask_selected_plots[i] and flags_yaxis[i] in ['x','y','z']:
+            # find the max and min value first
+            i_min = np.argmin(plot_data[i])
+            i_max = np.argmax(plot_data[i])
+            min_B_val = plot_data[i, i_min]
+            max_B_val = plot_data[i, i_max]
+            corresponding_current_min = x_vals[i_min]
+            corresponding_current_max = x_vals[i_max]
+            
+            # on left side of plot align towards right, on the other side towards left and keep the center in the middle
+            xlim = axs[i].get_xlim()
+            x_range = xlim[1] - xlim[0]
+            if corresponding_current_min < xlim[0] + fraction_alignment*x_range:
+                text_alignment_min = 'left'
+            elif corresponding_current_min > xlim[1] - fraction_alignment*x_range:
+                text_alignment_min = 'right'
+            else:
+                text_alignment_min = 'center'
+
+            if corresponding_current_max < xlim[0] + fraction_alignment*x_range:
+                text_alignment_max = 'left'
+            elif corresponding_current_max > xlim[1] - fraction_alignment*x_range:
+                text_alignment_max = 'right'
+            else:
+                text_alignment_max = 'center'
+
+            # find a good length for arrow
+            ylim = axs[i].get_ylim()
+            arrow_length = abs(fraction_arrow_length * (ylim[1] - ylim[0]))
+
+            # draw the arrow and text for minimum value 
+            axs[i].annotate('{:.1f} mT'.format(min_B_val), xy=(corresponding_current_min, min_B_val), 
+                    xytext=(corresponding_current_min, min_B_val + arrow_length), 
+                    horizontalalignment=text_alignment_min, fontweight = fontweight,
+                    verticalalignment = 'bottom',
+                    arrowprops=dict(facecolor='black', shrink=0.05, width= 2, headwidth=8))
+
+            # draw the arrow and text for maximum value 
+            axs[i].annotate('{:.1f} mT'.format(max_B_val), xy=(corresponding_current_max, max_B_val), 
+                    xytext=(corresponding_current_max, max_B_val - arrow_length), 
+                    horizontalalignment=text_alignment_max, fontweight = fontweight,
+                    verticalalignment = 'top',
+                    arrowprops=dict(facecolor='black', shrink=0.05, width= 2, headwidth=8))
+
+
+def add_insets_for_angular_plots(axs, x_vals, plot_data, plot_std_data, plot_exp_data, flags_yaxis, 
+                        inset_ylim_factor = 0.25, which_side = 'right', manual_inset_ylim=None,
+                        mask_selected_plots = None):
+    """
+    Add insets into angular plots, such that a line is resolved more precisely.
+
+    Args:
+    - axs (ndarray of plt.Axes objectes): represent the subplots, returned by generate_functions
+    - x_vals (ndarray of length = #measurements): contain the x-values of all plots, 
+    returned by generate_functions
+    - plot_data, plot_std_data, plot_exp_data (nbdarrays): plot data that are returned 
+    by the generate_plots function, they are of shape (#plots, #measurements, 1)
+    - flags_yaxis (str): contains letters as flags, which indicate which quantity is plotted 
+    on which axis. Hence, the len(flags_yaxis) = len(axs) = #plots. For this function, 
+    only the two following flags are relevant: 
+    't': angle theta with respect to z-axis, 
+    'f': in-plane angle phi with respect to x-axis
+    - inset_ylim_factor (float): this factor can be used to set the ylims of the inset axes. 
+    The inset plot will show all data that are in [min - inset_ylim_factor*yrange, max + inset_ylim_factor*yrange],
+    where min (max) is the minimum (maximum) value on the chosen side and yrange = max-min.
+    - which_side (str): either 'left' or 'right', decides for which side the insets are created
+    - manual_inset_ylim (None, tuple or list): the limits of y-axis of the inset axis 
+    are set to the provided tuple(s). If a list is passed, it must have the same length as axs and each 
+    entry contains the limits for the corresponding subplot. Default is None, in this case the limits 
+    are estimated automatically using the min/max y-values
+    and the inset_ylim_factor for all subplots. 
+    - mask_selected_plots (ndarray of bools or None): Mask of the same length as axs, only for the 
+    subplots where mask_selected_plots is True insets are added. This allows to avoid insets
+    for certain subplots. Default is None, in which case insets are added for all subplots. 
+    """
+    if mask_selected_plots is None:
+        mask_selected_plots = np.ones(len(axs), dtype=bool)
+
+    for i in range(len(axs)):
+        # for plots of total or in-plane magnetudes, only add one arrow where the maximum value is reached
+        if flags_yaxis[i] in ['t','f'] and mask_selected_plots[i]:
+            # Preselect the data on the desired side. Note that due to different configurations, 
+            # the xvals can be sorted in ascending or decreasing order, such that a comparison 
+            # of first and last value is required to pick the desired side. 
+            len_data = len(plot_data[i])
+            if which_side == 'left':
+                inset_x = 0.1
+                if x_vals[0] < x_vals[-1]:
+                    # sorted in ascending order
+                    data_on_side = plot_data[i,:len_data//2]
+                else:
+                    # sorted in decreasing order
+                    data_on_side = plot_data[i,len_data//2:]
+            else:
+                inset_x = 0.65
+                if x_vals[0] < x_vals[-1]:
+                    # sorted in ascending order
+                    data_on_side = plot_data[i,len_data//2:]
+                else:
+                    # sorted in decreasing order
+                    data_on_side = plot_data[i,:len_data//2]
+
+            # estimate mean value of angle on the chosen side. 
+            mean_value_on_side = np.mean(data_on_side)
+
+            # depending on the mean value, set the coordinates of inset axis in upper or lower half of the plot
+            if mean_value_on_side > np.mean(axs[i].get_ylim()):
+                inset_y = 0.15
+            else:
+                inset_y = 0.55
+
+            # inset axis
+            axins = axs[i].inset_axes([inset_x, inset_y, 0.33, 0.4])
+            axins.errorbar(x_vals, plot_data[i], yerr=plot_std_data[i],
+                                        linestyle='', marker='.', capsize = 2)
+            axins.plot(x_vals, plot_exp_data[i], linestyle='--')
+
+            # define which sub-regions of original plot should be shown by setting the limits of inset axis
+            xlim = axs[i].get_xlim()
+            x_range = xlim[1] - xlim[0]
+            if which_side == 'left':
+                axins.set_xlim(np.min(x_vals), xlim[0]+ 0.5*x_range)
+            else:
+                axins.set_xlim(xlim[0]+ 0.5*x_range, np.max(x_vals))
+
+            # unless manual limits for inset-y-axis are provided, choose them automatically
+            if manual_inset_ylim is None:
+                y_range_inset = np.max(data_on_side) - np.min(data_on_side)
+                axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
+                                np.max(data_on_side) + inset_ylim_factor*y_range_inset)
+            else:
+                if isinstance(manual_inset_ylim, list):
+                    if manual_inset_ylim[i] is None:
+                        y_range_inset = np.max(data_on_side) - np.min(data_on_side)
+                        axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
+                                        np.max(data_on_side) + inset_ylim_factor*y_range_inset)
+                    else: 
+                        axins.set_ylim(manual_inset_ylim[i])
+                elif isinstance(manual_inset_ylim, tuple):
+                    axins.set_ylim(manual_inset_ylim[i])
+                else:
+                    raise ValueError('manual_inset_ylim must be None, list or tuple')
+
+            # add boxes to indicate which region of original plot is shown in the inset
+            axs[i].indicate_inset_zoom(axins)
+
+def add_power_axis_on_top(axs, flag_xaxis, I, color_twinsy = 'firebrick'):
+    """
+    Add overall power as twiny axis on top in a different color and with nice tickmarks.
+    
+    Note that this is only reasonable if flag_xaxis is set to 'I1', 'I2' or 'I3'.
+
+    Args:
+    - axs (ndarray of plt.Axes objectes): represent the subplots, returned by generate_functions
+    - flag_xaxis (str): indicates which coil the current plotted on x-axis refers to
+    - I (ndarray of shape (#measurements, 3)): Contains the currents in all three coils, which is used to 
+    estimate the ratio between the currents in all three coils. Returned by extract_raw_data_from_file.
+    - color_twinsy (str): valid color name from matplotlib for the twin axis, including the ticks and labels
+    """
+    # determine the coil of which the current is plotted
+    if flag_xaxis[0] == 'I':
+        coil_number = int(flag_xaxis[1])
+
+    # add twin axes for each plot
+    ax_twinsy = np.array([axs[i].twiny() for i in range(len(axs))])
+
+    # add x-axis on top to display total power via setting the limits with negative and positive powers
+    # and update to only positive labels later (advantage is that tick positions are chosen automatically,
+    # which usually is nicer than translating the ticks of current to power values):
+    for i in range(len(axs)):
+        # get the limits of current axis and transform to power, however with the same sign as the currents
+        Ilimits = axs[i].get_xlim()
+        Pmin, Pmax = [np.sign(value)* estimate_power(I[0,:], value, coil_number=coil_number) for value in Ilimits]
+        
+        # set limits of twin axis accordingly
+        ax_twinsy[i].set_xlim(Pmin, Pmax)
+
+        # set color of ticks
+        ax_twinsy[i].tick_params(axis='x', colors=color_twinsy)
+        ax_twinsy[i].spines['top'].set_color(color_twinsy)
+        
+        if i == 0:
+            # update the tick labels, such that absolute values are displayed. Also keep the automatically chosen 
+            # format (int or float) of ticks
+            power_ticks = ax_twinsy[i].get_xticks()
+            if '.' in str(ax_twinsy[i].get_xticklabels()[0]):
+                ticks_type = float
+            else:
+                ticks_type = int
+            corrected_power_ticks = [ticks_type(abs(tick)) for tick in power_ticks]
+
+            # set tick labels and axis label
+            ax_twinsy[i].set_xticklabels(corrected_power_ticks, color=color_twinsy)
+            ax_twinsy[i].set_xlabel('overall power, $P$ [W]', color=color_twinsy)
+
+        # for subsequent plots, hide tick labels of twinx axes but keep the ticks by setting tick labels to empty strings
+        else:
+            labels = [item.get_text() for item in ax_twinsy[i].get_xticklabels()]
+            empty_string_labels = ['']*len(labels)
+            ax_twinsy[i].set_xticklabels(empty_string_labels)
 
 def estimate_power(ratios, value, coil_number=1, R = 0.47 ):
     """
@@ -1038,3 +1303,250 @@ def generate_time_resolved_plot(times, fields, plot_components='xyz', show_image
         plt.show()
     
     return fig, ax
+
+
+def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 1.5, show_labels = True):
+    """
+    Generate a plot of the two magnetic field components within the plane of rotation.
+
+    Args: 
+    - I, mean_values, std_values, expected_values (ndarrays) are of shape (#measurements, 3), 
+    containing applied current, experimentally estimated/expected mean values and standard deviations 
+    for x,y,z-directions.
+    - distance (float): distance between sensor and tip [mm], which is added as plot label 
+    - show_labels (bool): flag to switch on/off labels of plots
+
+    Return: fig, axs
+    """
+    # create a simple plot with as many axes as letters in plots_yaxis
+    fig, ax = plt.subplots()
+    fig.set_size_inches(4, 4)
+    
+    # find the rotation axis
+    if np.all(np.isclose(expected_values[:,0], 0)):
+        rot_axis = 0 # 'x'
+    elif np.all(np.isclose(expected_values[:,1], 0)):
+        rot_axis = 1 # 'y'
+    elif np.all(np.isclose(expected_values[:,2], 0)):
+        rot_axis = 2 # 'z'
+    else:
+        raise NotImplementedError('Rotations about general axes are not implemented yet.')
+
+    print('rotation about {} axis'.format(rot_axis))
+
+    # set which components of magnetic field should be plotted -> the ones which are rotated
+    plot_components = np.delete([0,1,2], rot_axis)
+
+    # plot components orthogonal to rotation axis
+    ax.errorbar(mean_values[:, plot_components[0]], mean_values[:, plot_components[1]], 
+                            xerr = std_values[:, plot_components[0]], yerr = std_values[:, plot_components[1]],
+                            linestyle='', marker='.', capsize = 2, 
+                            label = 'measured @ {:.1f} mm'.format(distance))
+    ax.plot(expected_values[:, plot_components[0]], expected_values[:, plot_components[1]], linestyle='--', 
+                                    label = 'linear model @ 3mm')
+
+    # set axis labels
+    components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
+    ax.set_xlabel(components[plot_components[0]])
+    ax.set_ylabel(components[plot_components[1]])
+
+    # set aspect ratio to one, such that a circle actually looks round 
+    ax.set_aspect('equal')
+
+    # if desired, switch on legend
+    if show_labels:
+        ax.legend()
+
+    plt.tight_layout()
+
+    return fig, ax
+
+def swap_components(a, index_last):
+    """
+    Permute the indices of the second axis of a, such that index_last is the last one. 
+    The final array is sorted such that the order of the second axis becomes 'yzx', 'xzy' or 'xyz'
+
+    Args:
+    - a (ndarray of shape (n, 3)): array for which the indices of the second axis should be permuted
+    - index_last (int): current index of the array, which should become the last index = 2
+    """
+    # if the order is already correct, return a as it is
+    if index_last == 2:
+        return a
+    else:
+        remaining_comps = np.delete([0,1,2], index_last)
+        b = np.zeros_like(a)
+        for i in range(2):
+            b[:,i] = a[:, remaining_comps[i]]
+        b[:,2] = a[:,index_last]
+
+        return b
+
+def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_per_plot = 2,
+                        flags_yaxis = 'a', distance = 1.5, show_labels = True,
+                        plot_delta_sim=False, ):
+    """
+    Generate plots of the desired rotation angle on x-axis vs measured rotation angle and the 
+    third field component on the y-axis. 
+
+    Args: 
+    - I, mean_values, std_values, expected_values (ndarrays) are of shape (#measurements, 3), 
+    containing applied current, experimentally estimated/expected mean values and standard deviations 
+    for x,y,z-directions.
+    - flags_yaxis (string): contains letters as flags, where valid letters are mentioned below.
+    The number of letters may vary, but at least one valid letter should be contained. For each flag,
+    a plot is generated with the according quantity plotted on the y-axis. The plots are generated
+    in the same order as the flag-letters are passed. 
+        - 'x', 'y', 'z': single component of magnetic field, p.e. B_z
+        - 'o': off-plane component of magnetic field, p.e. B_z if the rotation is about z-axis
+        - 'm': total magnitude of magnetic field
+        - 'p': in-plane magnitude of magnetic field within plane of rotation 
+        - 'r': in-plane rotation angle within plane of rotation
+        - 'a': angle wrt plane of rotation
+    - height_per_plot (float): height of each plot [inches]. Default for several plots is 2.
+    The usual height of a single plot is 4.
+    - distance (float): distance between sensor and tip [mm], which is added as plot label 
+    - show_labels (bool): flag to switch on/off labels of plots
+
+    Return: fig, axs
+    """
+    # if an empty string is passed as flags_yaxis, set it to 'a'
+    if len(flags_yaxis) == 0:
+        flags_yaxis = 'a'
+
+    # create a simple plot with as many axes as letters in plots_yaxis
+    number_plots = len(flags_yaxis)
+    fig, axs = plt.subplots(number_plots, 1, sharex=True)
+    fig.set_size_inches(6, number_plots * height_per_plot)
+    
+    # find the rotation axis
+    if np.all(np.isclose(expected_values[:,0], 0)):
+        rot_axis = 0 # 'x'
+    elif np.all(np.isclose(expected_values[:,1], 0)):
+        rot_axis = 1 # 'y'
+    elif np.all(np.isclose(expected_values[:,2], 0)):
+        rot_axis = 2 # 'z'
+    else:
+        raise NotImplementedError('Rotations about general axes are not implemented yet.')
+
+    # estimate total magnitude and magnitude within the plane of ration
+    mean_magnitudes = np.linalg.norm(mean_values, axis=1)
+    expected_magnitudes = np.linalg.norm(expected_values, axis=1)
+
+    # if number_plots=1, axs is returned as AxesSubplot class instead of an ndarray containing
+    # instances of this class. Since the following requires a ndarray, ensure to have an ndarray!
+    if number_plots == 1:
+        axs = np.array([axs])
+
+    rot_plane_mags = np.linalg.norm(np.delete(mean_values, rot_axis, axis=1), axis=1)
+    rot_plane_mags_expected = np.linalg.norm(np.delete(expected_values, rot_axis, axis=1), axis=1)
+
+    # collect plot data.
+    # Note: errorbars display std, estimate errors for magnitudes (and angle) using propagation of uncertainty,
+    # assuming that the measured fields in x,y,z direction are independent variables
+    plot_mean_data = []
+    plot_std_data = []
+    plot_expected_data = []
+    ylabels = []
+    for flag in flags_yaxis:
+        # magnetic field in x-direction
+        if flag == 'x':
+            plot_mean_data.append(mean_values[:, 0])
+            plot_std_data.append(std_values[:, 0])
+            plot_expected_data.append(expected_values[:, 0])
+            ylabels.append('$B_x$ [mT]')
+        # magnetic field in y-direction
+        elif flag == 'y':
+            plot_mean_data.append(mean_values[:, 1])
+            plot_std_data.append(std_values[:, 1])
+            plot_expected_data.append(expected_values[:, 1])
+            ylabels.append('$B_y$ [mT]')
+        # magnetic field in z-direction
+        elif flag == 'z':
+            plot_mean_data.append(mean_values[:, 2])
+            plot_std_data.append(std_values[:, 2])
+            plot_expected_data.append(expected_values[:, 2])
+            ylabels.append('$B_z$ [mT]')
+        # field component parallel to rotation axis
+        elif flag == 'o':
+            plot_mean_data.append(mean_values[:, rot_axis])
+            plot_std_data.append(std_values[:, rot_axis])
+            plot_expected_data.append(expected_values[:, rot_axis])
+            components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
+            ylabels.append(components[rot_axis])
+        # magnitude of magnetic field
+        elif flag == 'm':
+            plot_mean_data.append(mean_magnitudes)
+            plot_std_data.append(estimate_std_magnitude(mean_values, std_values))
+            plot_expected_data.append(expected_magnitudes)
+            ylabels.append('$|B|$ [mT]')
+        # magnetude of magnetic field within plane of ration 
+        elif flag == 'p':
+            plot_mean_data.append(rot_plane_mags)
+            plot_expected_data.append(rot_plane_mags_expected)
+            plot_std_data.append(estimate_std_inplane(swap_components(mean_values,rot_axis), 
+                                                    swap_components(std_values,rot_axis)))
+            if rot_axis == 0:
+                ylabels.append('$|B_{yz}|$ [mT]')
+            elif rot_axis == 1:
+                ylabels.append('$|B_{xz}|$ [mT]')
+            elif rot_axis == 2:
+                ylabels.append('$|B_{xy}|$ [mT]')
+        # angle within plane of rotation
+        elif flag == 'r':
+            swapped_mean_values = swap_components(mean_values, rot_axis)
+            swapped_std_values = swap_components(std_values, rot_axis)
+            swapped_exp_values = swap_components(expected_values, rot_axis)
+            plot_mean_data.append(get_phi(swapped_mean_values, cut_phi_at_0=True))
+            plot_std_data.append(np.degrees(estimate_std_phi(swapped_mean_values, swapped_std_values)))
+            plot_expected_data.append(get_phi(swapped_exp_values, cut_phi_at_0=True))
+            ylabels.append('rotation angle, $\\Phi\'$ [°]')
+        # angle wrt plane of rotation
+        elif flag == 'a':
+            swapped_mean_values = swap_components(mean_values, rot_axis)
+            swapped_std_values = swap_components(std_values, rot_axis)
+            plot_mean_data.append(90 - np.degrees(
+                np.arccos(mean_values[:, rot_axis]/mean_magnitudes)))
+            plot_std_data.append(np.degrees(
+                estimate_std_theta(swapped_mean_values, swapped_std_values)))
+            plot_expected_data.append(90 - np.degrees(
+                np.arccos(expected_values[:, rot_axis]/expected_magnitudes)))
+            ylabels.append('offset angle, $\\Theta$ [°]')
+        # account for invalid flags:
+        else:
+            raise ValueError(
+                '{} is not a valid flag, it should be in [\'x\', \'y\', \'z\', \'m\', \'a\', \'p\']!'.format(flag))
+
+    # estimate the desired/theoretical rotation angle
+    x_vals = get_phi(swap_components(expected_values, rot_axis), cut_phi_at_0=True)
+    
+    # actual plotting
+    for i in range(len(axs)):
+        axs[i].set_ylabel(ylabels[i])
+
+        # plot either both measured and expected values or only the differences between both.
+        if plot_delta_sim:
+            axs[i].errorbar(x_vals, plot_expected_data[i]-plot_mean_data[i], yerr=plot_std_data[i],
+                            linestyle='', marker='.', capsize=2,
+                            label='$\\Delta$ = simulation-measurements')
+        else:
+            axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
+                                    linestyle='', marker='.', capsize = 2, 
+                                    label = 'measured @ {:.1f} mm'.format(distance))
+            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
+                                    label = 'linear model @ 3mm')
+    if show_labels:
+        axs[0].legend()
+
+    # set axis labels
+    axs[-1].set_xlabel('desired rotation angle $\Phi$ [°]')
+    axs[-1].yaxis.set_major_locator(MaxNLocator(nbins='auto', steps=[1,3,6,10]))
+
+
+    # if desired, switch on legend
+    if show_labels:
+        axs[0].legend()
+
+    plt.tight_layout()
+
+    return fig, axs

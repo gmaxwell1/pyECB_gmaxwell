@@ -11,6 +11,7 @@ test.py
 get_configuration.py
 fit_fields.py
 old_ time_resolved_meas_with_cube.py
+analysis_rotation.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
