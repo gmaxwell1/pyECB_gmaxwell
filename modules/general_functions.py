@@ -139,6 +139,7 @@ def save_in_dir(means, directory, label, stds=None, coords=False, now=False):
     # where 755 means read+write+execute for owner and read+execute for group and others.
     # However, note that you can only set the file’s read-only flag with it under Windows.
     access_rights = 0o755
+    ensure_dir_exists(directory, access_rights=access_rights)
     os.chmod(directory, access_rights)
 
     if now:
@@ -231,7 +232,8 @@ def save_time_resolved_measurement(results_dict, directory, now=False):
         time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
         output_file_name = "{}_time_resolved.csv".format(time_stamp)
     else:
-        output_file_name = 'time_resolved.csv'
+        output_file_name = 'time_resolved.csv'     
+    ensure_dir_exists(directory)
     data_filepath = os.path.join(directory, output_file_name)
     
     df = pd.DataFrame({ 'time [s]': results_dict['time'], 

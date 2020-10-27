@@ -35,6 +35,7 @@ __all__ = [
     'getCurrents',
     'getTemps',
     'getStatus',
+    'demagnetizeCoils',
     'ECB_ACT_CURRENTS',
     'ECB_MAX_CURR'
 ]
@@ -325,10 +326,33 @@ def getStatus():
     return status
 
 
+def demagnetizeCoils():
+    """
+    Try to eliminate any hysterisis effects by applying a slowly oscillating and decaying electromagnetic field to the coils.
+    """
+    global ECB_ACT_CURRENTS
+    
+    tspan = np.linspace(0, 5*np.pi, 41) # change current every ~0.5 s
+    func1 = ECB_ACT_CURRENTS[0] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    func2 = ECB_ACT_CURRENTS[1] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    func3 = ECB_ACT_CURRENTS[2] * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
+    
+    print(func1)
+    desCurrents = [0,0,0,0,0,0,0,0]
+    
+    for k in range(len(tspan)):
+        desCurrents[0] = int(func1[k])
+        desCurrents[1] = int(func2[k])
+        desCurrents[2] = int(func3[k])
+        
+        setCurrents(desCurrents=desCurrents, direct=b'0')
+        sleep(0.2)
+        
+
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
-    #print(initECBapi(ECB_ADDRESS, ECB_PORT))
-    # enableECBCurrents()
+    print(initECBapi(ECB_ADDRESS, ECB_PORT))
+    enableECBCurrents()
     # generateMagField(magnitude=60,theta=0,phi=0)
     #setDesCurrents([2232,2232,2232,0,0,0,0,0], currDirectParam)
 
@@ -336,9 +360,12 @@ if __name__ == '__main__':
     #print(getStatus())
     # pollCurrents(100,10)
     #sleep(10)
-    # disableECBCurrents()
-    #exitECBapi()
-    print(dir())
     print(ECB_ACT_CURRENTS)
     setCurrents([3000,-2000,768,0,0,0,0,0],b'0')
+    print(ECB_ACT_CURRENTS)
+    sleep(4)
+    demagnetizeCoils()
+    disableECBCurrents()
+    exitECBapi()
+
     

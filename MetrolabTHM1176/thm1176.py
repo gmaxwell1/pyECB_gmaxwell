@@ -223,6 +223,12 @@ class MetrolabTHM1176Node(object):
     
             
     def measureFieldmT(self):
+        """
+        Make a measurement now, disregarding and resetting all trigger and acquisition settings.
+
+        Returns:
+            list of 3 floats: [Bx, By, Bz] (the measured magnetic field amplitudes)
+        """
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + self.n_digits).strip('MT'))
         By = float(self.sensor.ask(':measure:y? 0.01T,' + self.n_digits).strip('MT'))
         Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
