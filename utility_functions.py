@@ -241,7 +241,7 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
         fileprefix = '({}_{})_rotate_meas'.format(int(theta), int(phi))
     
     # folder
-    filePath = r'.\data_sets\rotation_around_x'
+    filePath = r'.\data_sets\rotation_around_y'
     
     enableCurrents()
     # with MetrolabTHM1176Node(range="0.3 T", period=0.01) as node:
