@@ -40,8 +40,9 @@ def MainMenu(initialized):
             print('----------- Main Menu -----------')
             print('[x] to exit\n')
             print(
-                '[1]: sweep multiple current values and make measurment with cube (specify coil configuration)')
-            print('[2]: sweep theoretical magnetic field magnitudes, measure actual values (specify polar and azimuthal angles, magnitude range)')
+                '[1]: sweep multiple current values and record measurement with sensor (specify coil configuration)')
+            print('[2]: sweep theoretical magnetic field vectors, measure actual values '
+                  '\n\t(specify polar and azimuthal angles, magnitude range or rotational axis)')
             print('[3]: set currents manually on 3 channels (in mA)')
             print(
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
