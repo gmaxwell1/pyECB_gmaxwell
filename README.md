@@ -11,7 +11,7 @@ After cloning this repository follow these steps (this is for Windows, but it sh
 4. activate the virtual environment by typing `[env]\Scripts\activate`
 5. make sure you have the latest vesion of pip: `python -m pip install --upgrade pip`
 6. install required packages: 
-  -`numpy, pyserial, pythonnet, matplotlib, pandas, pyUSB, python-usbtmc, pyVISA`
+  *`numpy, pyserial, pythonnet, matplotlib, pandas, pyUSB, python-usbtmc, pyVISA`
 
 * **Prepare devices for use (Windows):**
 1. follow the instructions in `.\pyECB_original\README.md` (within your virtual environment!!)
