@@ -166,6 +166,107 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     
     return fig, ax
 
+def add_insets_time_plots(axs, x_vals, plot_data, plot_std_data, plot_exp_data, flags_yaxis, 
+                        inset_ylim_factor = 0.25, which_side = 'right', manual_inset_ylim=None,
+                        mask_selected_plots = None):
+    """
+    Add insets into angular plots, such that a line is resolved more precisely.
+
+    Args:
+    - axs (ndarray of plt.Axes objectes): represent the subplots, returned by generate_functions
+    - x_vals (ndarray of length = #measurements): contain the x-values of all plots, 
+    returned by generate_functions
+    - plot_data, plot_std_data, plot_exp_data (nbdarrays): plot data that are returned 
+    by the generate_plots function, they are of shape (#plots, #measurements, 1)
+    - flags_yaxis (str): contains letters as flags, which indicate which quantity is plotted 
+    on which axis. Hence, the len(flags_yaxis) = len(axs) = #plots. For this function, 
+    only the two following flags are relevant: 
+    't': angle theta with respect to z-axis, 
+    'f': in-plane angle phi with respect to x-axis
+    - inset_ylim_factor (float): this factor can be used to set the ylims of the inset axes. 
+    The inset plot will show all data that are in [min - inset_ylim_factor*yrange, max + inset_ylim_factor*yrange],
+    where min (max) is the minimum (maximum) value on the chosen side and yrange = max-min.
+    - which_side (str): either 'left' or 'right', decides for which side the insets are created
+    - manual_inset_ylim (None, tuple or list): the limits of y-axis of the inset axis 
+    are set to the provided tuple(s). If a list is passed, it must have the same length as axs and each 
+    entry contains the limits for the corresponding subplot. Default is None, in this case the limits 
+    are estimated automatically using the min/max y-values
+    and the inset_ylim_factor for all subplots. 
+    - mask_selected_plots (ndarray of bools or None): Mask of the same length as axs, only for the 
+    subplots where mask_selected_plots is True insets are added. This allows to avoid insets
+    for certain subplots. Default is None, in which case insets are added for all subplots. 
+    """
+    if mask_selected_plots is None:
+        mask_selected_plots = np.ones(len(axs), dtype=bool)
+
+    for i in range(len(axs)):
+        # for plots of total or in-plane magnetudes, only add one arrow where the maximum value is reached
+        if flags_yaxis[i] in ['t','f'] and mask_selected_plots[i]:
+            # Preselect the data on the desired side. Note that due to different configurations, 
+            # the xvals can be sorted in ascending or decreasing order, such that a comparison 
+            # of first and last value is required to pick the desired side. 
+            len_data = len(plot_data[i])
+            if which_side == 'left':
+                inset_x = 0.1
+                if x_vals[0] < x_vals[-1]:
+                    # sorted in ascending order
+                    data_on_side = plot_data[i,:len_data//2]
+                else:
+                    # sorted in decreasing order
+                    data_on_side = plot_data[i,len_data//2:]
+            else:
+                inset_x = 0.65
+                if x_vals[0] < x_vals[-1]:
+                    # sorted in ascending order
+                    data_on_side = plot_data[i,len_data//2:]
+                else:
+                    # sorted in decreasing order
+                    data_on_side = plot_data[i,:len_data//2]
+
+            # estimate mean value of angle on the chosen side. 
+            mean_value_on_side = np.mean(data_on_side)
+
+            # depending on the mean value, set the coordinates of inset axis in upper or lower half of the plot
+            if mean_value_on_side > np.mean(axs[i].get_ylim()):
+                inset_y = 0.15
+            else:
+                inset_y = 0.55
+
+            # inset axis
+            axins = axs[i].inset_axes([inset_x, inset_y, 0.33, 0.4])
+            axins.errorbar(x_vals, plot_data[i], yerr=plot_std_data[i],
+                                        linestyle='', marker='.', capsize = 2)
+            axins.plot(x_vals, plot_exp_data[i], linestyle='--')
+
+            # define which sub-regions of original plot should be shown by setting the limits of inset axis
+            xlim = axs[i].get_xlim()
+            x_range = xlim[1] - xlim[0]
+            if which_side == 'left':
+                axins.set_xlim(np.min(x_vals), xlim[0]+ 0.5*x_range)
+            else:
+                axins.set_xlim(xlim[0]+ 0.5*x_range, np.max(x_vals))
+
+            # unless manual limits for inset-y-axis are provided, choose them automatically
+            if manual_inset_ylim is None:
+                y_range_inset = np.max(data_on_side) - np.min(data_on_side)
+                axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
+                                np.max(data_on_side) + inset_ylim_factor*y_range_inset)
+            else:
+                if isinstance(manual_inset_ylim, list):
+                    if manual_inset_ylim[i] is None:
+                        y_range_inset = np.max(data_on_side) - np.min(data_on_side)
+                        axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
+                                        np.max(data_on_side) + inset_ylim_factor*y_range_inset)
+                    else: 
+                        axins.set_ylim(manual_inset_ylim[i])
+                elif isinstance(manual_inset_ylim, tuple):
+                    axins.set_ylim(manual_inset_ylim[i])
+                else:
+                    raise ValueError('manual_inset_ylim must be None, list or tuple')
+
+            # add boxes to indicate which region of original plot is shown in the inset
+            axs[i].indicate_inset_zoom(axins)
+
 
 def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz',
                       height_per_plot=2, save_image=False, save_dir=None, image_name_postfix='Power_Spectral_Density'):
@@ -260,4 +361,3 @@ if __name__ == "__main__":
     _, axs = spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-29-43_time_resolved.csv', plot_components='xyz',
                       save_image=True, save_dir=r'.\data_sets\time_measurements_23_10')
     
-    plt.psd

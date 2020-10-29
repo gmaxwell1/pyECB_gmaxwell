@@ -55,6 +55,14 @@ def computeCoilCurrents(B_fieldVector, windings, resistance):
     Vector of 3 current values, as a np.array, units: [mA]
     """
     actMatrix = np.zeros((3, 3))
+    # actMatrix[0, 0] = 0.051343
+    # actMatrix[0, 1] = 0
+    # actMatrix[0, 2] = -0.051343
+    # actMatrix[1, 0] = -0.029643
+    # actMatrix[1, 1] = 0.059286
+    # actMatrix[1, 2] = -0.029643
+    # actMatrix[2, 0] = 0.008820
+    # actMatrix[2, 1] = 0.008820
     actMatrix[0, 0] = 0.051343
     actMatrix[0, 1] = 0
     actMatrix[0, 2] = -0.051343
@@ -63,7 +71,8 @@ def computeCoilCurrents(B_fieldVector, windings, resistance):
     actMatrix[1, 2] = -0.029643
     actMatrix[2, 0] = 0.008820
     actMatrix[2, 1] = 0.008820
-    actMatrix[2, 2] = 0.008820
+    # actMatrix[2, 2] = 0.008820
+    actMatrix[2, 2] = -0.008820 # z-field is positive when I3 is negative and increases when I3 decreases
 
     actMatrix_inverse = np.linalg.inv(actMatrix)
 
@@ -97,6 +106,14 @@ def computeMagField(currVector, windings):
     """
 
     actMatrix = np.zeros((3, 3))
+    # actMatrix[0, 0] = 0.051343
+    # actMatrix[0, 1] = 0
+    # actMatrix[0, 2] = -0.051343
+    # actMatrix[1, 0] = -0.029643
+    # actMatrix[1, 1] = 0.059286
+    # actMatrix[1, 2] = -0.029643
+    # actMatrix[2, 0] = 0.008820
+    # actMatrix[2, 1] = 0.008820
     actMatrix[0, 0] = 0.051343
     actMatrix[0, 1] = 0
     actMatrix[0, 2] = -0.051343
@@ -105,7 +122,8 @@ def computeMagField(currVector, windings):
     actMatrix[1, 2] = -0.029643
     actMatrix[2, 0] = 0.008820
     actMatrix[2, 1] = 0.008820
-    actMatrix[2, 2] = 0.008820
+    # actMatrix[2, 2] = 0.008820
+    actMatrix[2, 2] = -0.008820 # z-field is positive when I3 is negative and increases when I3 decreases
 
     # print('Inverse actuation matrix: \n', act_matrix_inverse)
     currVector = currVector / 1000  # in amps
