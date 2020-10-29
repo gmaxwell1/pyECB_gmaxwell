@@ -168,7 +168,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
     fileprefix = '({}_{}_{})_field_meas'.format(int(10*current_direction[0]), 
         int(10*current_direction[1]), int(10*current_direction[2]))
     # folder, 
-    filePath = '.\data_sets'
+    filePath = r'.\data_sets\single_coil_ramp'
     
     enableCurrents()
     # with MetrolabTHM1176Node() as node:
@@ -410,7 +410,7 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
         c1 = '0'
         while c1 != 'q':
             c1 = input(
-                '[q] to disable currents\n[c]: get currents\n[r]: Set new currents\n[s]: get ECB status\n[f]: get magnetic field measurement\n')
+                '[q] to disable currents\n[c]: get currents\n[r]: Set new magnetic field\n[s]: get ECB status\n[f]: get magnetic field measurement\n')
             if c1 == 'c':
                 getCurrents()
             elif c1 == 'r':
@@ -539,16 +539,16 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         
     
 if __name__ == "__main__":
-    params = {'block_size': 30, 'period': 1e-2, 'duration': 300, 'averaging': 10}
+    params = {'block_size': 100, 'period': 7.5e-3, 'duration': 15, 'averaging': 1}
     
    
     faden = myMeasThread(**params)
     faden.start()
     
     openConnection()
-    sleep(150)
+    sleep(1)
     # enableCurrents()
-    functionGenerator([1,0,-1], [1,1,1], ampl=2000, function='sqr',frequency=2, duration=30)
+    functionGenerator([1,0,1], ampl=1000, function='sqr', frequency=1, duration=5)
     # demagnetizeCoils()
     # disableCurrents()
 

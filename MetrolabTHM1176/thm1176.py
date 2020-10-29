@@ -136,11 +136,13 @@ class MetrolabTHM1176Node(object):
         self.stop = False
         self.sensor.write(':INIT')
         while not self.stop:
+            t0 = time()
             res = self.sensor.ask(self.fetch_cmd)
             self.parse_ascii_responses('fetch', res)
 
             self.data_stack = {key: np.hstack((self.data_stack[key], self.last_reading[key])) for key in
                                self.fetch_kinds}
+            print(time() - t0)
 
         self.stop_acquisition()
 
@@ -322,12 +324,12 @@ class MetrolabTHM1176Node(object):
         
 if __name__ == '__main__':
     
-    params = {'block_size': 5, 'period': 1.0 / 100.0, 'range': '0.3T', 'average': 20, 'unit': 'MT'}
+    params = {'block_size': 15, 'period': 1.0 / 100.0, 'range': '0.3T', 'average': 1, 'unit': 'MT'}
 
-    item_name = ['Bx', 'By', 'Bz', 'Temperature']
-    labels = ['Bx', 'By', 'Bz', 'T']
-    curve_type = ['F', 'F', 'F', 'T']
-    to_show = [True, True, True, False]
+    # item_name = ['Bx', 'By', 'Bz', 'Temperature']
+    # labels = ['Bx', 'By', 'Bz', 'T']
+    # curve_type = ['F', 'F', 'F', 'T']
+    # to_show = [True, True, True, False]
     # output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'  
     # You may want to change this to your desired file
 
@@ -341,19 +343,30 @@ if __name__ == '__main__':
     thread = threading.Thread(target=thm.start_acquisition)
     thread.start()
     sleep(10)
+    thm.stop = True
+
     '''
     This commented part is the original plotting code. I copied part of it down below.
     '''
+
+    # plotdata = [thm.data_stack[key] for key in item_name]
+    # timeline = thm.data_stack['Timestamp']
+    
+    # t_offset = timeline[0]
+    # for ind in range(len(timeline)):
+    #     timeline[ind] = round(timeline[ind]-t_offset, 3)
+    
+    # print(len(plotdata[0]), plotdata[0])
+    # print(len(plotdata[1]), plotdata[1])
+    # print(len(plotdata[2]), plotdata[2])
+    # print(len(timeline), timeline)
+    
     # Plotting stuff
     # initialize figure
 
     # fig, ax1 = plt.subplots()
     # ax2 = ax1.twinx()
     # plt.draw()
-
-    # plt.pause(5)  # Wait for the monitor to start filling data in
-    # plotdata = [thm.data_stack[key] for key in item_name]
-    # timeline = thm.data_stack['Timestamp']
 
     # # Setup colors
     # NTemp = curve_type.count('T')
@@ -388,89 +401,4 @@ if __name__ == '__main__':
 
     # ax1.legend(lines, labels, loc='best')
 
-    # plt.ion()
-
-    # time_start = time()
-
-    # while time() - time_start < duration:
-    #     try:
-    #         plt.pause(1)
-    #         plotdata = [thm.data_stack[key] for key in item_name]
-    #         timeline = thm.data_stack['Timestamp']
-
-    #         count = 0
-    #         for k, flag in enumerate(to_show):
-    #             if flag:
-    #                 lines[count].set_data(timeline, plotdata[k])
-    #                 count += 1
-
-    #         ax1.relim()
-    #         ax1.autoscale_view()
-    #         ax2.relim()
-    #         ax2.autoscale_view()
-
-    #         plt.draw()
-
-    #     except:
-    #         plt.ioff()
-    #         thm.stop = True
-    #         plt.pause(1)
-    #         sys.exit("Done!")
-    #
-    # plt.ioff()
-
-    thm.stop = True
-    
-    plotdata = [thm.data_stack[key] for key in item_name]
-    timeline = thm.data_stack['Timestamp']
-    
-    t_offset = timeline[0]
-    for ind in range(len(timeline)):
-        timeline[ind] = round(timeline[ind]-t_offset, 3)
-    
-    # print(len(plotdata[0]), plotdata[0])
-    # print(len(plotdata[1]), plotdata[1])
-    # print(len(plotdata[2]), plotdata[2])
-    # print(len(timeline), timeline)
-    
-    # Plotting stuff
-    # initialize figure
-
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
-    plt.draw()
-
-    # Setup colors
-    NTemp = curve_type.count('T')
-    cmap1 = plt.get_cmap('autumn')
-    colors1 = [cmap1(i) for i in np.linspace(0, 1, NTemp)]
-
-    NField = curve_type.count('F')
-    cmap2 = plt.get_cmap('winter')
-    colors2 = [cmap2(i) for i in np.linspace(0, 1, NField)]
-
-    colors = []
-    count1 = 0
-    count2 = 0
-    for ct in curve_type:
-        if ct == 'T':
-            colors.append(colors1[count1])
-            count1 += 1
-        else:
-            colors.append(colors2[count2])
-            count2 += 1
-
-    # Create the matplotlib lines for each curve
-    lines = []
-    for k, flag in enumerate(to_show):
-        if flag:
-            data_to_plot = plotdata[k]
-            if curve_type[k] == 'F':
-                ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
-            else:
-                ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
-            lines.append(ln)
-
-    ax1.legend(lines, labels, loc='best')
-
-    plt.show()
+    # plt.show()

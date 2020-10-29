@@ -40,14 +40,14 @@ def MainMenu(initialized):
             print('----------- Main Menu -----------')
             print('[x] to exit\n')
             print(
-                '[1]: sweep multiple current values and record measurement with sensor (specify coil configuration)')
-            print('[2]: sweep theoretical magnetic field vectors, measure actual values '
+                '[1]: sweep current values and record measurements with sensor (specify coil configuration)')
+            print('[2]: sweep theoretical magnetic field vectors, measure actual components '
                   '\n\t(specify polar and azimuthal angles, magnitude range or rotational axis)')
             print('[3]: set currents manually on 3 channels (in mA)')
             print(
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
             print(
-                '[5]: Switch from one operating point to another multiple times while measuring')
+                '[5]: Generate a time varying field (sin and sqr waves are possible currently)')
             print('[6]: get ECB status\n')
             print('[r] roll a die\n')
 
@@ -85,7 +85,7 @@ def MainMenu(initialized):
         return
 
 
-def callCurrentSweep(input='m'):
+def callCurrentSweep(mode='m'):
     """
     Setup function to call the utility function 'sweepCurrents', see 'utility_functions.py'. Manages necessary inputs.
 
@@ -93,7 +93,7 @@ def callCurrentSweep(input='m'):
         input (str, optional): Decides whether a file with configurations or a manual input will be read. The third option is
         using default configurations, such as the x, y or z direction. Defaults to 'm'.
     """
-    if input == 'f':
+    if mode == 'f':
         # must be a .csv file!
         inpFile = input('Enter a valid configuration file path: ')
         inp1 = input('starting current in mA = ')
@@ -132,7 +132,7 @@ def callCurrentSweep(input='m'):
                     sweepCurrents(config_list=config, start_val=start_val,
                                 end_val=end_val, steps=steps, node=node)
 
-    elif input == 'm':
+    elif mode == 'm':
         inp1 = input('Configuration:\nChannel 1: ')
         inp2 = input('Channel 2: ')
         inp3 = input('Channel 3: ')
