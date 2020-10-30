@@ -91,7 +91,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     CC_X.wait_for_ready()
     
     if calibrate:
-        cal_pos_z = 20
+        cal_pos_z = 21
         start_pos_z = CC_Z.read_cur_pos()
         total_distance_z = cal_pos_z-start_pos_z
         
@@ -99,7 +99,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
         start_pos_y = CC_Y.read_cur_pos()
         total_distance_y = abs(cal_pos_y-start_pos_y)
         
-        cal_pos_x = 20
+        cal_pos_x = 21
         start_pos_x = CC_X.read_cur_pos()
         total_distance_x = abs(cal_pos_x-start_pos_x)
         
@@ -122,7 +122,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     
     # change meas_offset_z according to the following rule: 
     # height above sensor = meas_offset_z + 0.9 - 7.66524 (last number is "zero")
-    meas_offset_z = meas_height - 0.9 + 7.5
+    meas_offset_z = 7.2
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
     
@@ -330,14 +330,14 @@ if __name__ == '__main__':
     # CC_X.move_absolute(new_pos=5.0)
     # CC_X.wait_for_ready()
     # print(CC_X.read_cur_pos())
-    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    CC_Y.wait_for_ready()
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Z.wait_for_ready()
     
-    start_pos_y = CC_Y.read_cur_pos()
-    print(start_pos_y)
-    CC_Y.move_absolute(new_pos=15.9)
-    CC_Y.wait_for_ready()
-    print(CC_Y.read_cur_pos())
+    start_pos_z = CC_Z.read_cur_pos()
+    print(start_pos_z)
+    CC_Z.move_absolute(new_pos=7.25)
+    CC_Z.wait_for_ready()
+    print(CC_Z.read_cur_pos())
 
 
     # #     print(curr_pos_z)

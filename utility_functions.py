@@ -168,7 +168,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
     fileprefix = '({}_{}_{})_field_meas'.format(int(10*current_direction[0]), 
         int(10*current_direction[1]), int(10*current_direction[2]))
     # folder, 
-    filePath = r'.\data_sets\single_coil_ramp'
+    filePath = r '.\data_sets\single_coil_ramp'
     
     enableCurrents()
     # with MetrolabTHM1176Node() as node:

@@ -82,7 +82,7 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     return  times, B_fields
 
 
-def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz',
+def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz', separate=False,
                         show_image=True, save_image=False, save_dir=None, show_dev_from_mean=False, image_name_postfix='B_Field_Time'):
     """
     Generate a plot of field components on the y-axis vs. time on the x-axis.
@@ -103,6 +103,9 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     Return:
     - fig (plt.Figure): figure instance of the plot 
     - axs (plt.Axes): axes instance of the plot
+    - times: array with timestamps
+    - fields: field data 
+    - plot_components: string with plot flags
     """
     # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -110,45 +113,62 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     times = raw_data[:,0]
     fields = raw_data[:,1:4]
     
-    # generate Figure and Axis instances
-    fig, ax = plt.subplots()
+    if not separate:
+        # generate Figure and Axis instances
+        fig, ax = plt.subplots()
+        ax = np.array([ax])
+    else:
+        fig, ax = plt.subplots(len(plot_components))
+        fig.set_size_inches(6, len(plot_components) * 3)
+        
     
     # plot the desired contents
     if show_dev_from_mean:
-        ax.set_ylabel('deviation from mean, $\Delta B$=$B$ - $\overline{B}$ [mT]')
-        ax.hlines
+        # ax[0].hlines
         if 'x' in plot_components:
-            ax.plot(times, fields[:,0] - np.mean(fields[:,0]), label = '$\Delta$ $B_x$')
+            ax[0].plot(times, fields[:,0] - np.mean(fields[:,0]), label='$\Delta$ $B_x$', color='C0')
         if 'y' in plot_components:
-            ax.plot(times, fields[:,1] - np.mean(fields[:,1]), label = '$\Delta$ $B_y$')
+            ax[1].plot(times, fields[:,1] - np.mean(fields[:,1]), label='$\Delta$ $B_y$', color='C1')
         if 'z' in plot_components:
-            ax.plot(times, fields[:,2] - np.mean(fields[:,2]), label = '$\Delta$ $B_z$')
-        if 'm' in plot_components:
-            magn_B_fields = np.linalg.norm(fields, axis=1)
-            ax.plot(times, magn_B_fields - np.mean(magn_B_fields), label = '$\Delta$ $|B|$')
-        if 'p' in plot_components:
-            inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-            ax.plot(times, inplane_B_fields - np.mean(inplane_B_fields), label = '$\Delta$ $|B_{xy}|$')
+            ax[2].plot(times, fields[:,2] - np.mean(fields[:,2]), label='$\Delta$ $B_z$', color='C2')
+        # if 'm' in plot_components:
+        #     magn_B_fields = np.linalg.norm(fields, axis=1)
+        #     ax.plot(times, magn_B_fields - np.mean(magn_B_fields), label = '$\Delta$ $|B|$')
+        # if 'p' in plot_components:
+        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
+        #     ax.plot(times, inplane_B_fields - np.mean(inplane_B_fields), label = '$\Delta$ $|B_{xy}|$')
     else:
-        ax.set_ylabel('magnetic field, $B$ [mT]')
+        ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
         if 'x' in plot_components:
-            ax.plot(times, fields[:,0], label = '$B_x$')
+            if separate:
+                ax[0].plot(times, fields[:,0], label = '$B_x$', color='C0')
+                ax[0].set_ylabel('magnetic field, $B_x$ [mT]')                
+            else:
+                ax[0].plot(times, fields[:,0], label = '$B_x$', color='C0')
         if 'y' in plot_components:
-            ax.plot(times, fields[:,1], label = '$B_y$')
+            if separate:
+                ax[1].plot(times, fields[:,1], label = '$B_y$', color='C1')
+                ax[1].set_ylabel('magnetic field, $B_y$ [mT]')
+            else:
+                ax[0].plot(times, fields[:,1], label = '$B_y$', color='C1')
         if 'z' in plot_components:
-            ax.plot(times, fields[:,2], label = '$B_z$')
-        if 'm' in plot_components:
-            magn_B_fields = np.linalg.norm(fields, axis=1)
-            ax.plot(times, magn_B_fields, label = '$|B|$')
-        if 'p' in plot_components:
-            inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-            ax.plot(times, inplane_B_fields, label = '|$B_{xy}$|')
+            if separate:
+                ax[2].plot(times, fields[:,2], label = '$B_z$', color='C2')
+                ax[2].set_ylabel('magnetic field, $B_z$ [mT]')
+            else:
+                ax[0].plot(times, fields[:,2], label = '$B_z$', color='C2')
+        # if 'm' in plot_components:
+        #     magn_B_fields = np.linalg.norm(fields, axis=1)
+        #     ax.plot(times, magn_B_fields, label = '$|B|$')
+        # if 'p' in plot_components:
+        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
+        #     ax.plot(times, inplane_B_fields, label = '|$B_{xy}$|')
 
     # label axes
-    ax.set_xlabel('time, $t$ [s]')
+    ax[-1].set_xlabel('time, $t$ [s]')
 
     # show legend
-    ax.legend()
+    ax[0].legend()
     
     # save image
     if save_image:
@@ -164,11 +184,10 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     if show_image:
         plt.show()
     
-    return fig, ax
+    return fig, ax, times, fields, plot_components
 
-def add_insets_time_plots(axs, x_vals, plot_data, plot_std_data, plot_exp_data, flags_yaxis, 
-                        inset_ylim_factor = 0.25, which_side = 'right', manual_inset_ylim=None,
-                        mask_selected_plots = None):
+def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, end_idx=5, inset_x = 0.15, inset_y = 0.15,
+                          inset_ylim_factor = 0.25, manual_inset_ylim=None, color=None):
     """
     Add insets into angular plots, such that a line is resolved more precisely.
 
@@ -196,76 +215,42 @@ def add_insets_time_plots(axs, x_vals, plot_data, plot_std_data, plot_exp_data, 
     subplots where mask_selected_plots is True insets are added. This allows to avoid insets
     for certain subplots. Default is None, in which case insets are added for all subplots. 
     """
-    if mask_selected_plots is None:
-        mask_selected_plots = np.ones(len(axs), dtype=bool)
+    if zoom_component == 'x':
+        color='C0'
+    elif zoom_component == 'y':
+        color='C1'
+    elif zoom_component == 'z':
+        color='C2'
 
-    for i in range(len(axs)):
-        # for plots of total or in-plane magnetudes, only add one arrow where the maximum value is reached
-        if flags_yaxis[i] in ['t','f'] and mask_selected_plots[i]:
-            # Preselect the data on the desired side. Note that due to different configurations, 
-            # the xvals can be sorted in ascending or decreasing order, such that a comparison 
-            # of first and last value is required to pick the desired side. 
-            len_data = len(plot_data[i])
-            if which_side == 'left':
-                inset_x = 0.1
-                if x_vals[0] < x_vals[-1]:
-                    # sorted in ascending order
-                    data_on_side = plot_data[i,:len_data//2]
-                else:
-                    # sorted in decreasing order
-                    data_on_side = plot_data[i,len_data//2:]
-            else:
-                inset_x = 0.65
-                if x_vals[0] < x_vals[-1]:
-                    # sorted in ascending order
-                    data_on_side = plot_data[i,len_data//2:]
-                else:
-                    # sorted in decreasing order
-                    data_on_side = plot_data[i,:len_data//2]
+    data_in_area = plot_data[begin_idx:end_idx+1]
+    
+    x_area = x_vals[begin_idx:end_idx+1]
+    
+    # compute mean and rms values
+    mean = np.mean(data_in_area)
+    stdd = np.std(data_in_area)
 
-            # estimate mean value of angle on the chosen side. 
-            mean_value_on_side = np.mean(data_on_side)
+    # inset axis
+    axins = axs.inset_axes([inset_x, inset_y, 0.4, 0.3])
+    # axins.errorbar(x_vals, plot_data[i], yerr=plot_std_data[i],
+    #                             linestyle='', marker='.', capsize = 2
+    axins.plot(x_area, data_in_area, color)
+    axins.set_ylabel('$B_{}$'.format(zoom_component))
 
-            # depending on the mean value, set the coordinates of inset axis in upper or lower half of the plot
-            if mean_value_on_side > np.mean(axs[i].get_ylim()):
-                inset_y = 0.15
-            else:
-                inset_y = 0.55
+    # define which sub-regions of original plot should be shown by setting the limits of inset axis
+    x_range = x_area[-1] - x_area[0]
+    axins.set_xlim(x_area[0]-0.1*x_range, x_area[-1] + 0.1*x_range)        
 
-            # inset axis
-            axins = axs[i].inset_axes([inset_x, inset_y, 0.33, 0.4])
-            axins.errorbar(x_vals, plot_data[i], yerr=plot_std_data[i],
-                                        linestyle='', marker='.', capsize = 2)
-            axins.plot(x_vals, plot_exp_data[i], linestyle='--')
-
-            # define which sub-regions of original plot should be shown by setting the limits of inset axis
-            xlim = axs[i].get_xlim()
-            x_range = xlim[1] - xlim[0]
-            if which_side == 'left':
-                axins.set_xlim(np.min(x_vals), xlim[0]+ 0.5*x_range)
-            else:
-                axins.set_xlim(xlim[0]+ 0.5*x_range, np.max(x_vals))
-
-            # unless manual limits for inset-y-axis are provided, choose them automatically
-            if manual_inset_ylim is None:
-                y_range_inset = np.max(data_on_side) - np.min(data_on_side)
-                axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
-                                np.max(data_on_side) + inset_ylim_factor*y_range_inset)
-            else:
-                if isinstance(manual_inset_ylim, list):
-                    if manual_inset_ylim[i] is None:
-                        y_range_inset = np.max(data_on_side) - np.min(data_on_side)
-                        axins.set_ylim( np.min(data_on_side) - inset_ylim_factor*y_range_inset, 
-                                        np.max(data_on_side) + inset_ylim_factor*y_range_inset)
-                    else: 
-                        axins.set_ylim(manual_inset_ylim[i])
-                elif isinstance(manual_inset_ylim, tuple):
-                    axins.set_ylim(manual_inset_ylim[i])
-                else:
-                    raise ValueError('manual_inset_ylim must be None, list or tuple')
-
-            # add boxes to indicate which region of original plot is shown in the inset
-            axs[i].indicate_inset_zoom(axins)
+    # unless manual limits for inset-y-axis are provided, choose them automatically
+    y_range_inset = np.max(data_in_area) - np.min(data_in_area)
+    axins.set_ylim( np.min(data_in_area) - inset_ylim_factor*y_range_inset, 
+                    np.max(data_in_area) + inset_ylim_factor*y_range_inset)
+    
+    
+    # add boxes to indicate which region of original plot is shown in the inset
+    axs.indicate_inset_zoom(axins)
+    
+    return axs, round(mean,3), round(stdd,3)
 
 
 def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz',
@@ -304,22 +289,30 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
     fig, axs = plt.subplots(number_plots, 2, sharex='col')
     fig.set_size_inches(10, number_plots * height_per_plot)
     
+    if number_plots == 1:
+        axs = np.array([axs])
+    #     axs[1] = np.array([axs[1]])
+        
+    plot_data = []
     ylabels = [[],[]]
     # exp averaging parameter
     for flag in plot_components:
         # magnetic field in x-direction
         if flag == 'x':
             ylabels[0].append('$B_x$ [mT]')
-            coeff = np.fft.fft(fields[:,0], n=1024)
+            # coeff = np.fft.fft(fields[:,0], n=1024)
             ylabels[1].append('x direction PSD')
+            plot_data.append(fields[:,0])
         # magnetic field in y-direction
         elif flag == 'y':
             ylabels[0].append('$B_y$ [mT]')
             ylabels[1].append('y direction PSD')
+            plot_data.append(fields[:,1])
         # magnetic field in z-direction
         elif flag == 'z':
             ylabels[0].append('$B_z$ [mT]')
             ylabels[1].append('z direction PSD')
+            plot_data.append(fields[:,2])
         else:
             raise ValueError(
                 '{} is not a valid flag, it should be in [\'x\', \'y\', \'z\']!'.format(flag))
@@ -332,15 +325,14 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
         
     for i in range(len(axs)):
         axs[i,0].set_ylabel(ylabels[0][i])
-        axs[i,0].plot(times, fields[:,i])
-        axs[i,1].psd(fields[:,i], NFFT=512, Fs=fs, pad_to=len(times), c='g')
+        axs[i,0].plot(times, plot_data[i])
+        a = axs[i,1].psd(plot_data[i], NFFT=512, Fs=fs, pad_to=len(times), c='g')
         axs[i,1].set_ylabel(ylabels[1][i])
         
-    axs[0,0].set_title(r'Measured magnetic field component', fontsize=16)
+    # axs[0,0].set_title(r'Measured magnetic field component', fontsize=16)
     axs[0,1].set_title(r'Power Spectral density (units: $dB_{10}/Hz$)', fontsize=16)
     
-    plt.show()
-    
+    # plt.show()
     # save image
     if save_image:
         # set the directory name and current datetime if not passed as argument
@@ -352,12 +344,35 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
         file_path = os.path.join(save_dir, output_file_name)
         fig.savefig(file_path, dpi=300)
     
-    return fig, axs, 
+    return fig, axs, times, plot_data
 
 
 if __name__ == "__main__":
     # generateAndSavePlot(filepath=r'.\data_sets\time_measurements_27_10\20_10_27_11-10-20_time_resolved.csv', save_image=True, save_dir=r'.\data_sets\time_measurements_27_10', image_name_postfix='stability_test')
     
-    _, axs = spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-29-43_time_resolved.csv', plot_components='xyz',
-                      save_image=True, save_dir=r'.\data_sets\time_measurements_23_10')
+    # fig, ax, times, fields, plot_components = generateAndSavePlot(filepath=r'.\data_sets\time_measurements_26_10\20_10_26_17-32-32_time_resolved.csv',
+    #                                                               show_image=False, plot_components='xyz', save_image=False, separate=False)
     
+    fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_26_10\20_10_26_18-48-07_time_resolved.csv', 'z', 2.5)
+    
+    # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
+    #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
+    ampl = np.amax(np.abs(plot_data))
+    print(np.abs(plot_data))
+    ampl_list = []
+    for item in np.abs(plot_data[0]):
+        if item >= 0.95 * ampl:
+            ampl_list.append(item)
+    ampl = round(np.mean(np.array(ampl_list)),2)
+    std_ampl = round(np.std(np.array(ampl_list)),2)
+    std = round(np.std(plot_data),2)
+    
+    freq = 1/(times[1]-times[0])
+    
+    # ax[0,0].set_title('Sine frequency: 0.11 $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
+    ax[0,0].set_title('Measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    
+    plt.tight_layout()
+    # print(fields[1:6,0])
+    
+    plt.show()

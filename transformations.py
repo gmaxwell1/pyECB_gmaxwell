@@ -63,23 +63,28 @@ def computeCoilCurrents(B_fieldVector, windings, resistance):
     # actMatrix[1, 2] = -0.029643
     # actMatrix[2, 0] = 0.008820
     # actMatrix[2, 1] = 0.008820
-    actMatrix[0, 0] = 0.051343
-    actMatrix[0, 1] = 0
-    actMatrix[0, 2] = -0.051343
-    actMatrix[1, 0] = -0.029643
-    actMatrix[1, 1] = 0.059286
-    actMatrix[1, 2] = -0.029643
-    actMatrix[2, 0] = 0.008820
-    actMatrix[2, 1] = 0.008820
-    # actMatrix[2, 2] = 0.008820
-    actMatrix[2, 2] = -0.008820 # z-field is positive when I3 is negative and increases when I3 decreases
+    # actMatrix[2, 2] = -0.008820
+    
+    # actMatrix = actMatrix * windings
 
+    # These values are still just estimates in the current config. But based on measurements. (29.10.) ~1-3mm above poles
+    actMatrix[0, 0] = 35
+    actMatrix[0, 1] = -8
+    actMatrix[0, 2] = -26
+    actMatrix[1, 0] = -29
+    actMatrix[1, 1] = 40
+    actMatrix[1, 2] = -10
+    actMatrix[2, 0] = 22
+    actMatrix[2, 1] = 0
+    actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
+    
     actMatrix_inverse = np.linalg.inv(actMatrix)
 
     # print('Inverse actuation matrix: \n', act_matrix_inverse)
 
-    currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
-    currVector = (currVector_amp_turns / windings)  # in milliamps
+    # currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
+    # currVector = (currVector_amp_turns / windings) # in amps
+    currVector = actMatrix_inverse.dot(B_fieldVector)  # in amps
 
     power = ((currVector[0] ** 2) + (currVector[1] **
                                      2) + (currVector[2] ** 2)) * resistance
@@ -114,22 +119,25 @@ def computeMagField(currVector, windings):
     # actMatrix[1, 2] = -0.029643
     # actMatrix[2, 0] = 0.008820
     # actMatrix[2, 1] = 0.008820
-    actMatrix[0, 0] = 0.051343
-    actMatrix[0, 1] = 0
-    actMatrix[0, 2] = -0.051343
-    actMatrix[1, 0] = -0.029643
-    actMatrix[1, 1] = 0.059286
-    actMatrix[1, 2] = -0.029643
-    actMatrix[2, 0] = 0.008820
-    actMatrix[2, 1] = 0.008820
-    # actMatrix[2, 2] = 0.008820
-    actMatrix[2, 2] = -0.008820 # z-field is positive when I3 is negative and increases when I3 decreases
+    # actMatrix[2, 2] = -0.008820
+    
+    # actMatrix = actMatrix * windings
+
+    actMatrix[0, 0] = 35
+    actMatrix[0, 1] = -8
+    actMatrix[0, 2] = -26
+    actMatrix[1, 0] = -29
+    actMatrix[1, 1] = 40
+    actMatrix[1, 2] = -10
+    actMatrix[2, 0] = 22
+    actMatrix[2, 1] = 0
+    actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
 
     # print('Inverse actuation matrix: \n', act_matrix_inverse)
     currVector = currVector / 1000  # in amps
 
-    currVector_amp_turns = (currVector * windings)  # in amp-turns
-    B_fieldVector = actMatrix.dot(currVector_amp_turns)  # in milliamps
+    # currVector_amp_turns = (currVector * windings)  # in amp-turns
+    B_fieldVector = actMatrix.dot(currVector)  # in millitesla
 
     # print('Current vector [mA]: \n', currVector)
 
@@ -196,13 +204,13 @@ if __name__ == '__main__':
     #
     # test the transformation functions
 
-    B1 = computeMagneticFieldVector(theta=45, phi=69, magnitude=69)
+    B1 = computeMagneticFieldVector(theta=0, phi=0, magnitude=69)
     currents1 = computeCoilCurrents(B1, 508, 0.47)
 
-    currentVector = np.ones(3) * (-4.6938775510204085) * 1000
-    _B1 = computeMagField(currentVector, 508)
+    _B1 = computeMagneticFieldVector(theta=90, phi=0, magnitude=20)
+    _currents1 = computeCoilCurrents(_B1, 508, 0.47)
 
     print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
           .format(B1[0], B1[1], B1[2], currents1[0], currents1[1], currents1[2]))
-    print('B = ({},{},{})^T corresponds to the reconstructed magnetic field'
-          .format(_B1[0], _B1[1], _B1[2]))
+    print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
+          .format(_B1[0], _B1[1], _B1[2], _currents1[0], _currents1[1], _currents1[2]))
