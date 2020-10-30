@@ -91,7 +91,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     CC_X.wait_for_ready()
     
     if calibrate:
-        cal_pos_z = 21
+        cal_pos_z = 20
         start_pos_z = CC_Z.read_cur_pos()
         total_distance_z = cal_pos_z-start_pos_z
         
@@ -99,7 +99,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
         start_pos_y = CC_Y.read_cur_pos()
         total_distance_y = abs(cal_pos_y-start_pos_y)
         
-        cal_pos_x = 21
+        cal_pos_x = 20
         start_pos_x = CC_X.read_cur_pos()
         total_distance_x = abs(cal_pos_x-start_pos_x)
         
@@ -122,7 +122,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     
     # change meas_offset_z according to the following rule: 
     # height above sensor = meas_offset_z + 0.9 - 7.66524 (last number is "zero")
-    meas_offset_z = 7.2
+    meas_offset_z = 7.2 # should be 7.9 later with new part
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
     
@@ -335,10 +335,12 @@ if __name__ == '__main__':
     
     start_pos_z = CC_Z.read_cur_pos()
     print(start_pos_z)
+    # CC_Z.move_absolute(new_pos=21)
+    # CC_Z.wait_for_ready()
+    # print(CC_Z.read_cur_pos())
     CC_Z.move_absolute(new_pos=7.25)
     CC_Z.wait_for_ready()
     print(CC_Z.read_cur_pos())
-
 
     # #     print(curr_pos_z)
     # #     c = input('raise again?')
