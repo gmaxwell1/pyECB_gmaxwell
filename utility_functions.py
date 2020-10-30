@@ -238,10 +238,10 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
     if rotate is None:
         fileprefix = '({}_{})_ramp_meas'.format(int(theta), int(phi))
     else:
-        fileprefix = '({}_{})_rotato_meas'.format(int(theta), int(phi))
+        fileprefix = '({}_{})_rotate_meas'.format(int(theta), int(phi))
     
     # folder
-    filePath = r'.\data_sets\rotation_around_z'
+    filePath = r'.\data_sets\rotation_around_y'
     
     enableCurrents()
     # with MetrolabTHM1176Node(range="0.3 T", period=0.01) as node:
@@ -449,13 +449,13 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
                     duration = int(input('Duration of measurement (default is 10s): '))
                 except:
                     duration = 10
-                params = {'block_size': 20, 'period': 1e-2, 'duration': duration, 'averaging': 5}
+                params = {'block_size': 30, 'period': 5e-3, 'duration': duration, 'averaging': 5}
 
                 faden = myMeasThread(**params)
                 faden.start()
                 
                 faden.join()
-                strm(returnDict, r'.\data_sets\time_measurements_26_10', now=True)
+                strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
                 
     else:
         return
@@ -464,79 +464,99 @@ def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
     disableCurrents()
 
 
-def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi):
+def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
     """
     Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
 
 
     Args:
-        *config_list (list, optional): List of configurations to change between if function is 'sqr'. Otherwise only the first config
+        *config_list (list(s)): List of configurations to change between if function is 'sqr'. Otherwise only the first config
                                        will be used.
         ampl (int, optional): amplitude of the current to be applied in any configuration
         function (str, optional): Either periodically changing between constant current ('sqr') or a sinusoidal current. Defaults to 'sin'.
-        frequency (int, optional): sin wave frequency if 'sin' is the function chosen, otherwise the number of times to repeat.
+        frequency (int, optional): sin wave frequency if 'sin' is the function chosen, otherwise the number of times to repeat the cycle.
         finesse (int, optional): Only for 'sin'. How many segments each second is divided into. Defaults to 10.
-        duration (int, optional): duration that currents are on. Currently not precise. Defaults to 10*pi.
+        duration (int, optional): Duration for which currents are on in sinusoidal mode. Time to stay constant in each state when 'sqr'
+                                  is chosen. Defaults to 10*pi.
+        meas (bool, optional): Flag for starting a measurement. Defaults to False.
     """
     global currDirectParam
     global desCurrents
     
-    enableCurrents()
+    if meas:
+        params = {'block_size': 30, 'period': 1e-2, 'duration': measDur, 'averaging': 5}
+        faden = myMeasThread(**params)
 
+    enableCurrents()
+    
+    if meas:
+        faden.start()
+                
     if function == 'sin':
         steps = int(duration) * finesse + 1
         tspan = np.linspace(0, duration, steps)
-        dt = round(tspan[1] - tspan[0], 2)
+        # dt = round(tspan[1] - tspan[0], 2)
         func1 = ampl * config_list[0][0] * np.sin(frequency * tspan) # channel 1 values
         func2 = ampl * config_list[0][1] * np.sin(frequency * tspan) # channel 2 values
         func3 = ampl * config_list[0][2] * np.sin(frequency * tspan) # channel 3 values
         
+        sleep(1/finesse - time() * finesse % 1 / finesse)
         for j in range(len(tspan)):
             desCurrents[0] = int(func1[j])
             desCurrents[1] = int(func2[j])
             desCurrents[2] = int(func3[j])
 
             setCurrents(desCurrents, currDirectParam)
-
-            sleep(0.27 * dt)
+            
+            sleep(1/finesse - time() * finesse % 1 / finesse)
 
     elif function == 'sqr':
         num = len(config_list)
         steps = num * frequency
-        tspan = np.linspace(0, duration, steps)
-        dt = duration/steps
+        # tspan = np.linspace(0, duration, steps)
+        # dt = duration/steps
         funcs = [ampl * np.array(config) for config in config_list]
         
-        for j in range(len(tspan)):
+        for j in range(steps):
             
             desCurrents[0] = int(funcs[j % num][0])
             desCurrents[1] = int(funcs[j % num][1])
             desCurrents[2] = int(funcs[j % num][2])
 
             setCurrents(desCurrents, currDirectParam)
+            
+            sleep(0.95*duration)
 
-            sleep(dt)
-
+    demagnetizeCoils()
+    
+    if meas:
+        faden.join()
+        
     disableCurrents()
+
+    strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
 
         
     
 if __name__ == "__main__":
-    params = {'block_size': 30, 'period': 1e-2, 'duration': 60, 'averaging': 15}
+    params = {'block_size': 30, 'period': 1e-2, 'duration': 300, 'averaging': 10}
     
    
     faden = myMeasThread(**params)
     faden.start()
     
     openConnection()
-    sleep(1)
-    functionGenerator([0.27,1,-0.74], ampl=2500, function='sin',frequency=4, duration=60)
+    sleep(150)
+    # enableCurrents()
+    functionGenerator([1,0,-1], [1,1,1], ampl=2000, function='sqr',frequency=2, duration=30)
+    # demagnetizeCoils()
+    # disableCurrents()
 
     faden.join()
     closeConnection()
 
     
-    strm(returnDict, r'.\data_sets\time_measurements_26_10', now=True)
+    # strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
     
     item_name = ['Bx', 'By', 'Bz']
     labels = ['Bx', 'By', 'Bz', 'T']

@@ -200,10 +200,11 @@ class MetrolabTHM1176Node(object):
         self.sensor.write(':INIT:CONT ON')
                             
         
-### original
+    ### original
     def calibrate(self):
         self.sensor.write(":CAL:INIT")
         self.sensor.write(":CAL:STAT ON")
+        sleep(5) # wait for calibration to finish
         
     
     def setAveragingCount(self):

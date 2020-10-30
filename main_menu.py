@@ -40,8 +40,9 @@ def MainMenu(initialized):
             print('----------- Main Menu -----------')
             print('[x] to exit\n')
             print(
-                '[1]: sweep multiple current values and make measurment with cube (specify coil configuration)')
-            print('[2]: sweep theoretical magnetic field magnitudes, measure actual values (specify polar and azimuthal angles, magnitude range)')
+                '[1]: sweep multiple current values and record measurement with sensor (specify coil configuration)')
+            print('[2]: sweep theoretical magnetic field vectors, measure actual values '
+                  '\n\t(specify polar and azimuthal angles, magnitude range or rotational axis)')
             print('[3]: set currents manually on 3 channels (in mA)')
             print(
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
@@ -77,6 +78,7 @@ def MainMenu(initialized):
                 # just for fun :D
                 c1 = np.random.randint(1, 7)
                 print('doing option ', c1, ': ')
+                c1 = str(c1)
 
     else:
         print('not connected')
@@ -226,7 +228,7 @@ def callSweepVectorField():
             axis = (int(axisang1), int(axisang2))
         except:
             print('expected numerical value, defaulting to (0,0) or z-axis')
-            rotate = (0,0)
+            axis = (0,0)
         
     else:    
         inp4 = input('ending magnitude in mT = ')
@@ -268,7 +270,7 @@ def callSweepVectorField():
         if rot == 'y':
             rampVectorField(node, theta, phi, start_mag, steps=steps, rotate=axis)
         else:
-            rampVectorField(node, theta, phi, start_mag, end_mag, steps)
+            rampVectorField(node, theta, phi, start_mag, end_mag, steps=steps)
             
 
 def callRunCurrents():
@@ -355,36 +357,36 @@ def callSwitchingConfigs():
     inp4 = input('configuration 2\nChannel 1: ')
     inp5 = input('Channel 2: ')
     inp6 = input('Channel 3: ')
-    inp7 = input('time in each state (add 1.5s): ')
-    inp8 = input('how many times to switch: ')
+    inp7 = input('current level (in mA): ')
+    inp8 = input('how many times to repeat: ')
     try:
-        a1 = int(inp1)
-        b1 = int(inp2)
-        c1 = int(inp3)
+        a1 = float(inp1)
+        b1 = float(inp2)
+        c1 = float(inp3)
         config1 = np.array([a1, b1, c1])
     except:
         print('expected numerical value, defaulting to (0,0,1)')
         config1 = np.array([0, 0, 1])
     try:
-        a2 = int(inp4)
-        b2 = int(inp5)
-        c2 = int(inp6)
+        a2 = float(inp4)
+        b2 = float(inp5)
+        c2 = float(inp6)
         config2 = np.array([a2, b2, c2])
     except:
         print('expected numerical value(s), defaulting to (0,1,0)')
         config2 = np.array([0, 1, 0])
-    # try:
-    #     dt = float(inp7)
-    # except:
-    #     print('expected numerical value(s), defaulting to 0')
-    #     dt = 0
-    # try:
-    #     rounds = int(inp8)
-    # except:
-    #     print('expected numerical value(s), defaulting to 10')
-    #     rounds = 10
+    try:
+        amplitude = int(inp7)
+    except:
+        print('expected numerical value(s), defaulting to 0')
+        dt = 0
+    try:
+        rounds = int(inp8)
+    except:
+        print('expected numerical value(s), defaulting to 10')
+        rounds = 10
 
-    functionGenerator(config1, config2, function='sqr', frequency=10)
+    functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
     
 
 if __name__ == '__main__':
