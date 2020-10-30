@@ -1627,7 +1627,19 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
 
 def fit_rotation_matrix(mean_values, expected_values, convention = 'xzx'):
     """
+    Fits a rotation that yields the minimum sum of square distances between mean_values and rotated
+    expected_values. This method uses the curve_fit method of scipy.optimize, which makes use of the 
+    least_squares method.
 
+    Args: 
+    - mean_values, expected_values (ndarrays of shape (#measurements, 3)): contain the measured and expected data
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles. The resulting 
+    angles depend on the convention, while the calculated rotation remains the same.
+
+    Returns:
+    - p, pcov (list of floats): the estimated Euler angles that achieve the best fitting rotation.
+    - rotated_expections (ndarray of shape (#measurements, 3)): the estimated values when applying the
+    final rotation to the expected_values 
     """
     p, pcov = curve_fit(lambda x, alpha, beta, gamma: apply_rotation(x, alpha, beta, gamma, convention=convention).flatten(), 
                         expected_values, mean_values.flatten(), p0=[5,90,0])
@@ -1635,12 +1647,35 @@ def fit_rotation_matrix(mean_values, expected_values, convention = 'xzx'):
 
 def apply_rotation(x, alpha, beta, gamma, convention = 'xzx'):
     """ 
+    Applies a rotation with Euler angles alpha, beta and gamma to an input vector
+
+    Args: 
+    - x (ndarray of length 3 or shape (N,3)): Input vector(s) which should be rotated
+    - alpha, beta, gamma (flaot): Euler angles of the rotation
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles.
+
+    Returns the rotated input vectors
     """
     r = R.from_euler(convention, [alpha, beta, gamma], degrees=True)
     return r.apply(x)
 
 def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=True):
     """ 
+    Estimate the effect of a rotation with Euler angles alpha, beta, gamma on the coordinate axes.
+    Note that considering the coordinate axes actually involves the inverse of the rotation.
+
+    Args:
+    - alpha, beta, gamma (flaot): Euler angles of the rotation
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles.
+    - verbose (bool): Flag to switch on/off additional printing of effects
+
+    Returns:
+    - rotated (ndarray of shape (3,3)): Contains coordinate axes of the rotated system in the original coordinates.
+    The first axis covers the three axes, the second the respective coordinates.
+    - delta_phi (ndarray of length 3): differences between the polar angles of the original and 
+    transformed axes (expressed in original coordinates)
+    - delta_phi (ndarray of length 3): differences between the azimuthal angles of the original and 
+    transformed axes (expressed in original coordinates)
     """
     r = R.from_euler(convention, [alpha, beta, gamma], degrees=True).inv()
     basis_vectors = np.array([[1,0,0], [0,1,0], [0,0,1]])
