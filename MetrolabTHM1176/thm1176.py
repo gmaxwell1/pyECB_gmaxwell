@@ -136,13 +136,13 @@ class MetrolabTHM1176Node(object):
         self.stop = False
         self.sensor.write(':INIT')
         while not self.stop:
-            t0 = time()
+            # t0 = time()
             res = self.sensor.ask(self.fetch_cmd)
             self.parse_ascii_responses('fetch', res)
 
             self.data_stack = {key: np.hstack((self.data_stack[key], self.last_reading[key])) for key in
                                self.fetch_kinds}
-            print(time() - t0)
+            # print(time() - t0)
 
         self.stop_acquisition()
 

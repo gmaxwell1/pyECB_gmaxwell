@@ -324,27 +324,31 @@ if __name__ == '__main__':
     
     # CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
     # CC_X.wait_for_ready()
+    # CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
+    # CC_Y.wait_for_ready()
+    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    # CC_Z.wait_for_ready()
     
-    # start_pos_z = CC_X.read_cur_pos()
-    # print(start_pos_z)
-    # CC_X.move_absolute(new_pos=5.0)
-    # CC_X.wait_for_ready()
+    # print(CC_Z.read_cur_pos())
+    # print(CC_Y.read_cur_pos())
     # print(CC_X.read_cur_pos())
-    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    CC_Z.wait_for_ready()
-    
-    start_pos_z = CC_Z.read_cur_pos()
-    print(start_pos_z)
-    # CC_Z.move_absolute(new_pos=21)
+    # # CC_Z.move_absolute(new_pos=21)
+    # # CC_Z.wait_for_ready()
+    # # print(CC_Z.read_cur_pos())
+    # CC_Z.move_absolute(new_pos=20)
     # CC_Z.wait_for_ready()
     # print(CC_Z.read_cur_pos())
-    CC_Z.move_absolute(new_pos=7.25)
-    CC_Z.wait_for_ready()
-    print(CC_Z.read_cur_pos())
+    # CC_Y.move_absolute(new_pos=0)
+    # CC_Y.wait_for_ready()
+    # print(CC_Y.read_cur_pos())
+    # CC_X.move_absolute(new_pos=20)
+    # CC_X.wait_for_ready()
+    # print(CC_X.read_cur_pos())
+    # # print(CC_Z.read_cur_pos())
 
     # #     print(curr_pos_z)
     # #     c = input('raise again?')
-    # with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
-    #     print(node.measureFieldArraymT())
+    with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
+        calibration(node, calibrate=True)
     
     

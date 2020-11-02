@@ -354,11 +354,11 @@ def callSwitchingConfigs():
     inp1 = input('configuration 1\nChannel 1: ')
     inp2 = input('Channel 2: ')
     inp3 = input('Channel 3: ')
-    inp4 = input('configuration 2\nChannel 1: ')
-    inp5 = input('Channel 2: ')
-    inp6 = input('Channel 3: ')
-    inp7 = input('current level (in mA): ')
-    inp8 = input('how many times to repeat: ')
+    # inp4 = input('configuration 2\nChannel 1: ')
+    # inp5 = input('Channel 2: ')
+    # inp6 = input('Channel 3: ')
+    # inp7 = input('current level (in mA): ')
+    # inp8 = input('how many times to repeat: ')
     try:
         a1 = float(inp1)
         b1 = float(inp2)
@@ -367,26 +367,27 @@ def callSwitchingConfigs():
     except:
         print('expected numerical value, defaulting to (0,0,1)')
         config1 = np.array([0, 0, 1])
-    try:
-        a2 = float(inp4)
-        b2 = float(inp5)
-        c2 = float(inp6)
-        config2 = np.array([a2, b2, c2])
-    except:
-        print('expected numerical value(s), defaulting to (0,1,0)')
-        config2 = np.array([0, 1, 0])
-    try:
-        amplitude = int(inp7)
-    except:
-        print('expected numerical value(s), defaulting to 0')
-        dt = 0
-    try:
-        rounds = int(inp8)
-    except:
-        print('expected numerical value(s), defaulting to 10')
-        rounds = 10
+    # try:
+    #     a2 = float(inp4)
+    #     b2 = float(inp5)
+    #     c2 = float(inp6)
+    #     config2 = np.array([a2, b2, c2])
+    # except:
+    #     print('expected numerical value(s), defaulting to (0,1,0)')
+    #     config2 = np.array([0, 1, 0])
+    # try:
+    #     amplitude = int(inp7)
+    # except:
+    #     print('expected numerical value(s), defaulting to 0')
+    #     dt = 0
+    # try:
+    #     rounds = int(inp8)
+    # except:
+    #     print('expected numerical value(s), defaulting to 10')
+    #     rounds = 10
 
-    functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
+    # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
+    functionGenerator(config1, ampl=2500, function='sin', frequency=5, finesse=20, duration=20*np.pi, meas=True, measDur=20*np.pi)
     
 
 if __name__ == '__main__':

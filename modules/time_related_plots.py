@@ -350,27 +350,27 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 if __name__ == "__main__":
     # generateAndSavePlot(filepath=r'.\data_sets\time_measurements_27_10\20_10_27_11-10-20_time_resolved.csv', save_image=True, save_dir=r'.\data_sets\time_measurements_27_10', image_name_postfix='stability_test')
     
-    # fig, ax, times, fields, plot_components = generateAndSavePlot(filepath=r'.\data_sets\time_measurements_26_10\20_10_26_17-32-32_time_resolved.csv',
-    #                                                               show_image=False, plot_components='xyz', save_image=False, separate=False)
+    fig, ax, times, fields, plot_components = generateAndSavePlot(filepath=r'.\data_sets\time_measurements_02_11\20_11_02_11-54-33_time_resolved.csv',
+                                                                  show_image=False, plot_components='xyz', save_image=False, separate=False)
     
-    fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_26_10\20_10_26_18-48-07_time_resolved.csv', 'z', 2.5)
+    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_02_11\20_11_02_11-33-37_time_resolved.csv', 'x', 2.5)
     
     # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
     #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
-    ampl = np.amax(np.abs(plot_data))
-    print(np.abs(plot_data))
-    ampl_list = []
-    for item in np.abs(plot_data[0]):
-        if item >= 0.95 * ampl:
-            ampl_list.append(item)
-    ampl = round(np.mean(np.array(ampl_list)),2)
-    std_ampl = round(np.std(np.array(ampl_list)),2)
-    std = round(np.std(plot_data),2)
+    # ampl = np.amax(np.abs(plot_data))
+    # print(np.abs(plot_data))
+    # ampl_list = []
+    # for item in np.abs(plot_data[0]):
+    #     if item >= 0.95 * ampl:
+    #         ampl_list.append(item)
+    # ampl = round(np.mean(np.array(ampl_list)),2)
+    # std_ampl = round(np.std(np.array(ampl_list)),2)
+    # std = round(np.std(plot_data),2)
     
-    freq = 1/(times[1]-times[0])
+    # freq = 1/(times[1]-times[0])
     
     # ax[0,0].set_title('Sine frequency: 0.11 $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
-    ax[0,0].set_title('Measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    # ax[0,0].set_title('Measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
     
     plt.tight_layout()
     # print(fields[1:6,0])

@@ -536,7 +536,7 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         
     disableCurrents()
 
-    strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
+    strm(returnDict, r'.\data_sets\time_measurements_02_11', now=True)
 
         
     
