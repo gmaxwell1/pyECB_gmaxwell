@@ -20,6 +20,8 @@ import matplotlib.cm as cm
 from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator
 from datetime import datetime
 from itertools import product
+from scipy.optimize import curve_fit
+from scipy.spatial.transform import Rotation as R
 
 from modules.general_functions import angle_wrt_z, inplane_angle_wrt_x
 
@@ -345,12 +347,21 @@ def get_phi(values, cut_phi_at_0=False):
     """
     Return the in-plane angle phi with respect to x-axis.
     """
-    angles =  np.degrees(np.arctan2(values[:,1], values[:,0]))
+    angles = np.degrees(np.arctan2(values[...,1], values[...,0]))
 
     # if cut should be at 0 degrees, add 360 degrees to all negative values
     if cut_phi_at_0:
         mask = angles < 0
         angles[mask] = 360 + angles[mask]
+
+    return angles
+
+def get_theta(values):
+    """
+    Return the angle theta between z axis and the provided values.
+    """
+    mag = np.linalg.norm(values, axis=-1)
+    angles = np.degrees(np.arccos(values[...,2]/mag))
 
     return angles
 
@@ -1175,7 +1186,8 @@ def find_center_of_rays_all(pos, field, phi=30, length=20, num=20):
     return pos[index_min, :2]
 
 
-def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 1.5, show_labels = True):
+def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 1.5, show_labels = True,
+                        rotated_expection=None):
     """
     Generate a plot of the two magnetic field components within the plane of rotation.
 
@@ -1193,11 +1205,11 @@ def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 
     fig.set_size_inches(4, 4)
     
     # find the rotation axis
-    if np.all(np.isclose(expected_values[:,0], 0)):
+    if np.all(np.isclose(expected_values[:,0], expected_values[0,0])):
         rot_axis = 0 # 'x'
-    elif np.all(np.isclose(expected_values[:,1], 0)):
+    elif np.all(np.isclose(expected_values[:,1], expected_values[0,1])):
         rot_axis = 1 # 'y'
-    elif np.all(np.isclose(expected_values[:,2], 0)):
+    elif np.all(np.isclose(expected_values[:,2], expected_values[0,2])):
         rot_axis = 2 # 'z'
     else:
         raise NotImplementedError('Rotations about general axes are not implemented yet.')
@@ -1214,6 +1226,9 @@ def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 
                             label = 'measured @ {:.1f} mm'.format(distance))
     ax.plot(expected_values[:, plot_components[0]], expected_values[:, plot_components[1]], linestyle='--', 
                                     label = 'linear model @ 3mm')
+    if rotated_expection is not None:
+        ax.plot(rotated_expection[:, plot_components[0]], rotated_expection[:, plot_components[1]], linestyle='--', 
+                                    label = 'rotated linear model')
 
     # set axis labels
     components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
@@ -1233,28 +1248,28 @@ def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 
 
 def swap_components(a, index_last):
     """
-    Permute the indices of the second axis of a, such that index_last is the last one. 
-    The final array is sorted such that the order of the second axis becomes 'yzx', 'xzy' or 'xyz'
+    Permute the indices of the last axis of a, such that index_last is the last one. 
+    The final array is sorted such that the order of the second axis becomes 'yzx', 'zxy' or 'xyz',
+    so the permutation has positive sign.
 
     Args:
-    - a (ndarray of shape (n, 3)): array for which the indices of the second axis should be permuted
+    - a (ndarray with length 3 along last dimension): array for which the indices of the last axis 
+    should be permuted
     - index_last (int): current index of the array, which should become the last index = 2
     """
     # if the order is already correct, return a as it is
     if index_last == 2:
         return a
     else:
-        remaining_comps = np.delete([0,1,2], index_last)
         b = np.zeros_like(a)
-        for i in range(2):
-            b[:,i] = a[:, remaining_comps[i]]
-        b[:,2] = a[:,index_last]
+        for i in range(3):
+            b[..., i] = a[..., (i-2+index_last)%3]
 
         return b
 
 def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_per_plot = 2,
                         flags_yaxis = 'a', distance = 1.5, show_labels = True,
-                        plot_delta_sim=False, ):
+                        plot_delta_sim=False, rotated_expection=None, allow_negative_at_beginning=False):
     """
     Generate plots of the desired rotation angle on x-axis vs measured rotation angle and the 
     third field component on the y-axis. 
@@ -1277,6 +1292,9 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     The usual height of a single plot is 4.
     - distance (float): distance between sensor and tip [mm], which is added as plot label 
     - show_labels (bool): flag to switch on/off labels of plots
+    - allow_negative_at_beginning (bool): it can happen that a few angles would be negative in the beginning, 
+    which are set to values slightly below 360 degrees. Correct for this by resetting those to negative values
+    if True is passed, else it is ignored.
 
     Return: fig, axs
     """
@@ -1290,11 +1308,11 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     fig.set_size_inches(6, number_plots * height_per_plot)
     
     # find the rotation axis
-    if np.all(np.isclose(expected_values[:,0], 0)):
+    if np.all(np.isclose(expected_values[:,0], expected_values[0,0])):
         rot_axis = 0 # 'x'
-    elif np.all(np.isclose(expected_values[:,1], 0)):
+    elif np.all(np.isclose(expected_values[:,1], expected_values[0,1])):
         rot_axis = 1 # 'y'
-    elif np.all(np.isclose(expected_values[:,2], 0)):
+    elif np.all(np.isclose(expected_values[:,2], expected_values[0,2])):
         rot_axis = 2 # 'z'
     else:
         raise NotImplementedError('Rotations about general axes are not implemented yet.')
@@ -1302,6 +1320,8 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     # estimate total magnitude and magnitude within the plane of ration
     mean_magnitudes = np.linalg.norm(mean_values, axis=1)
     expected_magnitudes = np.linalg.norm(expected_values, axis=1)
+    if rotated_expection is not None:
+        rotated_magnitudes = np.linalg.norm(rotated_expection, axis=1)
 
     # if number_plots=1, axs is returned as AxesSubplot class instead of an ndarray containing
     # instances of this class. Since the following requires a ndarray, ensure to have an ndarray!
@@ -1310,6 +1330,8 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
 
     rot_plane_mags = np.linalg.norm(np.delete(mean_values, rot_axis, axis=1), axis=1)
     rot_plane_mags_expected = np.linalg.norm(np.delete(expected_values, rot_axis, axis=1), axis=1)
+    if rotated_expection is not None:
+        rot_plane_mags_rotated = np.linalg.norm(np.delete(rotated_expection, rot_axis, axis=1), axis=1)
 
     # collect plot data.
     # Note: errorbars display std, estimate errors for magnitudes (and angle) using propagation of uncertainty,
@@ -1317,6 +1339,7 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     plot_mean_data = []
     plot_std_data = []
     plot_expected_data = []
+    plot_rotated_data = []
     ylabels = []
     for flag in flags_yaxis:
         # magnetic field in x-direction
@@ -1324,24 +1347,32 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
             plot_mean_data.append(mean_values[:, 0])
             plot_std_data.append(std_values[:, 0])
             plot_expected_data.append(expected_values[:, 0])
+            if rotated_expection is not None:
+                plot_rotated_data.append(rotated_expection[:, 0])
             ylabels.append('$B_x$ [mT]')
         # magnetic field in y-direction
         elif flag == 'y':
             plot_mean_data.append(mean_values[:, 1])
             plot_std_data.append(std_values[:, 1])
             plot_expected_data.append(expected_values[:, 1])
+            if rotated_expection is not None:
+                plot_rotated_data.append(rotated_expection[:, 1])
             ylabels.append('$B_y$ [mT]')
         # magnetic field in z-direction
         elif flag == 'z':
             plot_mean_data.append(mean_values[:, 2])
             plot_std_data.append(std_values[:, 2])
             plot_expected_data.append(expected_values[:, 2])
+            if rotated_expection is not None:
+                plot_rotated_data.append(rotated_expection[:, 2])
             ylabels.append('$B_z$ [mT]')
         # field component parallel to rotation axis
         elif flag == 'o':
             plot_mean_data.append(mean_values[:, rot_axis])
             plot_std_data.append(std_values[:, rot_axis])
             plot_expected_data.append(expected_values[:, rot_axis])
+            if rotated_expection is not None:
+                plot_rotated_data.append(rotated_expection[:, rot_axis])
             components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
             ylabels.append(components[rot_axis])
         # magnitude of magnetic field
@@ -1349,13 +1380,17 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
             plot_mean_data.append(mean_magnitudes)
             plot_std_data.append(estimate_std_magnitude(mean_values, std_values))
             plot_expected_data.append(expected_magnitudes)
+            if rotated_expection is not None:
+                plot_rotated_data.append(rotated_magnitudes)
             ylabels.append('$|B|$ [mT]')
         # magnetude of magnetic field within plane of ration 
         elif flag == 'p':
             plot_mean_data.append(rot_plane_mags)
-            plot_expected_data.append(rot_plane_mags_expected)
             plot_std_data.append(estimate_std_inplane(swap_components(mean_values,rot_axis), 
                                                     swap_components(std_values,rot_axis)))
+            plot_expected_data.append(rot_plane_mags_expected)
+            if rotated_expection is not None:
+                plot_rotated_data.append(rot_plane_mags_rotated)
             if rot_axis == 0:
                 ylabels.append('$|B_{yz}|$ [mT]')
             elif rot_axis == 1:
@@ -1367,9 +1402,28 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
             swapped_mean_values = swap_components(mean_values, rot_axis)
             swapped_std_values = swap_components(std_values, rot_axis)
             swapped_exp_values = swap_components(expected_values, rot_axis)
-            plot_mean_data.append(get_phi(swapped_mean_values, cut_phi_at_0=True))
-            plot_std_data.append(np.degrees(estimate_std_phi(swapped_mean_values, swapped_std_values)))
-            plot_expected_data.append(get_phi(swapped_exp_values, cut_phi_at_0=True))
+            measured_phi = get_phi(swapped_mean_values, cut_phi_at_0=True)
+            measured_error_phi = np.degrees(estimate_std_phi(swapped_mean_values, swapped_std_values))
+            expected_phi = get_phi(swapped_exp_values, cut_phi_at_0=True)
+            # allow negative values in the beginning if provided:
+            if allow_negative_at_beginning:
+                for i in range(len(mean_values) // 2):
+                    if measured_phi[i] > 300:
+                        measured_phi[i] -= 360
+                    if expected_phi[i] > 300:
+                        expected_phi[i] -= 360
+            plot_mean_data.append(measured_phi)
+            plot_std_data.append(measured_error_phi)
+            plot_expected_data.append(expected_phi)
+            if rotated_expection is not None:
+                swapped_rotated_values = swap_components(rotated_expection, rot_axis)
+                rotated_phi = get_phi(swapped_rotated_values, cut_phi_at_0=True)
+                # allow negative values in the beginning if provided:
+                if allow_negative_at_beginning:
+                    for i in range(len(mean_values) // 2):
+                        if rotated_phi[i] > 300:
+                            rotated_phi[i] -= 360
+                plot_rotated_data.append(rotated_phi)
             ylabels.append('rotation angle, $\\Phi\'$ [°]')
         # angle wrt plane of rotation
         elif flag == 'a':
@@ -1381,14 +1435,30 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
                 estimate_std_theta(swapped_mean_values, swapped_std_values)))
             plot_expected_data.append(90 - np.degrees(
                 np.arccos(expected_values[:, rot_axis]/expected_magnitudes)))
+            if rotated_expection is not None:
+                plot_rotated_data.append(90 - np.degrees(
+                    np.arccos(rotated_expection[:, rot_axis]/rotated_magnitudes)))
             ylabels.append('offset angle, $\\Theta$ [°]')
         # account for invalid flags:
         else:
             raise ValueError(
                 '{} is not a valid flag, it should be in [\'x\', \'y\', \'z\', \'m\', \'a\', \'p\']!'.format(flag))
 
-    # estimate the desired/theoretical rotation angle
+    # estimate the desired/theoretical rotation angle wrt to the first espected vector. 
     x_vals = get_phi(swap_components(expected_values, rot_axis), cut_phi_at_0=True)
+    x_vals -= get_phi(swap_components(expected_values[0,:].reshape((1,3)), rot_axis), cut_phi_at_0=True)
+    x_vals = x_vals % 360
+   
+    # it is possible that x_vals is not sorted, which results in a horizontal line for the linear model in the plots,
+    # which is not desired. Thus, sort x_vals and shuffle the plot data accordingly. 
+    # Note that this does not alter the plotted values at all, it only corrects for the horizontal line 
+    # as an artifact from an unsorted x-axis
+    i_sort = np.argsort(x_vals)
+    x_vals = x_vals[i_sort]
+    plot_mean_data = np.array(plot_mean_data)[:, i_sort]
+    plot_std_data = np.array(plot_std_data)[:, i_sort]
+    plot_expected_data = np.array(plot_expected_data)[:, i_sort]
+    plot_rotated_data = np.array(plot_rotated_data)[:, i_sort]
     
     # actual plotting
     for i in range(len(axs)):
@@ -1405,6 +1475,10 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
                                     label = 'measured @ {:.1f} mm'.format(distance))
             axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
                                     label = 'linear model @ 3mm')
+            if rotated_expection is not None:
+                axs[i].plot(x_vals, plot_rotated_data[i], linestyle='--', 
+                                        label = 'rotated linear model')
+            
     if show_labels:
         axs[0].legend()
 
@@ -1420,3 +1494,71 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     plt.tight_layout()
 
     return fig, axs
+
+def fit_rotation_matrix(mean_values, expected_values, convention = 'xzx'):
+    """
+    Fits a rotation that yields the minimum sum of square distances between mean_values and rotated
+    expected_values. This method uses the curve_fit method of scipy.optimize, which makes use of the 
+    least_squares method.
+
+    Args: 
+    - mean_values, expected_values (ndarrays of shape (#measurements, 3)): contain the measured and expected data
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles. The resulting 
+    angles depend on the convention, while the calculated rotation remains the same.
+
+    Returns:
+    - p, pcov (list of floats): the estimated Euler angles that achieve the best fitting rotation.
+    - rotated_expections (ndarray of shape (#measurements, 3)): the estimated values when applying the
+    final rotation to the expected_values 
+    """
+    p, pcov = curve_fit(lambda x, alpha, beta, gamma: apply_rotation(x, alpha, beta, gamma, convention=convention).flatten(), 
+                        expected_values, mean_values.flatten(), p0=[5,90,0])
+    return p, pcov, apply_rotation(expected_values, *p)
+
+def apply_rotation(x, alpha, beta, gamma, convention = 'xzx'):
+    """ 
+    Applies a rotation with Euler angles alpha, beta and gamma to an input vector
+
+    Args: 
+    - x (ndarray of length 3 or shape (N,3)): Input vector(s) which should be rotated
+    - alpha, beta, gamma (flaot): Euler angles of the rotation
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles.
+
+    Returns the rotated input vectors
+    """
+    r = R.from_euler(convention, [alpha, beta, gamma], degrees=True)
+    return r.apply(x)
+
+def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=True):
+    """ 
+    Estimate the effect of a rotation with Euler angles alpha, beta, gamma on the coordinate axes.
+    Note that considering the coordinate axes actually involves the inverse of the rotation.
+
+    Args:
+    - alpha, beta, gamma (flaot): Euler angles of the rotation
+    - convention (str): the convention used to describe a general 3d-rotation by Euler angles.
+    - verbose (bool): Flag to switch on/off additional printing of effects
+
+    Returns:
+    - rotated (ndarray of shape (3,3)): Contains coordinate axes of the rotated system in the original coordinates.
+    The first axis covers the three axes, the second the respective coordinates.
+    - delta_phi (ndarray of length 3): differences between the polar angles of the original and 
+    transformed axes (expressed in original coordinates)
+    - delta_phi (ndarray of length 3): differences between the azimuthal angles of the original and 
+    transformed axes (expressed in original coordinates)
+    """
+    r = R.from_euler(convention, [alpha, beta, gamma], degrees=True).inv()
+    basis_vectors = np.array([[1,0,0], [0,1,0], [0,0,1]])
+    rotated = np.array([r.apply(basis_vectors[i]) for i in range(3)])
+
+    delta_phi = get_phi(basis_vectors) - get_phi(rotated)
+    delta_theta = get_theta(basis_vectors) - get_theta(rotated)
+
+    if verbose:
+        print('effect on axes (note that this involves inverse of rotation):')
+        axes = ['x', 'y', 'z']
+        for i in range(3):
+            print('{}-axis -> {} (Dphi = {:.2f}°, Dtheta = {:.2f}°)'.format(axes[i], np.round(rotated[i],2),
+                                                                        delta_phi[i], delta_theta[i]))
+    
+    return rotated, delta_phi, delta_theta
