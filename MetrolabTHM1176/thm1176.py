@@ -235,9 +235,7 @@ class MetrolabTHM1176Node(object):
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + self.n_digits).strip('MT'))
         By = float(self.sensor.ask(':measure:y? 0.01T,' + self.n_digits).strip('MT'))
         Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
-        
-        self.set_periodic_trigger()
-        
+                
         return [Bx, By, Bz]
                   
                 

@@ -55,7 +55,11 @@ def MainMenu(initialized):
 
             if c1 == '1':
                 inp0 = input('Automatic or manual input? (m or nothing): ')
-                callCurrentSweep(inp0)
+                datadir = input('Enter a valid directory name to save measurement data in: ')
+                if datadir == '':
+                    callCurrentSweep(inp0)
+                else:
+                    callCurrentSweep(inp0, datadir)
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
@@ -85,54 +89,55 @@ def MainMenu(initialized):
         return
 
 
-def callCurrentSweep(mode='m'):
+def callCurrentSweep(mode='m', datadir='test_measurements'):
     """
     Setup function to call the utility function 'sweepCurrents', see 'utility_functions.py'. Manages necessary inputs.
 
     Args:
         mode (str, optional): Decides whether a file with configurations or a manual input will be read. The third option is
         using default configurations, such as the x, y or z direction. Defaults to 'm'.
+        datadir (str, optional): subdirectory to save measurements in. default: 'test_measurements'
     """
-    # if mode == 'f':
-    #     # must be a .csv file!
-    #     inpFile = input('Enter a valid configuration file path: ')
-    #     inp1 = input('starting current in mA = ')
-    #     inp2 = input('ending current in mA = ')
-    #     inp3 = input('# of steps: ')
-    #     # the values for each measurement run should be the same for consistent results
-    #     try:
-    #         start_val = int(inp1)
-    #     except:
-    #         print('expected numerical value, defaulting to -4500')
-    #         start_val = -4500
-    #     try:
-    #         end_val = int(inp2)
-    #     except:
-    #         print('expected numerical value, defaulting to 4500')
-    #         end_val = 4500
-    #     try:
-    #         steps = int(inp3)
-    #     except:
-    #         print('expected numerical value, defaulting to 200')
-    #         steps = 200
+    if mode == 'f':
+        # must be a .csv file!
+        inpFile = input('Enter a valid configuration file path: ')
+        inp1 = input('starting current in mA = ')
+        inp2 = input('ending current in mA = ')
+        inp3 = input('# of steps: ')
+        # the values for each measurement run should be the same for consistent results
+        try:
+            start_val = int(inp1)
+        except:
+            print('expected numerical value, defaulting to -4500')
+            start_val = -4500
+        try:
+            end_val = int(inp2)
+        except:
+            print('expected numerical value, defaulting to 4500')
+            end_val = 4500
+        try:
+            steps = int(inp3)
+        except:
+            print('expected numerical value, defaulting to 200')
+            steps = 200
 
-    #     c1 = input('Automatic exit after finish? (x for yes): ')
+        c1 = input('Automatic exit after finish? (x for yes): ')
 
-    #     with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
-    #         char = input('Calibrate Metrolab sensor? (y/n): ')
-    #         if char == 'y':
-    #             calibration(node, calibrate=True)
+        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01, average=10) as node:
+            char = input('Calibrate Metrolab sensor? (y/n): ')
+            if char == 'y':
+                calibration(node, calibrate=True)
 
-    #         with open(inpFile, 'r') as f:
-    #             contents = csv.reader(f)
-    #             next(contents)
-    #             for row in contents:
-    #                 config = np.array(
-    #                     [float(row[0]), float(row[1]), float(row[2])])
-    #                 sweepCurrents(config_list=config, start_val=start_val,
-    #                             end_val=end_val, steps=steps, node=node)
+            with open(inpFile, 'r') as f:
+                contents = csv.reader(f)
+                next(contents)
+                for row in contents:
+                    config = np.array(
+                        [float(row[0]), float(row[1]), float(row[2])])
+                    sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
+                                  end_val=end_val, steps=steps, node=node)
 
-    if mode == 'm':
+    elif mode == 'm':
         inp1 = input('Configuration:\nChannel 1: ')
         inp2 = input('Channel 2: ')
         inp3 = input('Channel 3: ')
@@ -167,13 +172,13 @@ def callCurrentSweep(mode='m'):
 
         c1 = input('Automatic exit after finish? (x for yes): ')
 
-        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
+        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01, average=10) as node:
             char = input('Calibrate Metrolab sensor? (y/n): ')
             if char == 'y':
                 calibration(node, calibrate=True)
 
-            sweepCurrents(config_list=config, start_val=start_val,
-                        end_val=end_val, steps=steps, node=node)
+            sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
+                          end_val=end_val, steps=steps, node=node)
 
     else:
         print('Using preset current configuration.')
@@ -208,7 +213,8 @@ def callCurrentSweep(mode='m'):
 
         while randomRuns > 0:
             sweepCurrents(config=config, start_val=start_val,
-                            end_val=end_val, steps=steps, node=MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5))
+                          end_val=end_val, steps=steps, datadir=datadir,
+                          node=MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5))
             randomRuns = randomRuns-1
             
             

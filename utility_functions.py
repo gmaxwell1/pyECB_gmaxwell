@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 ########## local imports ##########
 import transformations as tr
 from main_comm import *
+from main_comm import _setCurrents_
 from measurements import *
 # from modules.analysis_tools import generate_plots
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
@@ -113,7 +114,7 @@ class myMeasThread(threading.Thread):
         print("Finished measuring. {} exiting.".format(self.name))
 
 
-def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start_val=0, end_val=1, steps=5):
+def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5):
     """
     sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
     and stores the measured values in various arrays
@@ -125,9 +126,10 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
             - 'z': (1,1,1)
             - 'y': (0,1,0)
         Defaults to 'z'.
-        start_val (int, optional): [description]. Defaults to 0.
-        end_val (int, optional): [description]. Defaults to 1.
-        steps (int, optional): [description]. Defaults to 5.
+        datadir (str): directory to save measurements in
+        start_val (int, optional): start ramp at. Defaults to 0.
+        end_val (int, optional): end ramp at. Defaults to 1.
+        steps (int, optional): number of steps. Defaults to 5.
     """
     global currDirectParam
     global desCurrents
@@ -170,7 +172,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', start
         int(10*current_direction[1]), int(10*current_direction[2]))
     # folder, 
     now = datetime.now().strftime('%y_%m_%d')
-    filePath = r'.\data_sets\test_measurements_{}'.format(now)
+    filePath = r'.\data_sets\{}_{}'.format(datadir,now)
     
     enableCurrents()
     # with MetrolabTHM1176Node() as node:
@@ -427,9 +429,9 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         steps = int(duration) * finesse + 1
         tspan = np.linspace(0, duration, steps)
         # dt = round(tspan[1] - tspan[0], 2)
-        func1 = ampl * config_list[0][0] * np.sin(frequency * tspan) # channel 1 values
-        func2 = ampl * config_list[0][1] * np.sin(frequency * tspan) # channel 2 values
-        func3 = ampl * config_list[0][2] * np.sin(frequency * tspan) # channel 3 values
+        func1 = ampl * config_list[0][0] * np.sin(2*np.pi*frequency * tspan) # channel 1 values
+        func2 = ampl * config_list[0][1] * np.sin(2*np.pi*frequency * tspan) # channel 2 values
+        func3 = ampl * config_list[0][2] * np.sin(2*np.pi*frequency * tspan) # channel 3 values
         
         sleep(1/finesse - time() * finesse % 1 / finesse)
         for j in range(len(tspan)):
@@ -437,7 +439,7 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
             desCurrents[1] = int(func2[j])
             desCurrents[2] = int(func3[j])
 
-            setCurrents(desCurrents, currDirectParam)
+            _setCurrents_(desCurrents, currDirectParam)
             
             sleep(1/finesse - time() * finesse % 1 / finesse)
 
@@ -465,22 +467,21 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         
     disableCurrents()
 
-    strm(returnDict, r'.\data_sets\time_measurements_02_11', now=True)
+    # strm(returnDict, r'.\data_sets\time_measurements_02_11', now=True)
 
         
     
 if __name__ == "__main__":
-    params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 5}
+    params = {'block_size': 20, 'period': 1e-2, 'duration': 30, 'averaging': 5}
    
     faden = myMeasThread(**params)
     faden.start()
-    
-    # openConnection()
-    # sleep(1)
-    # # enableCurrents()
-    # functionGenerator([1,0,1], ampl=1000, function='sqr', frequency=1, duration=5)
-    # # demagnetizeCoils()
-    # # disableCurrents()
+    sleep(1)
+    openConnection()
+    enableCurrents()
+    functionGenerator([1,1,1], ampl=3000, function='sin', frequency=1, finesse=20, duration=4*np.pi, meas=False, measDur=1.2*4*np.pi)
+    demagnetizeCoils()
+    disableCurrents()
 
     faden.join()
     closeConnection()
