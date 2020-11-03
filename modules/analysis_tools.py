@@ -1295,9 +1295,6 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
     - allow_negative_at_beginning (bool): it can happen that a few angles would be negative in the beginning, 
     which are set to values slightly below 360 degrees. Correct for this by resetting those to negative values
     if True is passed, else it is ignored.
-    - rotated_expection (None or ndarray): If provided, the rotated_expection is of the same shape as 
-    expected_values and contains the resulting vectors when applying an overall rotation to 
-    expected_values, which is used to account for misalignments.
 
     Return: fig, axs
     """
@@ -1498,7 +1495,7 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
 
     return fig, axs
 
-def fit_rotation_matrix(mean_values, expected_values, std_values = None, convention = 'xzx'):
+def fit_rotation_matrix(mean_values, expected_values, convention = 'xzx'):
     """
     Fits a rotation that yields the minimum sum of square distances between mean_values and rotated
     expected_values. This method uses the curve_fit method of scipy.optimize, which makes use of the 
@@ -1506,8 +1503,6 @@ def fit_rotation_matrix(mean_values, expected_values, std_values = None, convent
 
     Args: 
     - mean_values, expected_values (ndarrays of shape (#measurements, 3)): contain the measured and expected data
-    - std_values (None or ndarray of shape (#measurements, 3)): contains standard deviations of mean_data.
-    If provided, it will be passed to curve_fit as optional argument.
     - convention (str): the convention used to describe a general 3d-rotation by Euler angles. The resulting 
     angles depend on the convention, while the calculated rotation remains the same.
 
@@ -1516,15 +1511,11 @@ def fit_rotation_matrix(mean_values, expected_values, std_values = None, convent
     - rotated_expections (ndarray of shape (#measurements, 3)): the estimated values when applying the
     final rotation to the expected_values 
     """
-    if std_values is not None:
-        p, pcov = curve_fit(lambda x, alpha, beta, gamma: apply_rotation(x, alpha, beta, gamma, convention=convention).flatten(), 
-                        expected_values, mean_values.flatten(), p0=[5,90,0], sigma=std_values.flatten())
-    else:
-        p, pcov = curve_fit(lambda x, alpha, beta, gamma: apply_rotation(x, alpha, beta, gamma, convention=convention).flatten(), 
+    p, pcov = curve_fit(lambda x, alpha, beta, gamma: apply_rotation(x, alpha, beta, gamma, convention=convention).flatten(), 
                         expected_values, mean_values.flatten(), p0=[5,90,0])
     return p, pcov, apply_rotation(expected_values, *p)
 
-def apply_rotation(x, alpha, beta, gamma, convention = 'xzx', inverse=False):
+def apply_rotation(x, alpha, beta, gamma, convention = 'xzx'):
     """ 
     Applies a rotation with Euler angles alpha, beta and gamma to an input vector
 
@@ -1532,14 +1523,10 @@ def apply_rotation(x, alpha, beta, gamma, convention = 'xzx', inverse=False):
     - x (ndarray of length 3 or shape (N,3)): Input vector(s) which should be rotated
     - alpha, beta, gamma (flaot): Euler angles of the rotation
     - convention (str): the convention used to describe a general 3d-rotation by Euler angles.
-    - inverse (bool): If False (default), apply the actual rotation, else apply inverse if True
 
     Returns the rotated input vectors
     """
-    if inverse:
-        r = R.from_euler(convention, [alpha, beta, gamma], degrees=True).inv()
-    else:
-        r = R.from_euler(convention, [alpha, beta, gamma], degrees=True)
+    r = R.from_euler(convention, [alpha, beta, gamma], degrees=True)
     return r.apply(x)
 
 def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=True):
@@ -1575,85 +1562,3 @@ def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=Tr
                                                                         delta_phi[i], delta_theta[i]))
     
     return rotated, delta_phi, delta_theta
-
-def find_start_of_saturation(I, mean_values, std_values, component = None, verbose = False,
-                            fitting_fct = lambda x, a, b: a*x+b, fraction_cutoff = 0.02):
-    """
-    Find the indices that represent the start of saturation for both current directions. 
-
-    Args:
-    - I, mean_values, std_values, expected_values (ndarrays) are of shape (#measurements, 3), 
-    containing applied current, experimentally estimated/expected mean values and standard deviations 
-    for x,y,z-directions.
-    - component (None or int): field-component that should be considered for the fit, i.e. 0 for the x-component,
-    1 for y-component and 2 for z-component. 
-    - fitting_fct (function): function that should be used for fitting. Default is an affine transformation of the 
-    form y = ax + b. 
-    - fraction_cutoff (float): fraction of the maximum absolute value of measured fields along the provided component
-    that should be taken as a maximum acceptable cutoff for differing between linear and non-linear regime. 
-    Measurement values that deviate from the linear fit by more than fraction_cutoff * (maximum absolute value) are
-    classified as "out of the linear regime", while fields with smaller deviations are classified as 
-    "still inside the linear regime". The larger the fraction, the more data included in the 'linear regime', 
-    resulting in larger saturation values
-    - verbose (bool): flag to switch on/off printing additional information on the estimated fitting parameters
-
-    Return: i_min, i_max (int): indices where the linear regime starts and ends
-    """
-
-    # if component is not passed, take the component (along 2nd axis) that contains the maximum absolute value
-    if component is None:
-        component = np.argmax(np.max(np.abs(mean_values), axis=0))
-
-    # for not having to deal with different currents in different coils, consider equally distributed current data in 
-    # a normalized range of [-1, 1]
-    N = len(I)
-    x = np.linspace(-1,1, N)
-
-    # make initial guess for fitting dependent on number of arguments the fitting function takes
-    if fitting_fct.__code__.co_argcount == 2:
-        p0 = [10]
-    elif fitting_fct.__code__.co_argcount < 2:
-        raise ValueError
-    else:
-        p0 = np.append([10], np.zeros(fitting_fct.__code__.co_argcount-2))
-
-    # starting from middle plus minus 10 data points, fit measurement data and estimate the sum of the square errors on
-    # the selected data. Repeat this scheme while adding more data to both sides, such that equally many data points are
-    # considerd on left and right of middle. Later, the fit with smallest sum of square errors will be chosen.
-    params = []
-    errors = []
-    distances =[]
-    for aditional_data in range(10, N//2):
-        # set the currently considered range of data points
-        i_min, i_max = N//2 - aditional_data, N//2 + aditional_data+1
-        # fit the data within this range
-        p, pcov = curve_fit(fitting_fct, x[i_min:i_max], mean_values[i_min:i_max, component], 
-                                p0 = p0, sigma = std_values[i_min:i_max, component])
-        # collect fitting parameters and compute sum of square distances (divided by number of considered data points)
-        params.append(p)
-        distances.append(np.sum((mean_values[i_min:i_max,component]-fitting_fct(x[i_min:i_max],*p))**2))
-        # to speed up next guess, set the initial guess for next fitting to the current parameters
-        p0 = p
-
-    # transform lists to ndarrays
-    params = np.array(params)
-    distances = np.array(distances)
-
-    # find the fit with smallest sum of squares errors (objective of least-squares optimization)
-    i_chosen = np.argmin(distances / (2*np.arange(10, N//2)+1))
-    
-    # estimate deviation of prediction and measurements
-    deviations = np.abs((mean_values[:, component] - fitting_fct(x[:],*params[i_chosen])))
-
-    # find the values on right and left for which the deviations reach 1 mT
-    cutoff = fraction_cutoff * np.max(np.abs(mean_values[:,component]))
-    i_min = np.argmax(deviations < cutoff)
-    i_max = len(deviations) - np.argmax(np.flip(deviations) < cutoff) - 1
-
-    if verbose:
-        print('chosen index: {}, data points considered: {}'.format(i_chosen, 2*(10+i_chosen)+1))
-        print('fit parameters chosen: {}'.format(params[i_chosen]))
-        print('start saturation at: {:.2f} A and {:.2f} A'.format(x[i_min], x[i_max]))
-        print('in between there are {} data points'.format(i_max-i_min+1))
-                            
-    return i_min, i_max
