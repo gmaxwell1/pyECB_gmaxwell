@@ -281,7 +281,7 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
                    stdd_values, expected_fields, filePath, fileprefix)
 
 
-def runCurrents(channels, t=0, direct=b'1'):
+def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT'):
     """
     run arbitrary currents (less than maximum current) on each channel
     when running without a timer, the current can be changed in a menu and the magnetic field can
@@ -293,6 +293,7 @@ def runCurrents(channels, t=0, direct=b'1'):
         t (int, optional): time for which the magnetic field should be activated. 
             If zero, user can decide whether to change the current or deactivate it. Defaults to 0.
         direct (bytes, optional): current direct parameter (can usually be left alone). Defaults to b'1'.
+        subdir (str): if in non-timed mode, the subdirectory in which to save potential measurements
     """
     global currDirectParam
     global desCurrents
@@ -357,113 +358,41 @@ def runCurrents(channels, t=0, direct=b'1'):
                 faden.start()
                 
                 faden.join()
-                strm(returnDict, r'.\data_sets\time_measurements_26_10', now=True)
+                strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
                 
-
+        demagnetizeCoils()
         disableCurrents()
     else:
         return
 
 
-def generateMagneticField(magnitude, theta, phi, t=0, direct=b'1'):
-    """
-    generate a magnetic field in an arbitrary direction and an arbitrary magnitude
-
-
-    Args:
-        magnitude (float): of the B-field, in [mT]
-        theta (float): angle between desired field direction and z axis
-        phi (float): azimuthal angle (measured from the x axis)
-        t (int, optional): Time for which the magnetic field should be activated (if not 0). Defaults to 0.
-        direct (bytes, optional): Current direct parameter. Defaults to b'1'.
-    """
-    global currDirectParam
-    global desCurrents
-
-    B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-    I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
-
-    currDirectParam = direct
-    # copy the computed current values (mA) into the desCurrents list (first 3 positions)
-    # cast to int
-    for i in range(len(I_vector)):
-        desCurrents[i] = int(I_vector[i])
-
-    # user specified on time
-    if t > 0:
-        enableCurrents()
-        setCurrents(desCurrents, currDirectParam)
-        # prevent the connection with the ECB from timing out for long measurements.
-        if t < 500:
-            sleep(t)
-        else:
-            starttime = time()
-            while time() - starttime < t:
-                sleep(500)
-                getCurrents()
-
-    # on until interrupted by user
-    elif t == 0:
-        enableCurrents()
-
-        setCurrents(desCurrents, currDirectParam)
-
-        # wait until user presses enter
-        c1 = '0'
-        while c1 != 'q':
-            c1 = input(
-                '[q] to disable currents\n[c]: get currents\n[r]: Set new magnetic field\n[s]: get ECB status\n[f]: get magnetic field measurement\n')
-            if c1 == 'c':
-                getCurrents()
-            elif c1 == 'r':
-                inp1 = input('New B-Field magnitude: ')
-                inp2 = input('Polar angle theta: ')
-                inp3 = input('Azimuthal angle phi: ')
-                try:
-                    magnitude = int(inp1)
-                except:
-                    print("non-integer value entered, magnitude = 20")
-                    magnitude = 20
-                try:
-                    theta = int(inp2)
-                except:
-                    print("non-integer value entered, theta = 0")
-                    theta = 0
-                try:
-                    phi = int(inp3)
-                except:
-                    print("non-integer value entered, phi = 0")
-                    phi = 0
-
-                B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-                I_vector = tr.computeCoilCurrents(
-                    B_vector, windings, resistance)
-
-                for i in range(len(I_vector)):
-                    desCurrents[i] = int(I_vector[i])
-
-                setCurrents(desCurrents, currDirectParam)
-
-            elif c1 == 's':
-                print(getStatus())
-            elif c1 == 'f':
-                try:
-                    duration = int(input('Duration of measurement (default is 10s): '))
-                except:
-                    duration = 10
-                params = {'block_size': 30, 'period': 5e-3, 'duration': duration, 'averaging': 5}
-
-                faden = myMeasThread(**params)
-                faden.start()
-                
-                faden.join()
-                strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
-                
-    else:
-        return
+# def generateMagneticField(magnitude, theta, phi, , subdir='serious_measurements_for_LUT'):
     
-    demagnetizeCoils()
-    disableCurrents()
+#     global currDirectParam
+#     global desCurrents
+
+#     B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+#     I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+
+#     currDirectParam = b'1'
+#     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
+#     # cast to int
+#     for i in range(len(I_vector)):
+#         desCurrents[i] = int(I_vector[i])
+        
+#     enableCurrents()
+#     setCurrents(desCurrents, currDirectParam)
+
+#     params = {'block_size': 30, 'period': 5e-3, 'duration': duration, 'averaging': 5}
+
+#     faden = myMeasThread(**params)
+#     faden.start()
+
+#     faden.join()
+#     strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
+    
+#     demagnetizeCoils()
+#     disableCurrents()
 
 
 def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
@@ -541,67 +470,20 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         
     
 if __name__ == "__main__":
-    params = {'block_size': 100, 'period': 7.5e-3, 'duration': 15, 'averaging': 1}
-    
+    params = {'block_size': 20, 'period': 1e-2, 'duration': 10, 'averaging': 5}
    
     faden = myMeasThread(**params)
     faden.start()
     
-    openConnection()
-    sleep(1)
-    # enableCurrents()
-    functionGenerator([1,0,1], ampl=1000, function='sqr', frequency=1, duration=5)
-    # demagnetizeCoils()
-    # disableCurrents()
+    # openConnection()
+    # sleep(1)
+    # # enableCurrents()
+    # functionGenerator([1,0,1], ampl=1000, function='sqr', frequency=1, duration=5)
+    # # demagnetizeCoils()
+    # # disableCurrents()
 
     faden.join()
     closeConnection()
 
     
-    # strm(returnDict, r'.\data_sets\time_measurements_27_10', now=True)
-    
-    item_name = ['Bx', 'By', 'Bz']
-    labels = ['Bx', 'By', 'Bz', 'T']
-    curve_type = ['F', 'F', 'F', 'T']
-    to_show = [True, True, True, False]
-    
-    plotdata = [returnDict[key] for key in item_name]
-    timeline = returnDict['time']
-    
-    fig, ax1 = plt.subplots()
-    # ax2 = ax1.twinx()
-    plt.draw()
-
-    # Setup colors
-    NTemp = curve_type.count('T')
-    cmap1 = plt.get_cmap('autumn')
-    colors1 = [cmap1(i) for i in np.linspace(0, 1, NTemp)]
-
-    NField = curve_type.count('F')
-    cmap2 = plt.get_cmap('winter')
-    colors2 = [cmap2(i) for i in np.linspace(0, 1, NField)]
-
-    colors = []
-    count1 = 0
-    count2 = 0
-    for ct in curve_type:
-        if ct == 'T':
-            colors.append(colors1[count1])
-            count1 += 1
-        else:
-            colors.append(colors2[count2])
-            count2 += 1
-
-    # Create the matplotlib lines for each curve
-    lines = []
-    for k, flag in enumerate(to_show):
-        if flag:
-            data_to_plot = plotdata[k]
-            if curve_type[k] == 'F':
-                ln, = ax1.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
-            # else:
-            #     ln, = ax2.plot(timeline, data_to_plot, label=labels[k], color=colors[k])
-            lines.append(ln)
-
-    ax1.legend(lines, labels, loc='best')
-    plt.show()
+    strm(returnDict, r'.\data_sets\time_measurements_03_11', now=True)
