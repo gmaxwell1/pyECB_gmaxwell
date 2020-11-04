@@ -369,32 +369,32 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 if __name__ == "__main__":
     
-    # data_directory = r'data_sets\time_measurements_03_11'
+    data_directory = r'data_sets\testing_linearity_y'
     # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # # for item in files:
-    # filepath = os.path.join(data_directory, 'data_sets\time_measurements_03_11')
+    filepath = os.path.join(data_directory, '20_11_04_18-43-53_time_resolved.csv')
     # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
-    # generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=True, save_dir=data_directory,
-    #                     output_file_name=img_name, separate=False, statistics=True)
+    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
+                        separate=False, statistics=True)
     
-    fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_03_11\20_11_03_15-31-01_time_resolved.csv', 'z', 2.5)
+    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_03_11\20_11_03_15-31-01_time_resolved.csv', 'z', 2.5)
     
     # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
     #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
-    ampl = np.amax(np.abs(plot_data))
-    print(np.abs(plot_data))
-    ampl_list = []
-    for item in np.abs(plot_data[0]):
-        if item >= 0.95 * ampl:
-            ampl_list.append(item)
-    ampl = round(np.mean(np.array(ampl_list)),2)
-    std_ampl = round(np.std(np.array(ampl_list)),2)
-    std = round(np.std(plot_data),2)
+    # ampl = np.amax(np.abs(plot_data))
+    # print(np.abs(plot_data))
+    # ampl_list = []
+    # for item in np.abs(plot_data[0]):
+    #     if item >= 0.95 * ampl:
+    #         ampl_list.append(item)
+    # ampl = round(np.mean(np.array(ampl_list)),2)
+    # std_ampl = round(np.std(np.array(ampl_list)),2)
+    # std = round(np.std(plot_data),2)
     
-    freq = 1/(times[1]-times[0])
+    # freq = 1/(times[1]-times[0])
     
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
-    ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
     
     # mag_x = round(np.mean(fields[:,0]),2)
     # mag_y = round(np.mean(fields[:,1]),2)
@@ -411,7 +411,7 @@ if __name__ == "__main__":
     # ax[0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
     #                 .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
 
-    plt.tight_layout()
+    # plt.tight_layout()
     # # print(fields[1:6,0])
     
-    plt.show()
+    # plt.show()

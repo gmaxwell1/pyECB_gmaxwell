@@ -232,9 +232,9 @@ class MetrolabTHM1176Node(object):
         Returns:
             list of 3 floats: [Bx, By, Bz] (the measured magnetic field amplitudes)
         """
-        Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + self.n_digits).strip('MT'))
-        By = float(self.sensor.ask(':measure:y? 0.01T,' + self.n_digits).strip('MT'))
-        Bz = float(self.sensor.ask(':measure:z? 0.01T,' + self.n_digits).strip('MT'))
+        Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + str(self.n_digits)).strip('MT'))
+        By = float(self.sensor.ask(':measure:y? 0.01T,' + str(self.n_digits)).strip('MT'))
+        Bz = float(self.sensor.ask(':measure:z? 0.01T,', self.n_digits).strip('MT'))
                 
         return [Bx, By, Bz]
                   

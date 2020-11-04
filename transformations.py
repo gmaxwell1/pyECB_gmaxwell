@@ -55,36 +55,36 @@ def computeCoilCurrents(B_fieldVector, windings, resistance):
     Vector of 3 current values, as a np.array, units: [mA]
     """
     actMatrix = np.zeros((3, 3))
-    # actMatrix[0, 0] = 0.051343
-    # actMatrix[0, 1] = 0
-    # actMatrix[0, 2] = -0.051343
-    # actMatrix[1, 0] = -0.029643
-    # actMatrix[1, 1] = 0.059286
-    # actMatrix[1, 2] = -0.029643
-    # actMatrix[2, 0] = 0.008820
-    # actMatrix[2, 1] = 0.008820
-    # actMatrix[2, 2] = -0.008820
+    actMatrix[0, 0] = 0.051343
+    actMatrix[0, 1] = 0
+    actMatrix[0, 2] = -0.051343
+    actMatrix[1, 0] = -0.029643
+    actMatrix[1, 1] = 0.059286
+    actMatrix[1, 2] = -0.029643
+    actMatrix[2, 0] = 0.008820
+    actMatrix[2, 1] = 0.008820
+    actMatrix[2, 2] = -0.008820
     
     # actMatrix = actMatrix * windings
 
     # These values are still just estimates in the current config. But based on measurements. (29.10.) ~1-3mm above poles
-    actMatrix[0, 0] = 35
-    actMatrix[0, 1] = -8
-    actMatrix[0, 2] = -26
-    actMatrix[1, 0] = -29
-    actMatrix[1, 1] = 40
-    actMatrix[1, 2] = -10
-    actMatrix[2, 0] = 22
-    actMatrix[2, 1] = 0
-    actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
+    # actMatrix[0, 0] = 35
+    # actMatrix[0, 1] = -8
+    # actMatrix[0, 2] = -26
+    # actMatrix[1, 0] = -29
+    # actMatrix[1, 1] = 40
+    # actMatrix[1, 2] = -10
+    # actMatrix[2, 0] = 22
+    # actMatrix[2, 1] = 0
+    # actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
     
     actMatrix_inverse = np.linalg.inv(actMatrix)
 
     # print('Inverse actuation matrix: \n', act_matrix_inverse)
 
-    # currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
-    # currVector = (currVector_amp_turns / windings) # in amps
-    currVector = actMatrix_inverse.dot(B_fieldVector)  # in amps
+    currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
+    currVector = (currVector_amp_turns / windings) # in amps
+    # currVector = actMatrix_inverse.dot(B_fieldVector)  # in amps
 
     power = ((currVector[0] ** 2) + (currVector[1] **
                                      2) + (currVector[2] ** 2)) * resistance

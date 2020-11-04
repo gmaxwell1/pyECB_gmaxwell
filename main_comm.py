@@ -365,6 +365,7 @@ if __name__ == '__main__':
     print(ECB_ACT_CURRENTS)
     sleep(4)
     demagnetizeCoils()
+    print(ECB_ACT_CURRENTS)
     disableECBCurrents()
     exitECBapi()
 
