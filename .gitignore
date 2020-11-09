@@ -12,7 +12,6 @@ get_configuration.py
 fit_fields.py
 old_ time_resolved_meas_with_cube.py
 analysis_rotation.py
-feedback.py
 analysis_correct_misalignment.py
 estimate_saturation_limits.py
 

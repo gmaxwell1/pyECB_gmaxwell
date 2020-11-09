@@ -178,7 +178,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
                 calibration(node, calibrate=True)
 
             sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
-                          end_val=end_val, steps=steps, node=node)
+                          end_val=end_val, steps=steps, node=node, today=False)
 
     else:
         print('Using preset current configuration.')

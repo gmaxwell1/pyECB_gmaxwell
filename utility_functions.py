@@ -114,7 +114,7 @@ class myMeasThread(threading.Thread):
         print("Finished measuring. {} exiting.".format(self.name))
 
 
-def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5):
+def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5, today=True):
     """
     sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
     and stores the measured values in various arrays
@@ -144,7 +144,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
     # some possible configurations
     current_direction = np.ndarray(3)
     if config_list is not None:
-        max_val = abs(np.amax(config_list))
+        max_val = np.amax(abs(config_list))
         current_direction[0] = config_list[0] / max_val
         current_direction[1] = config_list[1] / max_val
         current_direction[2] = config_list[2] / max_val
@@ -171,8 +171,12 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
     fileprefix = '({}_{}_{})_field_meas'.format(int(10*current_direction[0]), 
         int(10*current_direction[1]), int(10*current_direction[2]))
     # folder, 
-    now = datetime.now().strftime('%y_%m_%d')
-    filePath = r'.\data_sets\{}_{}'.format(datadir,now)
+    if today:
+        now = datetime.now().strftime('%y_%m_%d')
+        filePath = f'data_sets\{datadir}_{now}'
+    else:
+        filePath = f'data_sets\{datadir}'
+
     
     enableCurrents()
     # with MetrolabTHM1176Node() as node:

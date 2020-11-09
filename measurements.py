@@ -322,33 +322,61 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
 
 if __name__ == '__main__':
     
-    # CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
-    # CC_X.wait_for_ready()
-    # CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    # CC_Y.wait_for_ready()
-    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    # CC_Z.wait_for_ready()
+    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
+    CC_X.wait_for_ready()
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
+    CC_Y.wait_for_ready()
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Z.wait_for_ready()
     
-    # print(CC_Z.read_cur_pos())
-    # print(CC_Y.read_cur_pos())
-    # print(CC_X.read_cur_pos())
-    # # CC_Z.move_absolute(new_pos=21)
-    # # CC_Z.wait_for_ready()
-    # # print(CC_Z.read_cur_pos())
-    # CC_Z.move_absolute(new_pos=8.3)
-    # CC_Z.wait_for_ready()
-    # print(CC_Z.read_cur_pos())
-    # CC_Y.move_absolute(new_pos=0)
-    # CC_Y.wait_for_ready()
-    # print(CC_Y.read_cur_pos())
-    # CC_X.move_absolute(new_pos=20)
-    # CC_X.wait_for_ready()
-    # print(CC_X.read_cur_pos())
-    # print(CC_Z.read_cur_pos())
+    cal_pos_z = 20
+    start_pos_z = CC_Z.read_cur_pos()
+    total_distance_z = cal_pos_z-start_pos_z
+    
+    cal_pos_y = 0
+    start_pos_y = CC_Y.read_cur_pos()
+    total_distance_y = abs(cal_pos_y-start_pos_y)
+    
+    cal_pos_x = 20
+    start_pos_x = CC_X.read_cur_pos()
+    total_distance_x = abs(cal_pos_x-start_pos_x)
+    
+    print('Moving to calibration position...')
+    CC_Z.move_absolute(new_pos=cal_pos_z)
+    CC_Y.move_absolute(new_pos=cal_pos_y)
+    CC_X.move_absolute(new_pos=cal_pos_x)
+    
+    if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
+        progressBar(CC_Y, start_pos_y, total_distance_y)
+    elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
+        progressBar(CC_X, start_pos_x, total_distance_x)
+    else:
+        progressBar(CC_Z, start_pos_z, total_distance_z)
 
-    # #     print(curr_pos_z)
-    # #     c = input('raise again?')
-    with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
-        calibration(node, calibrate=True)
+    char = input('\nPress enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+    if char == '':
+       sleep(5)
+    input('Press enter to continue measuring')
     
+    meas_offset_z = 8.3 # should be 7.9 later with new part
+    start_pos_z = CC_Z.read_cur_pos()
+    total_distance_z = abs(meas_offset_z-start_pos_z)
     
+    meas_offset_y = 15.9
+    start_pos_y = CC_Y.read_cur_pos()
+    total_distance_y = abs(meas_offset_y-start_pos_y)
+    
+    meas_offset_x = 5.0
+    start_pos_x = CC_X.read_cur_pos()
+    total_distance_x = abs(meas_offset_x-start_pos_x)
+    
+    CC_Z.move_absolute(new_pos=meas_offset_z)
+    CC_Y.move_absolute(new_pos=meas_offset_y)
+    CC_X.move_absolute(new_pos=meas_offset_x)
+    
+    if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
+        progressBar(CC_Y, start_pos_y, total_distance_y)
+    elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
+        progressBar(CC_X, start_pos_x, total_distance_x)
+    else:
+        progressBar(CC_Z, start_pos_z, total_distance_z)
