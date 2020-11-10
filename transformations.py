@@ -36,8 +36,6 @@ def computeMagneticFieldVector(magnitude, theta, phi):
 
     unitVector = np.array((x, y, z))
     unitVector = unitVector / np.linalg.norm(unitVector)
-    #print('Requested magnetic field direction: ({},{},{})'.format(unitVector[0],unitVector[1],unitVector[2]))
-    #print('Requested magnetic flux density: {} mT'.format(magnitude))
 
     return unitVector * magnitude
 
@@ -48,8 +46,8 @@ def computeCoilCurrents(B_fieldVector, windings=508, resistance=0.5):
 
     Args:
     - B_fieldVector: np.array containing the B-field, in cartesian coordinates, magnitude units: [mT]
-    - windings: number of windings per coil (508 for the QZabre electromagnet)
-    - resistance: resistance per coil (ohms)
+    x windings: number of windings per coil (508 for the QZabre electromagnet) not needed anymore
+    x resistance: resistance per coil (ohms) not needed anymore
 
     Returns: 
     Vector of 3 current values, as a np.array, units: [mA]
@@ -85,28 +83,23 @@ def computeCoilCurrents(B_fieldVector, windings=508, resistance=0.5):
         
         # actMatrix = actMatrix * windings
 
-        # These values are still just estimates in the current config. But based on measurements. (29.10.) ~1-3mm above poles
+        # These values are still just estimates in the current config. But based on measurements. (29.10.) ~2.4mm above poles
+        # dB_x/dI_{1,2,3}
         actMatrix[0, 0] = 35
         actMatrix[0, 1] = -8
         actMatrix[0, 2] = -26
-        
+        # dB_y/dI_{1,2,3}
         actMatrix[1, 0] = -29
         actMatrix[1, 1] = 40
         actMatrix[1, 2] = -10
-        
+        # dB_z/dI_{1,2,3}
         actMatrix[2, 0] = 22
         actMatrix[2, 1] = 0
         actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
         
         actMatrix_inverse = np.linalg.inv(actMatrix)
         # print('Inverse actuation matrix: \n', act_matrix_inverse)
-        # currVector_amp_turns = actMatrix_inverse.dot(B_fieldVector)  # in amp-turns
-        # currVector = (currVector_amp_turns / windings) # in amps
         currVector = actMatrix_inverse.dot(B_fieldVector)  # in amps
-
-        power = ((currVector[0] ** 2) + (currVector[1] **
-                                        2) + (currVector[2] ** 2)) * resistance
-        #print('Power [W]: ', power)
 
         currVector = currVector * 1000  # in milliamps
 
@@ -121,7 +114,7 @@ def computeMagField(currVector, windings=508):
 
     Args:
     - currVector: Vector of 3 current values, as a np.array, units: [mA]
-    - windings: number of windings per coil (508 for the QZabre electromagnet)
+    x windings: number of windings per coil (508 for the QZabre electromagnet) not needed anymore
 
     Returns: 
     Vector of 3 B field components (Bx,By,Bz), as a np.array, units: [mT]
@@ -139,21 +132,21 @@ def computeMagField(currVector, windings=508):
     # actMatrix[2, 2] = -0.008820
     
     # actMatrix = actMatrix * windings
-
+    # dB_x/dI_{1,2,3}
     actMatrix[0, 0] = 35
     actMatrix[0, 1] = -8
     actMatrix[0, 2] = -26
+    # dB_y/dI_{1,2,3}
     actMatrix[1, 0] = -29
     actMatrix[1, 1] = 40
     actMatrix[1, 2] = -10
+    # dB_z/dI_{1,2,3}
     actMatrix[2, 0] = 22
     actMatrix[2, 1] = 0
     actMatrix[2, 2] = -8 # z-field is positive when I3 is negative and increases when I3 decreases
 
-    # print('Inverse actuation matrix: \n', act_matrix_inverse)
     currVector = currVector / 1000  # in amps
 
-    # currVector_amp_turns = (currVector * windings)  # in amp-turns
     B_fieldVector = actMatrix.dot(currVector)  # in millitesla
 
     return B_fieldVector

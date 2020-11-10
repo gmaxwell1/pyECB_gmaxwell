@@ -25,21 +25,6 @@ import csv
 from ECB import *
 
 
-__all__ = [
-    'openConnection',
-    'closeConnection',
-    'enableCurrents',
-    'disableCurrents',
-    'setMaxCurrent',
-    'setCurrents',
-    'getCurrents',
-    'getTemps',
-    'getStatus',
-    'demagnetizeCoils',
-    'ECB_ACT_CURRENTS',
-    'ECB_MAX_CURR'
-]
-
 ##########  Connection parameters ##########
 ECB_ADDRESS = "192.168.237.47"
 ECB_PORT = "7070"

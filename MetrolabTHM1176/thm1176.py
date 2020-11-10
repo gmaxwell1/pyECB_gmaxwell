@@ -234,7 +234,7 @@ class MetrolabTHM1176Node(object):
         """
         Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + str(self.n_digits)).strip('MT'))
         By = float(self.sensor.ask(':measure:y? 0.01T,' + str(self.n_digits)).strip('MT'))
-        Bz = float(self.sensor.ask(':measure:z? 0.01T,', self.n_digits).strip('MT'))
+        Bz = float(self.sensor.ask(':measure:z? 0.01T,' + str(self.n_digits)).strip('MT'))
                 
         return [Bx, By, Bz]
                   
@@ -333,15 +333,19 @@ if __name__ == '__main__':
 
     
     thm = MetrolabTHM1176Node(**params)  # You may want to ahve a smarter way of fetching the resource name
+    sleep(1 - time()  % 1)
+    for i in range(15):
+        print(thm.measureFieldmT())
+        sleep(1 - time()  % 1)
 
 
-    data_stack = []  # list is thread safe
+    # data_stack = []  # list is thread safe
 
-    # Start the monitoring thread
-    thread = threading.Thread(target=thm.start_acquisition)
-    thread.start()
-    sleep(10)
-    thm.stop = True
+    # # Start the monitoring thread
+    # thread = threading.Thread(target=thm.start_acquisition)
+    # thread.start()
+    # sleep(10)
+    # thm.stop = True
 
     '''
     This commented part is the original plotting code. I copied part of it down below.

@@ -16,11 +16,13 @@ import numpy as np
 import math
 from time import time, sleep
 import csv
+import os
 
 ########## local imports ##########
 from utility_functions import *
 from main_comm import *
 from measurements import calibration
+import feedback as fb
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 
@@ -44,8 +46,8 @@ def MainMenu(initialized):
             print('[2]: sweep theoretical magnetic field vectors, measure actual components '
                   '\n\t(specify polar and azimuthal angles, magnitude range or rotational axis)')
             print('[3]: set currents manually on 3 channels (in mA)')
-            # print(
-                # '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
+            print(
+                '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
             print(
                 '[5]: Generate a time varying field (sin and sqr waves are possible currently)')
             print('[6]: get ECB status\n')
@@ -55,7 +57,8 @@ def MainMenu(initialized):
 
             if c1 == '1':
                 inp0 = input('Automatic or manual input? (m or nothing): ')
-                datadir = input('Enter a valid directory name to save measurement data in: ')
+                datadir = input(
+                    'Enter a valid directory name to save measurement data in: ')
                 if datadir == '':
                     callCurrentSweep(inp0)
                 else:
@@ -64,20 +67,20 @@ def MainMenu(initialized):
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
                 callSweepVectorField()
-                
+
             elif c1 == '3':
                 callRunCurrents()
-               
+
             # tentative implementation. Actual I-to-B actuation matrix needed.
-            # elif c1 == '4':
-            #     callGenerateVectorField()
+            elif c1 == '4':
+                callGenerateVectorField()
 
             elif c1 == '5':
                 callFunctionGen()
-                
+
             elif c1 == '6':
                 print(getStatus())
-                
+
             elif c1 == 'r':
                 # just for fun :D
                 c1 = np.random.randint(1, 7)
@@ -123,7 +126,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
 
         c1 = input('Automatic exit after finish? (x for yes): ')
 
-        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01, average=10) as node:
+        with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
             char = input('Calibrate Metrolab sensor? (y/n): ')
             if char == 'y':
                 calibration(node, calibrate=True)
@@ -172,7 +175,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
 
         c1 = input('Automatic exit after finish? (x for yes): ')
 
-        with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01, average=10) as node:
+        with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
             char = input('Calibrate Metrolab sensor? (y/n): ')
             if char == 'y':
                 calibration(node, calibrate=True)
@@ -216,8 +219,8 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
                           end_val=end_val, steps=steps, datadir=datadir,
                           node=MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5))
             randomRuns = randomRuns-1
-            
-            
+
+
 def callSweepVectorField():
     """
     Setup function to call the utility function 'rampVectorField', see 'utility_functions.py'. Manages necessary inputs.
@@ -225,8 +228,9 @@ def callSweepVectorField():
     inp1 = input('Angle to z axis in deg = ')
     inp2 = input('Angle to x axis in deg = ')
     inp3 = input('starting magnitude in mT = ')
-    rot = input('Rotate constant magnitude field around a specified axis? (otherwise ramp field magnitude in a constant direction): ')
-    
+    rot = input(
+        'Rotate constant magnitude field around a specified axis? (otherwise ramp field magnitude in a constant direction): ')
+
     if rot == 'y':
         axisang1 = input('Axis polar angle: ')
         axisang2 = input('Axis azimuthal angle: ')
@@ -234,16 +238,16 @@ def callSweepVectorField():
             axis = (int(axisang1), int(axisang2))
         except:
             print('expected numerical value, defaulting to (0,0) or z-axis')
-            axis = (0,0)
-        
-    else:    
+            axis = (0, 0)
+
+    else:
         inp4 = input('ending magnitude in mT = ')
         try:
             end_mag = int(inp4)
         except:
             print('expected numerical value, defaulting to 1')
             end_mag = 1
-        
+
     inp5 = input('# of steps: ')
 
     try:
@@ -267,17 +271,18 @@ def callSweepVectorField():
         print('expected numerical value, defaulting to 1')
         steps = 1
 
-    with MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.01) as node:
-    # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+    with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
+        # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
         char = input('Calibrate Metrolab sensor? (y/n): ')
         if char == 'y':
             calibration(node, calibrate=True)
-            
+
         if rot == 'y':
-            rampVectorField(node, theta, phi, start_mag, steps=steps, rotate=axis)
+            rampVectorField(node, theta, phi, start_mag,
+                            steps=steps, rotate=axis)
         else:
             rampVectorField(node, theta, phi, start_mag, end_mag, steps=steps)
-            
+
 
 def callRunCurrents():
     """
@@ -305,8 +310,14 @@ def callRunCurrents():
 
     if inp4 == '':
         subdir = input('Which subdirectory should measurements be saved to? ')
-        runCurrents(
-            np.array([coil1, coil2, coil3]), t=0, direct=b'1', subdir=subdir)
+        with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
+            # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+            char = input('Calibrate Metrolab sensor? (y/n): ')
+            if char == 'y':
+                calibration(node, calibrate=True)
+
+        runCurrents(np.array([coil1, coil2, coil3]),
+                    t=0, direct=b'1', subdir=subdir)
     else:
         try:
             timer = int(inp4)
@@ -317,22 +328,78 @@ def callRunCurrents():
             timer = 0
         runCurrents(
             np.array([coil1, coil2, coil3]), timer, direct=b'1')
+
+
+def feedbackMode():
+    """
+    Setup function to call the utility function 'simpFeedback', see 'feedback.py'. Manages necessary inputs.
+    """
+    
+    subdir = input('Which directory should the output file be saved in? ')
+    filename = input('Enter a valid filename: ')
+    
+    filename = filename + '.txt'
         
+    if subdir == '':
+        subdir = r'data_sets\linearization_matrices'
+    if filename == '':
+        filename = 'dataset1.txt'
         
+    filepath = os.path.join(subdir, filename)
+                
+    d, cur, avgcur = fb.simpFeedback(maxCorrection=20, thresholdPercentage=0.01, calibrate=True, ECB_active=True)
+    
+    file = open(filepath, 'a')
+    file.write('Local actuation matrix:')
+    for i in range(len(d[0])):
+        for j in range(len(d[:,0])):
+            if j != len(d[:,0]) - 1:
+                file.write(d[i,j], ', ')
+            else:
+                file.write(d[i,j])
+        file.write('\n')
+
+
 def callGenerateVectorField():
     """
     Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
     """
-    pass
-        
-        
+    inp1 = input('magnitude: ')
+    inp2 = input('polar angle (theta): ')
+    inp3 = input('azimuthal angle (phi): ')
+    subdir = input('Which subdirectory should measurements be saved to? ')
+    try:
+        magnitude = int(inp1)
+    except:
+        print('expected numerical value, defaulting to 0')
+        magnitude = 0
+    try:
+        theta = int(inp2)
+    except:
+        print('expected numerical value, defaulting to 0')
+        theta = 0
+    try:
+        phi = int(inp3)
+    except:
+        print('expected numerical value, defaulting to 0')
+        phi = 0
+
+    # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
+    #         # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+    #         char = input('Calibrate Metrolab sensor? (y/n): ')
+    #         if char == 'y':
+    #             calibration(node, calibrate=True)
+                
+    generateMagneticField(magnitude, theta, phi, subdir=subdir)
+
+
 def callFunctionGen():
     """
     Setup function to call the utility function 'switchConfigsAndMeasure', see 'utility_functions.py'. Manages necessary inputs.
     """
-    
+
     function = input('Function to generate (sqr or sin): ')
-    
+
     configs = []
     while char != 'x':
         inp1 = input('configuration 1\nChannel 1: ')
@@ -346,7 +413,7 @@ def callFunctionGen():
         except:
             print('expected numerical value, defaulting to (0,0,1)')
             configs.append(np.array([0, 0, 1]))
-            
+
         if function == 'sqr':
             char = input('another config (enter x to end)')
         else:
@@ -359,7 +426,7 @@ def callFunctionGen():
     except:
         print('expected numerical value(s), defaulting to 0')
         amplitude = 1000
-    
+
     if function == 'sqr':
         inp8 = input('how many times to repeat: ')
     else:
@@ -369,7 +436,7 @@ def callFunctionGen():
     except:
         print('expected numerical value(s), defaulting to 10')
         rounds = 10
-        
+
     if function == 'sin':
         inp1 = input('Finesse value (divisions per second): ')
         try:
@@ -377,7 +444,7 @@ def callFunctionGen():
         except:
             print('expected numerical value(s), defaulting to 10')
             finesse = 10
-        
+
     inp2 = input('Duration? ')
     try:
         duration = float(inp2)
@@ -392,8 +459,9 @@ def callFunctionGen():
         measure = False
 
     # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
-    functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds, finesse=finesse, duration=duration, meas=measure, measDur=1.1*duration)
-    
+    functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds,
+                      finesse=finesse, duration=duration, meas=measure, measDur=1.1*duration)
+
 
 if __name__ == '__main__':
     ecbInit = openConnection()
@@ -402,4 +470,3 @@ if __name__ == '__main__':
 
     MainMenu(ecbInit)
     closeConnection()
-
