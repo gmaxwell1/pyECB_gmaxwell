@@ -17,6 +17,7 @@ import math
 from time import time, sleep
 import csv
 import os
+from scipy import stats
 
 ########## local imports ##########
 from utility_functions import *
@@ -50,7 +51,7 @@ def MainMenu(initialized):
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
             print(
                 '[5]: Generate a time varying field (sin and sqr waves are possible currently)')
-            print('[6]: get ECB status\n')
+            print('[6]: Use feedback control for vector magnet to determine currents for a certain B-field direction\n')
             print('[r] roll a die\n')
 
             c1 = input()
@@ -79,7 +80,7 @@ def MainMenu(initialized):
                 callFunctionGen()
 
             elif c1 == '6':
-                print(getStatus())
+                feedbackMode()
 
             elif c1 == 'r':
                 # just for fun :D
@@ -332,9 +333,26 @@ def callRunCurrents():
 
 def feedbackMode():
     """
-    Setup function to call the utility function 'simpFeedback', see 'feedback.py'. Manages necessary inputs.
+    Setup function to call the utility function 'callableFeedback', see 'feedback.py'. Manages necessary inputs.
     """
-    
+    print('Enter the magnetic Field vector info:')
+    source = input('With an input file? (y/n) ')
+    if source != 'y':
+        coordinates = input('coordinate system: ')
+        B_0 = input('Component 1 = ')
+        B_1 = input('Component 2 = ')
+        B_2 = input('Component 3 = ')
+        B_info_arr = [[coordinates,np.array([float(B_0),float(B_1),float(B_2)])]]
+        
+    else:
+        inpFile = input('Enter a valid configuration file path: ')
+        B_info_arr = []
+        with open(inpFile, 'r') as f:
+            contents = csv.reader(f)
+            next(contents)
+            for row in contents:
+                B_info_arr.append([row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
+                
     subdir = input('Which directory should the output file be saved in? ')
     filename = input('Enter a valid filename: ')
     
@@ -342,23 +360,52 @@ def feedbackMode():
         
     if subdir == '':
         subdir = r'data_sets\linearization_matrices'
-    if filename == '':
+    if filename == '' or filename[0] == ' ':
         filename = 'dataset1.txt'
         
     filepath = os.path.join(subdir, filename)
-                
-    d, cur, avgcur = fb.simpFeedback(maxCorrection=20, thresholdPercentage=0.01, calibrate=True, ECB_active=True)
     
-    file = open(filepath, 'a')
-    file.write('Local actuation matrix:')
-    for i in range(len(d[0])):
-        for j in range(len(d[:,0])):
-            if j != len(d[:,0]) - 1:
-                file.write(d[i,j], ', ')
+    for k in range(len(B_info_arr)):
+        B_info = B_info_arr[k]
+        B, d, cur, _ = fb.callableFeedback(B_info,maxCorrection=20, thresholdPercentage=0.01, calibrate=True, ECB_active=True)
+
+        file = open(filepath, 'a')
+        file.write(f'Magnetic field vector (B_x,B_y,B_z) = ({B[0]:.2f},{B[1]:.2f},{B[2]:.2f})\n')
+        file.write('Local actuation matrix:\n')
+        for i in range(len(d[:,0])):
+            for j in range(len(d[0])):
+                if j != len(d[0]) - 1:
+                    file.write(str(round(d[i,j],4)))
+                    file.write(', ')
+                else:
+                    file.write(str(round(d[i,j],4)))
+            file.write('\n')
+
+        file.write('Current configurations:\n')
+        for i in range(min(len(cur[:,0]),30)):
+            file.write('(')
+            for j in range(len(cur[0])):
+                if j != len(cur[0]) - 1:               
+                    file.write(str(cur[i,j]))
+                    file.write(', ')
+                else:
+                    file.write(str(cur[i,j]))
+            file.write(')\n')
+            
+        file.write('Best of current configurations:\n')
+        file.write('(')
+        mode, _ = stats.mode(cur)
+        for j in range(len(mode[0])):
+            if j != len(mode[0]) - 1:               
+                file.write(str(mode[0,j]))
+                file.write(', ')
             else:
-                file.write(d[i,j])
+                file.write(str(mode[0,j]))
+        file.write(')\n')
         file.write('\n')
 
+        file.close()
+    
 
 def callGenerateVectorField():
     """

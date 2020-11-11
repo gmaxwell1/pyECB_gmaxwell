@@ -30,14 +30,14 @@ def computeMagneticFieldVector(magnitude, theta, phi):
     Vector of 3 B field components (Bx,By,Bz), as a np.array, units: [mT]
     """
 
-    x = round(math.sin(math.radians(theta)) * math.cos(math.radians(phi)),1)
-    y = round(math.sin(math.radians(theta)) * math.sin(math.radians(phi)),1)
-    z = round(math.cos(math.radians(theta)),1)
+    x = math.sin(math.radians(theta)) * math.cos(math.radians(phi))
+    y = math.sin(math.radians(theta)) * math.sin(math.radians(phi))
+    z = math.cos(math.radians(theta))
 
     unitVector = np.array((x, y, z))
     unitVector = unitVector / np.linalg.norm(unitVector)
 
-    return unitVector * magnitude
+    return np.around(unitVector * magnitude, 2)
 
 
 def computeCoilCurrents(B_fieldVector, windings=508, resistance=0.5):
@@ -212,10 +212,10 @@ if __name__ == '__main__':
     #
     # test the transformation functions
 
-    B1 = computeMagneticFieldVector(theta=0, phi=0, magnitude=50.1)
+    B1 = computeMagneticFieldVector(theta=90, phi=180, magnitude=50)
     currents1 = computeCoilCurrents(B1, 508, 0.47)
 
-    _B1 = computeMagneticFieldVector(theta=90, phi=0, magnitude=20)
+    _B1 = computeMagneticFieldVector(theta=180, phi=0, magnitude=20)
     _currents1 = computeCoilCurrents(_B1, 508, 0.47)
 
     print('B = ({},{},{})^T corresponds to the currents I1 = {}, I2 = {}, I3 = {}'
