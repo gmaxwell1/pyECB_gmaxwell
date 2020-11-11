@@ -19,6 +19,8 @@ from scipy.spatial import ConvexHull
 from math import isnan
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # local imports
 from modules.analysis_tools import *
@@ -124,14 +126,16 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
 
     Return:
     - list_filenames (1d-ndarray of length num_files): Filenames of all considered data files
-    - list_slopes, list_slopes_std, list_offsets, list_offsets_std (ndarrays of shape (num_files, 3, 3)):
-    contain the fitted slopes and offsets as well as their respective standard deviations. 
+    - list_slopes, list_slopes_std (ndarrays of shape (num_files, 3, 3)):
+    contain the fitted slopes as well as their respective standard deviations. 
+    - list_offsets, list_offsets_std (ndarrays of shape (num_files, 3)):
+    contain the fitted offsets as well as their respective standard deviations. 
     - list_B_directions (ndarray of shape (num_files, 3)): contains the respective 
     field directions as vectors. 
     - list_phi, list_phi_std, list_theta, list_theta_std (1d-ndarrays of length num_files): contain 
     the respective field directions as polar and azimuthal angles, including their standard deviations.
-    - list_B_max_mag_1, list_B_max_mag_2 (1d-ndarrays of length num_files): contain field magnitudes 
-    at both boundaries between linear and non-linear regime. 
+    - list_B_max_1, list_B_max_2 (1d-ndarrays of length num_files): contain magnetic fields 
+    at the left (1) and right (2) boundary of the linear regime
 
     Note: 
     - The directions provided as vector or as angles correspond to the slopes 
@@ -160,20 +164,21 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
     list_slopes_std = []
     list_offsets = []
     list_offsets_std = []
-    list_B_max_mag_1 = []
-    list_B_max_mag_2 = []
+    list_B_max_1 = []
+    list_B_max_2 = []
 
     # loop through all csv files in a dictionary and fit the data
     for data_filename in filenames:
         if verbose:
             print(data_filename)
 
+        # fit data
         results = estimate_linear_fit_params_and_boundaries(directory, data_filename, 
                                                         verbose = verbose, fraction_cutoff = fraction_cutoff,
                                                         affine_fct = affine_fct)
-        B_direction, phi, phi_std, theta, theta_std, slopes, slopes_std, offsets, offsets_std, B_max_mag_1, B_max_mag_2 = results
+        B_direction, phi, phi_std, theta, theta_std, slopes, slopes_std, offsets, offsets_std, B_max_1, B_max_2 = results
 
-        # collect data
+        # collect fit parameters
         list_filenames.append(data_filename)
         list_B_directions.append(B_direction)
         list_phi.append(phi)
@@ -184,8 +189,8 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
         list_slopes_std.append(slopes_std)
         list_offsets.append(offsets)
         list_offsets_std.append(offsets_std)
-        list_B_max_mag_1.append(B_max_mag_1)
-        list_B_max_mag_2.append(B_max_mag_2)
+        list_B_max_1.append(B_max_1)
+        list_B_max_2.append(B_max_2)
 
         # plot the results
         data_filepath = os.path.join(directory, data_filename)
@@ -201,16 +206,19 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
             fig.set_size_inches(6, 8)
             for component in range(3):
                 axs[component].plot(x, mean_data[:,component], linestyle=None, marker= '.', label = 'measured')
-                axs[component].plot(x, x* slopes[component,valid_coil] + offsets[component, valid_coil], linestyle='--', 
-                                label='fitted: ({:.2f} mT/A)*I + {:.2f} mT'.format(slopes[component,valid_coil], offsets[component,valid_coil]))
+                axs[component].plot(x, x* slopes[component,valid_coil] + offsets[component], linestyle='--', 
+                                label='fitted: ({:.2f} mT/A)*I + {:.2f} mT'.format(slopes[component,valid_coil], offsets[component]))
                 ymin, ymax = axs[component].get_ylim()
                 axs[component].vlines([x[i_min], x[i_max]], ymin, ymax, alpha=0.5, linewidth=1, 
                             label='linear regime in [{:.2f} A, {:.2f} A]'.format(I[i_min, 0], I[i_max, 0]))
+                axs[component].hlines([B_max_1[component], B_max_2[component]], x[i_min], x[i_max], alpha=0.5, linewidth=1, 
+                            label='linear regime in [{:.2f} mT, {:.2f} mT]'.format(B_max_1[component], B_max_2[component]))
 
                 axs[component].set_ylabel('$B_{}$ [mT]'.format(['x', 'y', 'z'][component]))
                 axs[component].set_xlabel('$I_1$ [A]')
                 axs[component].set_ylim( 1.1*np.min(mean_data[:,component]), 1.1*np.max(mean_data[:,component]))
                 axs[component].legend()
+            fig.suptitle(data_filename)
             plt.tight_layout()
             plt.show()
 
@@ -224,12 +232,12 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
     list_phi_std = np.array(list_phi_std).flatten()
     list_theta = np.array(list_theta).flatten()
     list_theta_std = np.array(list_theta_std).flatten()
-    list_B_max_mag_1 = np.array(list_B_max_mag_1).flatten()
-    list_B_max_mag_2 = np.array(list_B_max_mag_2).flatten()
+    list_B_max_1 = np.array(list_B_max_1)
+    list_B_max_2 = np.array(list_B_max_2)
 
     return [list_filenames, list_slopes, list_slopes_std, list_offsets, list_offsets_std, 
             list_B_directions, list_phi, list_phi_std, list_theta, list_theta_std,
-            list_B_max_mag_1, list_B_max_mag_2]
+            list_B_max_1, list_B_max_2]
 
 
 def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = False, fraction_cutoff = 0.02,
@@ -251,9 +259,14 @@ def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = Fal
     - affine_fct (function): function used for fitting the data, passed to find_start_of_saturation
 
     Return:
-    - slopes, slopes_std, offsets, offsets_std (ndarray of shape (3,3)): Contain the fitted slopes and offsets of 
+    - slopes, slopes_std (ndarray of shape (3,3)): Contain the fitted slopes of 
     affine transformation, or the according standard deviation, respectively. 
+    - offsets, offsets_std (ndarray of length 3): Contain the fitted offsets of 
+    affine transformation, or the according standard deviation, respectively. Note that they are the same
+    for all coils.
     - B-direction: normalized vector pointing towards the same direction 
+    - B_max_1, B_max_2 (ndarrays of length 3): magnetic field at the left (1) and right (2) boundary 
+    of the linear regime
     """
     # read in raw measurment data
     data_filepath = os.path.join(directory, filename)
@@ -266,7 +279,7 @@ def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = Fal
     i_min, i_max = find_start_of_saturation(I, mean_data, std_data, fraction_cutoff=fraction_cutoff,
                             fitting_fct = affine_fct)
 
-    # initialize array to collect the linear coeffiecients (and offsets) for all three components
+    # initialize array to collect the linear coeffiecients (and offsets) for all three components (and coils)
     slopes = np.zeros((3,3))
     slopes_std = np.zeros((3,3))
     offsets = np.zeros((3,3))
@@ -301,12 +314,9 @@ def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = Fal
     valid_coil = np.arange(3)[mask][0]
     B_direction = slopes[:, valid_coil] 
 
-    # since plus and minus directions are possible, define normal_vector such that the z-component is positive, 
-    # and that x is positive if the vector lies in the xy-plane.
-    # flip_direction = False
-    # if B_direction[2] < 0 or (B_direction[2] == 0 and B_direction[0] < 0):
-    #     B_direction *= -1
-    #     flip_direction = True
+    # note that offsets in one component are the same for all coils, thus reduce to 1d-arrays
+    offsets = offsets[:, valid_coil]
+    offsets_std = offsets_std[:, valid_coil]
 
     # estimate direction in spherical coordinates and the maximum magnetic field for which the linear fit works
     phi = get_phi(B_direction)
@@ -323,21 +333,17 @@ def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = Fal
         # print offsets for all components but only a single coil
         for component in range(3):
             axis = ['x', 'y', 'z'][component]
-            print('along {}: b = {} +- {}'.format(axis, np.round(offsets[component, valid_coil],3), 
-                                                        np.round(offsets_std[component, valid_coil],3)))
+            print('along {}: b = {} +- {}'.format(axis, np.round(offsets[component],3), 
+                                                        np.round(offsets_std[component],3)))
         # print field direction both as vector and as angular values
         print('direction (vector): {}'.format(np.round(B_direction, 3)))
         print('direction (angular): theta = {:.2f}°, phi = {:.2f}°'.format(theta, phi))
 
-    # estimate the maximum field strength for within which the linear regime holds
-    # if flip_direction:
-    #     B_max_mag_1= -B_direction * I[i_min, :]
-    #     B_max_mag_2 = -B_direction * I[i_max, :]
-    # else:
-    B_max_mag_1 = np.linalg.norm(B_direction * I[i_min, :])
-    B_max_mag_2 = np.linalg.norm(B_direction * I[i_max, :])
+    # estimate the maximum magnetic field (strength) for within which the linear regime holds
+    B_max_1 = B_direction * I[i_min, valid_coil]
+    B_max_2 = B_direction * I[i_max, valid_coil]
 
-    return B_direction, phi, phi_std, theta, theta_std, slopes, slopes_std, offsets, offsets_std, B_max_mag_1, B_max_mag_2
+    return B_direction, phi, phi_std, theta, theta_std, slopes, slopes_std, offsets, offsets_std, B_max_1, B_max_2
 
 def delaunay_triangulation_spherical_surface(phi, theta):
     """
@@ -469,6 +475,158 @@ def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True):
             lines = lines/ np.linalg.norm(lines, axis=1).reshape(-1,1)
 
             ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], 'r-', alpha=0.4)
+
+        else:
+            ax.plot(pts[s, 0], pts[s, 1], pts[s, 2], 'r-', alpha=0.4)
+
+
+def save_linear_slopes_to_file(filenames, slopes, slopes_std, offsets, offsets_std, B_directions, 
+                                phis, phis_std, thetas, thetas_std, B_max_1, B_max_2, save_directory=None,
+                                output_file_name = 'linear_fits.csv'):
+    """
+    Save all data that were collected from a series of measurements to a single csv file. 
+
+    Args:
+    - filenames (ndarray of length N): file names, where estimated slopes, offsets,... originate from
+    - slopes, slopes_std (ndarrays of shape (N,3,3)): Fitted slopes and their standard deviations
+    - offsets, offsets_std (ndarrays of shape (N,3)): Fitted offsets and their  standard deviations
+    - B_directions (ndarray of shape (N,3)): vectorial direction of B-field
+    - phis, phis_std, thetas, thetas_std (ndarray of length N): contain the angular direction of 
+    magnetic field and the respective standard deviations
+    - B_max_1, B_max_2 (ndarray of length N): magnetic fields at the left (1) and right (2) boundary 
+    of the linear regime, estimated for the first valid coil (i.e. with nonzero current)
+    - output_file_name (str): Name of csv file where the result are stored
+    """
+    # save data to file 
+    data_dict = {'Filename': filenames, 
+                'phi [°]': phis,
+                'std phi [°]': phis_std,
+                'theta [°]': thetas,
+                'std theta [°]': thetas_std}
+
+    # add all slopes
+    component_labels = ['x', 'y', 'z']
+    for component in range(3):
+        for coil in range(3):
+            label ='dB{}/dI{} [mT/A]'.format(component_labels[component], coil+1)
+            data_dict[label] = slopes[:, component, coil]
+            data_dict['std {} [mT]'.format(label)] = slopes_std[:, component, coil]
+
+    # add all offsets
+    for component in range(3):  
+        label = 'offset Delta B{} [mT]'.format(component_labels[component])
+        data_dict[label] = offsets[:, component]
+        data_dict['std {} [mT]'.format(label)] = offsets_std[:, component]
+
+    # add the direction of magnetic field as vector
+    for component in range(3):  
+        label = 'direction B{} [mT]'.format(component_labels[component])
+        data_dict[label] = B_directions[:, component]
+    
+    # add the magnetic field at left boundary of linear regime
+    for component in range(3):  
+        label = 'max B{} left boundary [mT]'.format(component_labels[component])
+        data_dict[label] = B_max_1[:, component]
+
+    # add the magnetic field at right boundary of linear regime
+    for component in range(3):  
+        label = 'max B{} right boundary [mT]'.format(component_labels[component])
+        data_dict[label] = B_max_2[:, component]
+
+    # save data to csv file
+    df = pd.DataFrame(data_dict)
+
+    if save_directory is None:
+        save_directory = os.getcwd()
+    data_filepath = os.path.join(save_directory, output_file_name)
+    df.to_csv(data_filepath, index=False, header=True)
+
+
+def extract_fit_parameters_from_file(filepath):
+    """
+    Extract all fit paramters from a csv-file, which originates from an already 
+    analyzed set of measurements.
+
+    Args: filepath (str): valid path of the csv-file
+
+    Return: 
+    - filenames (ndarray of length N): file names, where estimated slopes, offsets,... originate from
+    - slopes, slopes_std, offsets, offsets_std (ndarrays of shape (N,3,3)): Fitted slopes and offsets, 
+    and the respective standard deviations
+    - B_directions (ndarray of shape (N,3)): vectorial direction of B-field
+    - phis, phis_std, thetas, thetas_std (ndarray of length N): contain the angular direction of 
+    magnetic field and the respective standard deviations
+    - B_max_1, B_max_2 (ndarray of length N): magnetic fields at the left (1) and right (2) boundary 
+    of the linear regime, estimated for the first valid coil (i.e. with nonzero current)
+    - output_file_name (str): Name of csv file where the result are stored
+    """
+    # extract data and convert to ndarray
+    raw_data = pd.read_csv(filepath).to_numpy()
+
+    # assign values to correct variables
+    filenames = raw_data[:, 0]
+
+    # conversion to np.float needed, because np.degrees(phis) would fail else
+    phis = raw_data[:, 1].astype(float)
+    phis_std = raw_data[:, 2].astype(float)
+    thetas = raw_data[:, 3].astype(float)
+    thetas_std = raw_data[:, 4].astype(float)
+
+    slopes = raw_data[:, 5:23:2].reshape(-1, 3,3)
+    slopes_std = raw_data[:, 6:23:2].reshape(-1, 3,3)
+
+    offsets = raw_data[:, 23:29:2]
+    offsets_std = raw_data[:, 24:29:2]
+    
+    B_directions = raw_data[:, 29:32]
+    B_max_1 = raw_data[:, 32:35]
+    B_max_2 = raw_data[:, 35:38]
+
+    return filenames, slopes, slopes_std, offsets, offsets_std, B_directions, phis, phis_std, thetas, thetas_std, B_max_1, B_max_2
+
+def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colored_triangles = False):
+    """
+    Plot the triangles of Delaunay triangulation by connecting the three vertices of each triangle
+    with each user. These connections can either be parts of great circles on the sphere (spherical=True)
+    or straight lines (spherical=False), which are convex combinations of the points they connect. 
+    Note that in the latter case, the lines correspond to the edges of the convex hull of all points.
+  
+    Args:
+    - ax (Axes3D): Axis of plot with 3d projection
+    - pts (ndarray of shape (N, 3)): all vertices, which are points on the unit sphere
+    - indices_triangulation (ndarray of shape (nfacet, 3)): Integer array containing the indeces 
+    of the data points that form the vertices of the simplices.
+    - spherical (bool): Flag to switch between straight lines and great circles as edges of the triangles.
+    - colored_triangles (bool): if True, colored triangles are drawn onto the sphere. This only works if 
+    spherical=True, too. Default is False, where no surfaces are drawn.
+    """
+    fractions = np.linspace(0, 1, 10, endpoint=False)
+    np.random.seed(100)
+
+    for s in inidces_simplices:
+        # Cycle back to the first coordinate to plot the whole triangle
+        s = np.append(s, s[0])  
+        
+        if spherical:
+            # initialize array to store all positions along the path
+            lines = []
+            for i in range(len(s)-1):
+                direction = pts[s[i+1]] - pts[s[i]]
+                [lines.append(pts[s[i]] + r*direction) for r in fractions]
+            # append the first point to close the loop 
+            lines.append(lines[0])
+            
+            # normalize all points along path, such that they point towards the sphere
+            lines = lines/ np.linalg.norm(lines, axis=1).reshape(-1,1)
+    
+            ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], color='gray', 
+                                        linestyle='-', alpha=0.4, lw=0.5)
+            
+            if colored_triangles:
+                random_color = colors.rgb2hex(np.random.rand(3))
+                polygon = Poly3DCollection([lines], alpha=1.0)
+                polygon.set_color(random_color)
+                ax.add_collection3d(polygon)
 
         else:
             ax.plot(pts[s, 0], pts[s, 1], pts[s, 2], 'r-', alpha=0.4)
