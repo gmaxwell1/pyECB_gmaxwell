@@ -48,16 +48,16 @@ def estimate_std_theta(mean_values, std_values):
 
     var_theta = (pderiv_x*std_values[:, 0])**2 + (pderiv_y *
                                                   std_values[:, 1])**2 + (pderiv_z*std_values[:, 2])**2
-    return np.sqrt(var_theta)
+    return np.degrees(np.sqrt(var_theta))
 
 def estimate_std_phi(mean_values, std_values):
     """
-    Estimate the standard deviation of the estimated in-plane angle phi (wrt. x-axis), 
+    Estimate the standard deviation of the estimated in-plane angle phi (wrt. x-axis) in degrees, 
     assuming that x,y,z components of magnetic field are independent variables.
 
     Args: mean_data_specific_sensor, std_data_specific_sensor are ndarrays of shape (#measurements, 3).
 
-    Returns: ndarray of length #measurements containing standard deviations of phi
+    Returns: ndarray of length #measurements containing standard deviations of phi in degrees
     """
     # estimate partial derivatives
     deriv_arctan = np.cos(np.arctan2(mean_values[:,1], mean_values[:,0]))**2
@@ -66,7 +66,7 @@ def estimate_std_phi(mean_values, std_values):
     pderiv_y = deriv_arctan / mean_values[:,0]
 
     var_phi = (pderiv_x*std_values[:,0])**2 + (pderiv_y*std_values[:,1])**2 
-    return np.sqrt(var_phi)
+    return np.degrees(np.sqrt(var_phi))
 
 def estimate_std_magnitude(mean_values, std_values):
     """
@@ -345,7 +345,7 @@ def plot_I_vs_B(I, mean_values, std_values, expected_values, directory, save_ima
 
 def get_phi(values, cut_phi_at_0=False):
     """
-    Return the in-plane angle phi with respect to x-axis.
+    Return the in-plane angle phi with respect to x-axis in degrees.
     """
     angles = np.degrees(np.arctan2(values[...,1], values[...,0]))
 
@@ -358,7 +358,7 @@ def get_phi(values, cut_phi_at_0=False):
 
 def get_theta(values):
     """
-    Return the angle theta between z axis and the provided values.
+    Return the angle theta between z axis and the provided values in degrees.
     """
     mag = np.linalg.norm(values, axis=-1)
     angles = np.degrees(np.arccos(values[...,2]/mag))
@@ -499,17 +499,14 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             ylabels.append('$|B|$ [mT]')
         # angle theta (wrt to z-axis)
         elif flag == 't':
-            plot_mean_data.append(np.degrees(
-                np.arccos(mean_values[:, 2]/mean_magnitudes)))
-            plot_std_data.append(np.degrees(
-                estimate_std_theta(mean_values, std_values)))
-            plot_expected_data.append(np.degrees(
-                np.arccos(expected_values[:, 2]/expected_magnitudes)))
+            plot_mean_data.append(get_theta(mean_values))
+            plot_std_data.append(estimate_std_theta(mean_values, std_values))
+            plot_expected_data.append(get_theta(expected_values))
             ylabels.append('$\\theta$ [°]')
         # angle phi (wrt to x-axis)
         elif flag == 'f':
             plot_mean_data.append(get_phi(mean_values, cut_phi_at_0=cut_phi_at_0))
-            plot_std_data.append(np.degrees(estimate_std_phi(mean_values, std_values)))
+            plot_std_data.append(estimate_std_phi(mean_values, std_values))
             plot_expected_data.append(get_phi(expected_values, cut_phi_at_0=cut_phi_at_0))
             ylabels.append('$\\phi$ [°]')
         # in-plane component (along xy) of magnetic field
@@ -1403,7 +1400,7 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
             swapped_std_values = swap_components(std_values, rot_axis)
             swapped_exp_values = swap_components(expected_values, rot_axis)
             measured_phi = get_phi(swapped_mean_values, cut_phi_at_0=True)
-            measured_error_phi = np.degrees(estimate_std_phi(swapped_mean_values, swapped_std_values))
+            measured_error_phi = estimate_std_phi(swapped_mean_values, swapped_std_values)
             expected_phi = get_phi(swapped_exp_values, cut_phi_at_0=True)
             # allow negative values in the beginning if provided:
             if allow_negative_at_beginning:
@@ -1431,8 +1428,7 @@ def plot_vs_rotation_angle(I, mean_values, std_values, expected_values, height_p
             swapped_std_values = swap_components(std_values, rot_axis)
             plot_mean_data.append(90 - np.degrees(
                 np.arccos(mean_values[:, rot_axis]/mean_magnitudes)))
-            plot_std_data.append(np.degrees(
-                estimate_std_theta(swapped_mean_values, swapped_std_values)))
+            plot_std_data.append(estimate_std_theta(swapped_mean_values, swapped_std_values))
             plot_expected_data.append(90 - np.degrees(
                 np.arccos(expected_values[:, rot_axis]/expected_magnitudes)))
             if rotated_expection is not None:
@@ -1562,3 +1558,5 @@ def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=Tr
                                                                         delta_phi[i], delta_theta[i]))
     
     return rotated, delta_phi, delta_theta
+
+

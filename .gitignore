@@ -14,6 +14,8 @@ old_ time_resolved_meas_with_cube.py
 analysis_rotation.py
 analysis_correct_misalignment.py
 estimate_saturation_limits.py
+extract_linear_slopes.py
+test_interpolation.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
