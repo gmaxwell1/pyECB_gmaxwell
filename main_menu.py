@@ -352,60 +352,39 @@ def feedbackMode():
             next(contents)
             for row in contents:
                 B_info_arr.append([row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
-                
-    subdir = input('Which directory should the output file be saved in? ')
-    filename = input('Enter a valid filename: ')
     
-    filename = filename + '.txt'
-        
+    BVectors = []
+    currConfigs = []
+    for k in range(len(B_info_arr)):
+        B_info = B_info_arr[k]
+        BVector, dBdI, cur = fb.callableFeedback(B_info, maxCorrection=20, threshold=0.6, calibrate=True, ECB_active=True)
+        BVectors.append(BVector)
+        currConfigs.append(cur)
+    
+    BVectors = np.array(BVectors)
+    currConfigs = np.array(currConfigs)
+
+    subdir = input('Which directory should the output file be saved in? ')
+    filename = input('Enter a valid filename(no special chars): ')
+           
     if subdir == '':
         subdir = r'data_sets\linearization_matrices'
     if filename == '' or filename[0] == ' ':
-        filename = 'dataset1.txt'
+        filename = 'dataset1'
         
+    now = datetime.now().strftime('%y_%m_%d_%H%M%S')
+    filename = f'{now}-{filename}.csv'    
+    
     filepath = os.path.join(subdir, filename)
     
-    for k in range(len(B_info_arr)):
-        B_info = B_info_arr[k]
-        B, d, cur, _ = fb.callableFeedback(B_info,maxCorrection=20, thresholdPercentage=0.01, calibrate=True, ECB_active=True)
-
-        file = open(filepath, 'a')
-        file.write(f'Magnetic field vector (B_x,B_y,B_z) = ({B[0]:.2f},{B[1]:.2f},{B[2]:.2f})\n')
-        file.write('Local actuation matrix:\n')
-        for i in range(len(d[:,0])):
-            for j in range(len(d[0])):
-                if j != len(d[0]) - 1:
-                    file.write(str(round(d[i,j],4)))
-                    file.write(', ')
-                else:
-                    file.write(str(round(d[i,j],4)))
-            file.write('\n')
-
-        file.write('Current configurations:\n')
-        for i in range(min(len(cur[:,0]),30)):
-            file.write('(')
-            for j in range(len(cur[0])):
-                if j != len(cur[0]) - 1:               
-                    file.write(str(cur[i,j]))
-                    file.write(', ')
-                else:
-                    file.write(str(cur[i,j]))
-            file.write(')\n')
-            
-        file.write('Best of current configurations:\n')
-        file.write('(')
-        mode, _ = stats.mode(cur)
-        for j in range(len(mode[0])):
-            if j != len(mode[0]) - 1:               
-                file.write(str(mode[0,j]))
-                file.write(', ')
-            else:
-                file.write(str(mode[0,j]))
-        file.write(')\n')
-        file.write('\n')
-
-        file.close()
-    
+    df = pd.DataFrame({'expected Bx [mT]': BVectors[:, 0],
+                       'expected By [mT]': BVectors[:, 1],
+                       'expected Bz [mT]': BVectors[:, 2],
+                       'channel 1 [A]': currConfigs[:, 0],
+                       'channel 2 [A]': currConfigs[:, 1],
+                       'channel 3 [A]': currConfigs[:, 2]})
+    df.to_csv(filepath, index=False, header=True)
+    pd.read_csv()
 
 def callGenerateVectorField():
     """

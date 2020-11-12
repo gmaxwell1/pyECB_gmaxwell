@@ -107,7 +107,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
         else:
             progressBar(CC_Z, start_pos_z, total_distance_z)
 
-        char = input('\nPress enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+        char = input('Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
         if char == '':
             node.calibrate()
         input('Press enter to continue measuring')
@@ -147,7 +147,7 @@ def progressBar(CC: ConexCC, start_pos, total_distance):
             right = 30-left
             print('\r[' + '#' * left + ' ' * right + ']', f' {ratio * 100:.0f}%', sep='', end='', flush=True)
     
-    print('\n')
+    print('')
 
 
 def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):

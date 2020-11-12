@@ -397,7 +397,7 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
                     duration = 10
                 params = {'block_size': 20, 'period': 1e-2, 'duration': duration, 'averaging': 5}
 
-                faden = myMeasThread(**params)
+                faden = myMeasThread(1,**params)
                 faden.start()
                 
                 faden.join()
