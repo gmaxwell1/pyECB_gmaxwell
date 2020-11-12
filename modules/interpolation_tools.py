@@ -345,13 +345,14 @@ def estimate_linear_fit_params_and_boundaries(directory, filename, verbose = Fal
 
     return B_direction, phi, phi_std, theta, theta_std, slopes, slopes_std, offsets, offsets_std, B_max_1, B_max_2
 
-def delaunay_triangulation_spherical_surface(phi, theta):
+def delaunay_triangulation_spherical_surface(phi, theta, radius = 1):
     """
     Delaunay triangulation on the surface of the sphere of the points defined by theta and phi. 
     This is simply the 3D convex hull of the points, since all vectors have the same length.
     
     Args:
-    - phi, theta (1d ndarrays of same length n_data): polar and azimuthal angles of the data points. 
+    - phi, theta (1d ndarrays of same length n_data): polar and azimuthal angles in degrees of the data points. 
+    - radius (float): radius of sphere
     
     Return:
     - vertices_triangulation (ndarray of shape (nfacet, 3, 2)): Represents the vertices of the 
@@ -365,9 +366,9 @@ def delaunay_triangulation_spherical_surface(phi, theta):
     angles in Carthesian coordinates. 
     """
     # generate vectors on unit sphere from angles theta and phi
-    x = np.sin(np.radians(theta)) * np.cos(np.radians(phi))
-    y = np.sin(np.radians(theta)) * np.sin(np.radians(phi))
-    z = np.cos(np.radians(theta))
+    x = radius * np.sin(np.radians(theta)) * np.cos(np.radians(phi))
+    y = radius * np.sin(np.radians(theta)) * np.sin(np.radians(phi))
+    z = radius * np.cos(np.radians(theta))
     points = np.swapaxes([x, y, z], 0,1)
     
     # generate convex hull from all points
@@ -440,44 +441,6 @@ def add_reverse_directions(phis, phis_std, thetas, thetas_std, slopes, slopes_st
         slopes_filled[N+i] = - slopes[i] 
 
     return phis_filled, phis_std_filled, thetas_filled, thetas_std_filled, slopes_filled, slopes_std_filled, offsets_filled, offsets_std_filled
-
-
-def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True):
-    """
-    Plot the triangles of Delaunay triangulation by connecting the three vertices of each triangle
-    with each user. These connections can either be parts of great circles on the sphere (spherical=True)
-    or straight lines (spherical=False), which are convex combinations of the points they connect. 
-    Note that in the latter case, the lines correspond to the edges of the convex hull of all points.
-  
-    Args:
-    - ax (Axes3D): Axis of plot with 3d projection
-    - pts (ndarray of shape (N, 3)): all vertices, which are points on the unit sphere
-    - indices_triangulation (ndarray of shape (nfacet, 3)): Integer array containing the indeces 
-    of the data points that form the vertices of the simplices.
-    - spherical (bool): Flag to switch between straight lines and great circles as edges of the triangles.
-    """
-    fractions = np.linspace(0, 1, 20, endpoint=False)
-
-    for s in inidces_simplices:
-        # Cycle back to the first coordinate to plot the whole triangle
-        s = np.append(s, s[0])  
-        
-        if spherical:
-            # initialize array to store all positions along the path
-            lines = []
-            for i in range(len(s)-1):
-                direction = pts[s[i+1]] - pts[s[i]]
-                [lines.append(pts[s[i]] + r*direction) for r in fractions]
-            # append the first point to close the loop 
-            lines.append(lines[0])
-            
-            # normalize all points along path, such that they point towards the sphere
-            lines = lines/ np.linalg.norm(lines, axis=1).reshape(-1,1)
-
-            ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], 'r-', alpha=0.4)
-
-        else:
-            ax.plot(pts[s, 0], pts[s, 1], pts[s, 2], 'r-', alpha=0.4)
 
 
 def save_linear_slopes_to_file(filenames, slopes, slopes_std, offsets, offsets_std, B_directions, 
@@ -584,7 +547,8 @@ def extract_fit_parameters_from_file(filepath):
 
     return filenames, slopes, slopes_std, offsets, offsets_std, B_directions, phis, phis_std, thetas, thetas_std, B_max_1, B_max_2
 
-def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colored_triangles = False):
+def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colored_triangles = False, 
+                                    color='gray'):
     """
     Plot the triangles of Delaunay triangulation by connecting the three vertices of each triangle
     with each user. These connections can either be parts of great circles on the sphere (spherical=True)
@@ -599,10 +563,14 @@ def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colore
     - spherical (bool): Flag to switch between straight lines and great circles as edges of the triangles.
     - colored_triangles (bool): if True, colored triangles are drawn onto the sphere. This only works if 
     spherical=True, too. Default is False, where no surfaces are drawn.
+    - color (str): valid color of Matplotlib used to draw the lines
     """
     fractions = np.linspace(0, 1, 10, endpoint=False)
     np.random.seed(100)
 
+    # estimate magnitude/radius of considered sphere
+    radius = np.linalg.norm(pts[0])
+    
     for s in inidces_simplices:
         # Cycle back to the first coordinate to plot the whole triangle
         s = np.append(s, s[0])  
@@ -616,10 +584,10 @@ def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colore
             # append the first point to close the loop 
             lines.append(lines[0])
             
-            # normalize all points along path, such that they point towards the sphere
-            lines = lines/ np.linalg.norm(lines, axis=1).reshape(-1,1)
+            # normalize all points along path and multiply by radius, such that they point towards the sphere
+            lines = radius * (lines/ np.linalg.norm(lines, axis=1).reshape(-1,1))
     
-            ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], color='gray', 
+            ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], color=color, 
                                         linestyle='-', alpha=0.4, lw=0.5)
             
             if colored_triangles:

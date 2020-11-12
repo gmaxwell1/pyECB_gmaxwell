@@ -16,6 +16,7 @@ Date: 11.11.2020
 import numpy as np
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
 
 try:
     from modules.generate_configurations import generate_configs_half_sphere, plot_vectors
@@ -23,12 +24,13 @@ except ModuleNotFoundError:
     import sys
     sys.path.insert(1, os.path.join(sys.path[0], '..'))
     from modules.generate_configurations import generate_configs_half_sphere, plot_vectors
+    
 
 #%%
 # generate configurations
 
 # Settings:
-n_sectors = 24   # >= 4 required, number of points along the equator. 
+n_sectors = 32      # >= 4 required, number of points along the equator. 
 elevation_factor_equator = 0    # elevation useful to prevent redundancy for vectors on equator
 magnitude = 20      # desired magnitude 
 save_format = 's'   # 's' for spherical and 'c' for Carthesian coordinates
@@ -50,10 +52,13 @@ phis = np.append(phis_upper, phis_lower, axis=0)
 n_vectors = len(vectors)
 print('number of vectors: {}'.format(n_vectors))
 
+
 # plot all considered vectors on a sphere 
-plot_vectors(vectors, magnitude=magnitude)
+fig, ax = plot_vectors(vectors, magnitude=magnitude, phis=phis, thetas=thetas, add_tiangulation= True)
 
-
+# image_path = os.path.join('../config_files', 'generated_points_{}.png'.format(n_sectors))
+# fig.savefig(image_path, dpi=300)
+plt.show()
 
 # save the combinations to csv file
 if save_format == 's':
@@ -71,14 +76,14 @@ else:
 try:
     # start with parent directory
     directory = '../config_files'
-    output_file_name = 'configs_wholeSphere_size{}.csv'.format(n_vectors)
+    output_file_name = 'configs_wholeSphere_mag{}_size{}.csv'.format(magnitude, n_vectors)
     data_filepath = os.path.join(directory, output_file_name)
 
     df.to_csv(data_filepath, index=False, header=True)
 except:
     # remain in current workind directory
     directory = './config_files'
-    output_file_name = 'configs_wholeSphere_size{}.csv'.format(n_vectors)
+    output_file_name = 'configs_wholeSphere_mag{}_size{}.csv'.format(magnitude, n_vectors)
     data_filepath = os.path.join(directory, output_file_name)
 
     df.to_csv(data_filepath, index=False, header=True)
