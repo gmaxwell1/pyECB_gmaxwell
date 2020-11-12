@@ -35,7 +35,7 @@ except ModuleNotFoundError:
     import transformations as tr
 finally:
     from modules.general_functions import ensure_dir_exists
-
+    from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
 
 
 #%%
@@ -187,7 +187,7 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
 
     return np.array(ratios),  np.array(vectors), np.array(thetas), np.array(phis)
 
-def plot_vectors(vectors, magnitude = 1):
+def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulation = False):
     """
     Generate and show 3d plot of sphere and the provided vectors.
 
@@ -195,6 +195,9 @@ def plot_vectors(vectors, magnitude = 1):
     - vectors (ndarray of shape(N, 3)): Contains normal vectors that should be plotted.
     - magnitude (float): magnitude of sphere that is plotted for a better visualization.
     If magnitude = 1, it corresponds to the unit sphere
+    - phis, thetas (ndarrays of length N): Spherical angles of passed vectors. Kind of redundant,
+    but it is easier to reuse the already defined angles than computing them from the vectors again.
+    - add_tiangulation (bool): If True, triangulation between points is plotted as well.
     """
     # plot the generated vectors
     # generate figure with 3d-axis
@@ -219,13 +222,29 @@ def plot_vectors(vectors, magnitude = 1):
     y = magnitude * np.sin(u)*np.sin(v)
     z = magnitude * np.cos(v)
     ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
-                        alpha=0.05, antialiased=False, vmax=2)  # cmap=cm.gray,
-
+                        alpha=0.05, antialiased=False, vmax=2)  
+    
+    # plot all vectors as red dots
     ax.scatter(vectors[:,0], vectors[:,1], vectors[:,2], color='r')
+    
+    if add_tiangulation:
+        # apply Delaunay triangulation on the surface of the sphere, which corresponds to finding convex Hull
+        _, inidces_simplices, points = delaunay_triangulation_spherical_surface(np.degrees(phis), 
+                                                                                np.degrees(thetas), 
+                                                                                radius=magnitude)
 
+        # add triangles as lines
+        add_triangles_to_3dplot(ax, points, inidces_simplices, spherical = True, colored_triangles = False,
+                                    color='r')
+
+    ax.set_xlabel('$B_x$ [mT]')
+    ax.set_ylabel('$B_y$ [mT]')
+    ax.set_zlabel('$B_z$ [mT]')
     # ax.set_axis_off()
+
     ax.view_init(30, 45)
-    plt.show()
+
+    return fig, ax
 
 
 
