@@ -28,14 +28,6 @@ from modules.general_functions import ensure_dir_exists, sensor_to_magnet_coordi
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 
-__all__ = [
-    'calibration',
-    'newMeasurementFolder',
-    'measure',
-    'saveDataPoints',
-    'timeResolvedMeasurement'
-]
-
 ########## sensor cube/Conexcc ports ##########
 # port_sensor = 'COM3'
 z_COM_port = 'COM6' # z-coordinate controller
@@ -78,8 +70,8 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     move the stage into position to calibrate the sensor. After successful calibration, the sensor is moved to the desired measuring position.
 
     Args:
-        node (MetrolabTHM1176Node): [description]
-        meas_height (float, optional): [description]. Defaults to 1.5.
+        node (MetrolabTHM1176Node): instance of the sensor
+        calibrate (boolean): If true, calibrate in zero-field chamber. If false, only move stage to measuring position.
     """
     
     # initialize actuators
@@ -207,7 +199,7 @@ def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
 
     return ret1, ret2
 
-def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10, return_temp_data=False):
+def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, return_temp_data=False):
     """
     Measure magnetic flux density over time.
 
@@ -228,7 +220,7 @@ def timeResolvedMeasurement(period=0.001, averaging=1, block_size=1, duration=10
         (x, y and z components of B field, times of measurements)
         list of floats: temp (temperature values as explained above)
     """
-    with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=averaging, unit='MT') as node:
+    with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT') as node:
         # calibration(node, meas_height=1.5)
         
         thread = threading.Thread(target=node.start_acquisition)
@@ -329,26 +321,19 @@ if __name__ == '__main__':
     # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
     # CC_Z.wait_for_ready()
     
-    # print(CC_Z.read_cur_pos())
-    # print(CC_Y.read_cur_pos())
-    # print(CC_X.read_cur_pos())
-    # # CC_Z.move_absolute(new_pos=21)
-    # # CC_Z.wait_for_ready()
-    # # print(CC_Z.read_cur_pos())
-    # CC_Z.move_absolute(new_pos=8.3)
-    # CC_Z.wait_for_ready()
-    # print(CC_Z.read_cur_pos())
-    # CC_Y.move_absolute(new_pos=0)
-    # CC_Y.wait_for_ready()
-    # print(CC_Y.read_cur_pos())
-    # CC_X.move_absolute(new_pos=20)
-    # CC_X.wait_for_ready()
-    # print(CC_X.read_cur_pos())
-    # print(CC_Z.read_cur_pos())
-
-    # #     print(curr_pos_z)
-    # #     c = input('raise again?')
-    with MetrolabTHM1176Node(block_size=20, average=5, range='0.3 T', period=0.1, unit='MT') as node:
+    # # cal_pos_z = 20
+    # start_pos_z = CC_Z.read_cur_pos()
+    # print(start_pos_z)
+    # # total_distance_z = cal_pos_z-start_pos_z
+    
+    # # cal_pos_y = 0
+    # start_pos_y = CC_Y.read_cur_pos()
+    # print(start_pos_y)
+    # # total_distance_y = abs(cal_pos_y-start_pos_y)
+    
+    # # cal_pos_x = 20
+    # start_pos_x = CC_X.read_cur_pos()
+    # print(start_pos_x)
+    # # total_distance_x = abs(cal_pos_x-start_pos_x)
+    with MetrolabTHM1176Node() as node:
         calibration(node, calibrate=True)
-    
-    

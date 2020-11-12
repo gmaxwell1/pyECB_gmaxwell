@@ -369,15 +369,15 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 if __name__ == "__main__":
     
-    data_directory = r'data_sets\testing_linearity_for_LUT'
-    # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
-    # for item in files:
-    filepath = os.path.join(data_directory, '20_11_03_14-13-46_time_resolved.csv')
-    img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\')
-    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=True, save_dir=data_directory,
-                        output_file_name=img_name, separate=False, statistics=True)
+    data_directory = r'data_sets\testing_field_directions'
+    # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
+    # # for item in files:
+    filepath = os.path.join(data_directory, '20_11_05_11-00-02_time_resolved.csv')
+    # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
+    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
+                        separate=False, statistics=True)
     
-    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\serious_measurements_for_LUT\20_11_02_16-51-56_time_resolved.csv', 'xyz', 2.5)
+    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_03_11\20_11_03_15-31-01_time_resolved.csv', 'z', 2.5)
     
     # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
     #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
@@ -394,7 +394,7 @@ if __name__ == "__main__":
     # freq = 1/(times[1]-times[0])
     
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
-    # ax[0,0].set_title('Measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
     
     # mag_x = round(np.mean(fields[:,0]),2)
     # mag_y = round(np.mean(fields[:,1]),2)
