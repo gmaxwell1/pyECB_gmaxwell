@@ -11,16 +11,10 @@ Date: 10.11.2020
 
 ########## Standard library imports ##########
 import numpy as np
-import math
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 from scipy import stats
 from time import time, sleep
 from datetime import datetime
 import os
-from pathlib import Path
-import csv
-import pandas as pd
 import threading
 
 from main_comm import *
@@ -58,7 +52,7 @@ def print_time(thread: inputThread, delay):
             print(
                 f"\rTime on thread {thread.threadID}: {now: %H:%M:%S}", end='', flush=True)
 
-
+# global variable
 flags = [1]
 
 
@@ -182,7 +176,7 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
             if noError:
                 count = count + 1
             # if at least 10 consecutive measurements are within the error margin, the config is good enough.
-            if count >= 10:
+            if count >= 50:
                 flags.insert(0, '')
 
             deltaCurrent = np.linalg.inv(derivatives).dot(fieldDiff)
@@ -215,7 +209,7 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
     return desiredBField, derivatives, modeCurrents[0]
 
 
-def manualFeedback(currentStep=20, maxCorrection=30, thresholdPercentage=0.02, calibrate=False):
+def manualFeedback(currentStep=20, maxCorrection=30, threshold=0.5, calibrate=False):
     """
     Feedback control of vector magnet to obtain any desired magnetic field. Enter all parameters by hand.
 
@@ -273,15 +267,17 @@ def manualFeedback(currentStep=20, maxCorrection=30, thresholdPercentage=0.02, c
     # initialize sensor to start measuring
     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
         # node = MetrolabTHM1176Node(period=0.1, range='0.3 T', average=5)
-        calibration(node, calibrate=calibrate)
-
         configCurrents = tr.computeCoilCurrents(desiredBField)
         # compute linearization Matrix around the current operating point
         enableCurrents()
         derivatives = localLinearization(
             node, configCurrents=configCurrents, currentStep=currentStep, numSteps=10)
         print(derivatives)
+        disableCurrents()
 
+        calibration(node, calibrate=calibrate)
+
+        enableCurrents()
         desCurrents[0:3] = configCurrents.tolist()
         setCurrents(desCurrents=desCurrents, direct=b'1')
         goodCurrentValues.append(desCurrents[0:3])
@@ -307,19 +303,19 @@ def manualFeedback(currentStep=20, maxCorrection=30, thresholdPercentage=0.02, c
             errorsB = newBMeasurement - desiredBField
             fieldDiff = np.zeros(3)
             # if the error of some component is greater than 2%, it needs to be decreased.
-            if abs(errorsB[0]) >= abs(thresholdPercentage * magneticField):
+            if abs(errorsB[0]) >= abs(threshold):
                 # decrease the B_x component (proportional to the error)
                 fieldDiff[0] = -errorsB[0]
             else:
                 goodCurrentValues.append(desCurrents[0:3])
 
-            if abs(errorsB[1]) >= abs(thresholdPercentage * magneticField):
+            if abs(errorsB[1]) >= abs(threshold):
                 # decrease the B_y component (proportional to the error)
                 fieldDiff[1] = -errorsB[1]
             else:
                 goodCurrentValues.append(desCurrents[0:3])
 
-            if abs(errorsB[2]) >= abs(thresholdPercentage * magneticField):
+            if abs(errorsB[2]) >= abs(threshold):
                 # decrease the B_z component (proportional to the error)
                 fieldDiff[2] = -errorsB[2]
             else:
@@ -344,10 +340,10 @@ def manualFeedback(currentStep=20, maxCorrection=30, thresholdPercentage=0.02, c
 
     # current configurations with little to no error are averaged -> hopefully a good estimate
     # of the required currents for a given direction.
-    printCurrents = np.m(np.array(goodCurrentValues), 0)
+    printCurrents, _ = stats.mode(np.array(goodCurrentValues), 0)
 
-    print(f'\nBest config for channels 1, 2, 3: ({printCurrents[0]:.0f},'
-          f' {printCurrents[1]:.0f}, {printCurrents[2]:.0f})\n')
+    print(printCurrents[0])
+
     demagnetizeCoils()
     disableCurrents()
     closeConnection()
@@ -390,41 +386,35 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
     fieldVectors.insert(0, newBMeasurement)
 
     for i in range(3):
-        for j in range(numSteps):
+        # randomize whether the current is increased or decreased
+        # a = np.random.randn()
+        prefac = 1
+        # if not np.sign(a) > 0:
+        #     prefac = -1
+        
+        initialOffset = prefac * numSteps * currentStep
+        desCurrents[0:3] = [int(desCurrents[0] + initialOffset * currentRefs[i, 0]),
+                            int(desCurrents[1] + initialOffset * currentRefs[i, 1]),
+                            int(desCurrents[2] + initialOffset * currentRefs[i, 2])]
+        setCurrents(desCurrents=desCurrents, direct=b'1')
+        # increase or decrease current by step size 2*N times
+        for j in range(2 * numSteps):
+            currentStep = - prefac * currentStep
             desCurrents[0:3] = [int(desCurrents[0] + currentStep * currentRefs[i, 0]),
-                                int(desCurrents[1] +
-                                    currentStep * currentRefs[i, 1]),
+                                int(desCurrents[1] + currentStep * currentRefs[i, 1]),
                                 int(desCurrents[2] + currentStep * currentRefs[i, 2])]
             setCurrents(desCurrents=desCurrents)
-
+            
+            sleep(0.2)
+            
             newBMeasurement = gen.sensor_to_magnet_coordinates(
                 np.array(node.measureFieldmT()))
             print(
-                f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, {newBMeasurement[2]:.2f})', sep='', end='', flush=True)
+                f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f},'
+                f'{newBMeasurement[2]:.2f})', sep='', end='', flush=True)
             fieldVectors.insert(0, newBMeasurement)
             differenceQuotients.insert(
                 0, (newBMeasurement - fieldVectors[1]) / currentStep)
-            sleep(0.2)
-            fieldVectors.pop()
-
-        desCurrents[0:3] = configCurrents.tolist()
-        setCurrents(desCurrents=desCurrents, direct=b'1')
-
-        for j in range(numSteps):
-            a = -currentStep  # constant current decrease
-            desCurrents[0:3] = [int(desCurrents[0] + a * currentRefs[i, 0]),
-                                int(desCurrents[1] + a * currentRefs[i, 1]),
-                                int(desCurrents[2] + a * currentRefs[i, 2])]
-            setCurrents(desCurrents=desCurrents)
-
-            newBMeasurement = gen.sensor_to_magnet_coordinates(
-                np.array(node.measureFieldmT()))
-            print(
-                f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, {newBMeasurement[2]:.2f})', sep='', end='', flush=True)
-            fieldVectors.insert(0, newBMeasurement)
-            differenceQuotients.insert(
-                0, (newBMeasurement - fieldVectors[1]) / a)
-            sleep(0.2)
             fieldVectors.pop()
 
         print('')
@@ -437,6 +427,6 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
 
 ########## test stuff out ##########
 if __name__ == '__main__':
-    _ = manualFeedback(maxCorrection=20, calibrate=True)
+    manualFeedback(maxCorrection=20, calibrate=True)
 
     # simpFeedback()

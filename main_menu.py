@@ -331,10 +331,121 @@ def callRunCurrents():
             np.array([coil1, coil2, coil3]), timer, direct=b'1')
 
 
+def callGenerateVectorField():
+    """
+    Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
+    """
+    inp1 = input('magnitude: ')
+    inp2 = input('polar angle (theta): ')
+    inp3 = input('azimuthal angle (phi): ')
+    subdir = input('Which subdirectory should measurements be saved to? ')
+    try:
+        magnitude = float(inp1)
+    except:
+        print('expected numerical value, defaulting to 0')
+        magnitude = 0
+    try:
+        theta = float(inp2)
+    except:
+        print('expected numerical value, defaulting to 0')
+        theta = 0
+    try:
+        phi = float(inp3)
+    except:
+        print('expected numerical value, defaulting to 0')
+        phi = 0
+
+    # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
+    #         # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+    #         char = input('Calibrate Metrolab sensor? (y/n): ')
+    #         if char == 'y':
+    #             calibration(node, calibrate=True)
+                
+    generateMagneticField(magnitude, theta, phi, subdir=subdir)
+
+
+def callFunctionGen():
+    """
+    Setup function to call the utility function 'switchConfigsAndMeasure', see 'utility_functions.py'. Manages necessary inputs.
+    """
+
+    function = input('Function to generate (sqr or sin): ')
+
+    configs = []
+    char = ''
+    while char != 'x':
+        inp1 = input('configuration 1\nChannel 1: ')
+        inp2 = input('Channel 2: ')
+        inp3 = input('Channel 3: ')
+        try:
+            a1 = float(inp1)
+            b1 = float(inp2)
+            c1 = float(inp3)
+            configs.append(np.array([a1, b1, c1]))
+        except:
+            print('expected numerical value, defaulting to (0,0,1)')
+            configs.append(np.array([0, 0, 1]))
+
+        if function == 'sqr':
+            char = input('another config (enter x to end)')
+        else:
+            char = 'x'
+
+    inp7 = input('current level (in mA): ')
+    try:
+        amplitude = int(inp7)
+    except:
+        print('expected numerical value(s), defaulting to 0')
+        amplitude = 1000
+
+    if function == 'sqr':
+        inp8 = input('how many times to repeat: ')
+    else:
+        inp8 = input('Frequency: ')
+    try:
+        rounds = int(inp8)
+    except:
+        print('expected numerical value(s), defaulting to 10')
+        rounds = 10
+
+    if function == 'sin':
+        inp1 = input('Finesse value (divisions per second): ')
+        try:
+            finesse = int(inp1)
+        except:
+            print('expected numerical value(s), defaulting to 10')
+            finesse = 10
+    else:
+        finesse = 0
+
+    inp2 = input('Duration? ')
+    try:
+        duration = float(inp2)
+    except:
+        print('expected numerical value(s), defaulting to 10*pi')
+        duration = 10*np.pi
+
+    measure = input('Measure (y for yes): ')
+    if measure == 'y':
+        measure = True
+    else:
+        measure = False
+    if function == 'sin':
+        measDur = 1.1*duration
+    else:
+        measDur = rounds * duration
+
+    # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
+    functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds,
+                      finesse=finesse, duration=duration, meas=measure, measDur=measDur)
+
+
 def feedbackMode():
     """
     Setup function to call the utility function 'callableFeedback', see 'feedback.py'. Manages necessary inputs.
     """
+    import pandas as pd
+
     print('Enter the magnetic Field vector info:')
     source = input('With an input file? (y/n) ')
     if source != 'y':
@@ -384,110 +495,7 @@ def feedbackMode():
                        'channel 2 [A]': currConfigs[:, 1],
                        'channel 3 [A]': currConfigs[:, 2]})
     df.to_csv(filepath, index=False, header=True)
-    pd.read_csv()
-
-def callGenerateVectorField():
-    """
-    Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
-    """
-    inp1 = input('magnitude: ')
-    inp2 = input('polar angle (theta): ')
-    inp3 = input('azimuthal angle (phi): ')
-    subdir = input('Which subdirectory should measurements be saved to? ')
-    try:
-        magnitude = int(inp1)
-    except:
-        print('expected numerical value, defaulting to 0')
-        magnitude = 0
-    try:
-        theta = int(inp2)
-    except:
-        print('expected numerical value, defaulting to 0')
-        theta = 0
-    try:
-        phi = int(inp3)
-    except:
-        print('expected numerical value, defaulting to 0')
-        phi = 0
-
-    # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
-    #         # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
-    #         char = input('Calibrate Metrolab sensor? (y/n): ')
-    #         if char == 'y':
-    #             calibration(node, calibrate=True)
-                
-    generateMagneticField(magnitude, theta, phi, subdir=subdir)
-
-
-def callFunctionGen():
-    """
-    Setup function to call the utility function 'switchConfigsAndMeasure', see 'utility_functions.py'. Manages necessary inputs.
-    """
-
-    function = input('Function to generate (sqr or sin): ')
-
-    configs = []
-    while char != 'x':
-        inp1 = input('configuration 1\nChannel 1: ')
-        inp2 = input('Channel 2: ')
-        inp3 = input('Channel 3: ')
-        try:
-            a1 = float(inp1)
-            b1 = float(inp2)
-            c1 = float(inp3)
-            configs.append(np.array([a1, b1, c1]))
-        except:
-            print('expected numerical value, defaulting to (0,0,1)')
-            configs.append(np.array([0, 0, 1]))
-
-        if function == 'sqr':
-            char = input('another config (enter x to end)')
-        else:
-            configs = configs[0]
-            char = 'x'
-
-    inp7 = input('current level (in mA): ')
-    try:
-        amplitude = int(inp7)
-    except:
-        print('expected numerical value(s), defaulting to 0')
-        amplitude = 1000
-
-    if function == 'sqr':
-        inp8 = input('how many times to repeat: ')
-    else:
-        inp8 = input('Frequency: ')
-    try:
-        rounds = int(inp8)
-    except:
-        print('expected numerical value(s), defaulting to 10')
-        rounds = 10
-
-    if function == 'sin':
-        inp1 = input('Finesse value (divisions per second): ')
-        try:
-            finesse = int(inp1)
-        except:
-            print('expected numerical value(s), defaulting to 10')
-            finesse = 10
-
-    inp2 = input('Duration? ')
-    try:
-        duration = float(inp2)
-    except:
-        print('expected numerical value(s), defaulting to 10*pi')
-        duration = 10*np.pi
-
-    measure = input('Measure (y for yes): ')
-    if measure == 'y':
-        measure = True
-    else:
-        measure = False
-
-    # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
-    functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds,
-                      finesse=finesse, duration=duration, meas=measure, measDur=1.1*duration)
-
+        
 
 if __name__ == '__main__':
     ecbInit = openConnection()
