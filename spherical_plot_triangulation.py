@@ -1,20 +1,22 @@
+""" 
+filename: spherical_plot_triangulation.py
+
+This script can be used to generate a 3d, spherical plot of all fitted directions from 
+a set of experiments, which have already been analyzed using the extract_linear_slopes.py script.
+The slopes are displayed as color coded scatter plot at the desired directions on the unit sphere. 
+
+
+Author: Nicholas Meinhardt (QZabre)
+        nmeinhar@student.ethz.ch
+        
+Date: 13.11.2020
+"""
+
 #%%
 # standard library imports
 import numpy as np
-from numpy.linalg import norm
 import os
-from scipy.optimize import curve_fit
-from scipy.spatial import ConvexHull
-from time import time
-from math import isnan
-import pandas as pd
-
 import matplotlib.pyplot as plt
-import matplotlib.tri as tri
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from matplotlib import cm
-import matplotlib.colors as colors
-from mpl_toolkits.mplot3d import Axes3D
 
 # local imports
 from modules.analysis_tools import *
@@ -45,7 +47,7 @@ vertices_simplices, inidces_simplices, points = delaunay_triangulation_spherical
 
 # %%
 #  create 3d-plot
-component = 2
+component = 1
 
 
 # transform angles to Carthesian coordinates
@@ -112,15 +114,31 @@ ax.set_zlabel('$B_z$ [mT]')
 ax.set_axis_off()
 ax.view_init(10, 30)
 
+# # test interpolation with a test vector
+# t = np.pi /4
+# p = np.pi / 3
+# test_vector = np.array([np.sin(t)*np.cos(p), np.sin(t)*np.sin(p), np.cos(t)]) # for testing interpolation scheme
+
+# # plot test vector 
+
+# test_vector = 1 * test_vector / np.linalg.norm(test_vector)
+# ax.quiver(test_vector[0], test_vector[1], test_vector[2], 
+#             1.1*test_vector[0], 1.1*test_vector[1], 1.1*test_vector[2],
+#             arrow_length_ratio=0.2, color='b')
+
+# # find the associtated triangle, edge or vertex that contains the test vector
+# indices_interpol = find_associated_triangle(test_vector, points, inidces_simplices)
+# highlight_interpolation_area_in_3dplot(ax, points, indices_interpol, spherical = True, color='g')
+
 plt.tight_layout()
 
-if complemented:
-    image_path = os.path.join(data_directory, 
-                    '3d_slopes_{}{}_polar_complemented.png'.format(['x','x','z'][component], valid_coil+1))
-else:
-    image_path = os.path.join(data_directory, 
-                    '3d_slopes_{}{}_polar_measured.png'.format(['x','x','z'][component], valid_coil+1))
-fig.savefig(image_path, dpi=300)
+# if complemented:
+#     image_path = os.path.join(data_directory, 
+#                     '3d_slopes_{}{}_polar_complemented.png'.format(['x','x','z'][component], valid_coil+1))
+# else:
+#     image_path = os.path.join(data_directory, 
+#                     '3d_slopes_{}{}_polar_measured.png'.format(['x','x','z'][component], valid_coil+1))
+# fig.savefig(image_path, dpi=300)
 
 plt.show()
 
