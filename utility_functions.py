@@ -108,7 +108,7 @@ class myMeasThread(threading.Thread):
         print("Starting " + self.name)
         
         try:
-            returnDict = timeResolvedMeasurement(period=self.period, averaging=self.averaging,
+            returnDict = timeResolvedMeasurement(period=self.period, average=self.averaging,
                                                 block_size=self.block_size, duration=self.duration,
                                                 return_temp_data=self.tempData)
         except Exception as e:
@@ -397,7 +397,7 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
                     duration = 10
                 params = {'block_size': 20, 'period': 1e-2, 'duration': duration, 'averaging': 5}
 
-                faden = myMeasThread(**params)
+                faden = myMeasThread(1,**params)
                 faden.start()
                 
                 faden.join()
@@ -415,7 +415,8 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
     global desCurrents
 
     B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-    I_vector = tr.computeCoilCurrents(B_vector, windings, resistance)
+    print(B_vector)
+    I_vector = tr.computeCoilCurrents(B_vector)
 
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
@@ -498,7 +499,7 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
                 duration = 10
             params = {'block_size': 20, 'period': 1e-2, 'duration': duration, 'averaging': 5}
 
-            faden = myMeasThread(**params)
+            faden = myMeasThread(1,**params)
             faden.start()
             
             faden.join()
@@ -508,13 +509,13 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
     disableCurrents()
 
 
-def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
+def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
     """
     Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
 
 
     Args:
-        *config_list (list(s)): List of configurations to change between if function is 'sqr'. Otherwise only the first config
+        config_list (list(s)): List of configurations to change between if function is 'sqr'. Otherwise only the first config
                                        will be used.
         ampl (int, optional): amplitude of the current to be applied in any configuration
         function (str, optional): Either periodically changing between constant current ('sqr') or a sinusoidal current. Defaults to 'sin'.
@@ -529,7 +530,7 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
     
     if meas:
         params = {'block_size': 30, 'period': 1e-2, 'duration': measDur, 'averaging': 5}
-        faden = myMeasThread(**params)
+        faden = myMeasThread(1,**params)
 
     enableCurrents()
     
@@ -559,8 +560,9 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         steps = num * frequency
         # tspan = np.linspace(0, duration, steps)
         # dt = duration/steps
-        funcs = [ampl * np.array(config) for config in config_list]
+        funcs = [ampl * config for config in config_list]
         
+        sleep(duration - time() % duration)
         for j in range(steps):
             
             desCurrents[0] = int(funcs[j % num][0])
@@ -569,7 +571,7 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
 
             setCurrents(desCurrents, currDirectParam)
             
-            sleep(0.95*duration)
+            sleep(duration - time() % duration)
 
     demagnetizeCoils()
     
@@ -578,14 +580,14 @@ def functionGenerator(*config_list, ampl=1000, function='sin', frequency=1, fine
         
     disableCurrents()
 
-    # strm(returnDict, r'.\data_sets\time_measurements_02_11', now=True)
+    strm(returnDict, r'.\data_sets\time_measurements_12_11', now=True)
 
         
     
 if __name__ == "__main__":
     params = {'block_size': 20, 'period': 1e-2, 'duration': 30, 'averaging': 5}
    
-    faden = myMeasThread(**params)
+    faden = myMeasThread(1,**params)
     faden.start()
     sleep(1)
     openConnection()

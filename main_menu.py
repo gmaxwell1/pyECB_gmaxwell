@@ -331,82 +331,6 @@ def callRunCurrents():
             np.array([coil1, coil2, coil3]), timer, direct=b'1')
 
 
-def feedbackMode():
-    """
-    Setup function to call the utility function 'callableFeedback', see 'feedback.py'. Manages necessary inputs.
-    """
-    print('Enter the magnetic Field vector info:')
-    source = input('With an input file? (y/n) ')
-    if source != 'y':
-        coordinates = input('coordinate system: ')
-        B_0 = input('Component 1 = ')
-        B_1 = input('Component 2 = ')
-        B_2 = input('Component 3 = ')
-        B_info_arr = [[coordinates,np.array([float(B_0),float(B_1),float(B_2)])]]
-        
-    else:
-        inpFile = input('Enter a valid configuration file path: ')
-        B_info_arr = []
-        with open(inpFile, 'r') as f:
-            contents = csv.reader(f)
-            next(contents)
-            for row in contents:
-                B_info_arr.append([row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
-                
-    subdir = input('Which directory should the output file be saved in? ')
-    filename = input('Enter a valid filename: ')
-    
-    filename = filename + '.txt'
-        
-    if subdir == '':
-        subdir = r'data_sets\linearization_matrices'
-    if filename == '' or filename[0] == ' ':
-        filename = 'dataset1.txt'
-        
-    filepath = os.path.join(subdir, filename)
-    
-    for k in range(len(B_info_arr)):
-        B_info = B_info_arr[k]
-        B, d, cur, _ = fb.callableFeedback(B_info,maxCorrection=20, thresholdPercentage=0.01, calibrate=True, ECB_active=True)
-
-        file = open(filepath, 'a')
-        file.write(f'Magnetic field vector (B_x,B_y,B_z) = ({B[0]:.2f},{B[1]:.2f},{B[2]:.2f})\n')
-        file.write('Local actuation matrix:\n')
-        for i in range(len(d[:,0])):
-            for j in range(len(d[0])):
-                if j != len(d[0]) - 1:
-                    file.write(str(round(d[i,j],4)))
-                    file.write(', ')
-                else:
-                    file.write(str(round(d[i,j],4)))
-            file.write('\n')
-
-        file.write('Current configurations:\n')
-        for i in range(min(len(cur[:,0]),30)):
-            file.write('(')
-            for j in range(len(cur[0])):
-                if j != len(cur[0]) - 1:               
-                    file.write(str(cur[i,j]))
-                    file.write(', ')
-                else:
-                    file.write(str(cur[i,j]))
-            file.write(')\n')
-            
-        file.write('Best of current configurations:\n')
-        file.write('(')
-        mode, _ = stats.mode(cur)
-        for j in range(len(mode[0])):
-            if j != len(mode[0]) - 1:               
-                file.write(str(mode[0,j]))
-                file.write(', ')
-            else:
-                file.write(str(mode[0,j]))
-        file.write(')\n')
-        file.write('\n')
-
-        file.close()
-    
-
 def callGenerateVectorField():
     """
     Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
@@ -416,17 +340,17 @@ def callGenerateVectorField():
     inp3 = input('azimuthal angle (phi): ')
     subdir = input('Which subdirectory should measurements be saved to? ')
     try:
-        magnitude = int(inp1)
+        magnitude = float(inp1)
     except:
         print('expected numerical value, defaulting to 0')
         magnitude = 0
     try:
-        theta = int(inp2)
+        theta = float(inp2)
     except:
         print('expected numerical value, defaulting to 0')
         theta = 0
     try:
-        phi = int(inp3)
+        phi = float(inp3)
     except:
         print('expected numerical value, defaulting to 0')
         phi = 0
@@ -448,6 +372,7 @@ def callFunctionGen():
     function = input('Function to generate (sqr or sin): ')
 
     configs = []
+    char = ''
     while char != 'x':
         inp1 = input('configuration 1\nChannel 1: ')
         inp2 = input('Channel 2: ')
@@ -464,7 +389,6 @@ def callFunctionGen():
         if function == 'sqr':
             char = input('another config (enter x to end)')
         else:
-            configs = configs[0]
             char = 'x'
 
     inp7 = input('current level (in mA): ')
@@ -491,6 +415,8 @@ def callFunctionGen():
         except:
             print('expected numerical value(s), defaulting to 10')
             finesse = 10
+    else:
+        finesse = 0
 
     inp2 = input('Duration? ')
     try:
@@ -504,11 +430,72 @@ def callFunctionGen():
         measure = True
     else:
         measure = False
+    if function == 'sin':
+        measDur = 1.1*duration
+    else:
+        measDur = rounds * duration
 
     # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
     functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds,
-                      finesse=finesse, duration=duration, meas=measure, measDur=1.1*duration)
+                      finesse=finesse, duration=duration, meas=measure, measDur=measDur)
 
+
+def feedbackMode():
+    """
+    Setup function to call the utility function 'callableFeedback', see 'feedback.py'. Manages necessary inputs.
+    """
+    import pandas as pd
+
+    print('Enter the magnetic Field vector info:')
+    source = input('With an input file? (y/n) ')
+    if source != 'y':
+        coordinates = input('coordinate system: ')
+        B_0 = input('Component 1 = ')
+        B_1 = input('Component 2 = ')
+        B_2 = input('Component 3 = ')
+        B_info_arr = [[coordinates,np.array([float(B_0),float(B_1),float(B_2)])]]
+        
+    else:
+        inpFile = input('Enter a valid configuration file path: ')
+        B_info_arr = []
+        with open(inpFile, 'r') as f:
+            contents = csv.reader(f)
+            next(contents)
+            for row in contents:
+                B_info_arr.append([row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
+    
+    BVectors = []
+    currConfigs = []
+    for k in range(len(B_info_arr)):
+        B_info = B_info_arr[k]
+        BVector, dBdI, cur = fb.callableFeedback(B_info, maxCorrection=20, threshold=0.6, calibrate=True, ECB_active=True)
+        BVectors.append(BVector)
+        currConfigs.append(cur)
+    
+    BVectors = np.array(BVectors)
+    currConfigs = np.array(currConfigs)
+
+    subdir = input('Which directory should the output file be saved in? ')
+    filename = input('Enter a valid filename(no special chars): ')
+           
+    if subdir == '':
+        subdir = r'data_sets\linearization_matrices'
+    if filename == '' or filename[0] == ' ':
+        filename = 'dataset1'
+        
+    now = datetime.now().strftime('%y_%m_%d_%H%M%S')
+    filename = f'{now}-{filename}.csv'    
+    
+    filepath = os.path.join(subdir, filename)
+    
+    df = pd.DataFrame({'expected Bx [mT]': BVectors[:, 0],
+                       'expected By [mT]': BVectors[:, 1],
+                       'expected Bz [mT]': BVectors[:, 2],
+                       'channel 1 [A]': currConfigs[:, 0],
+                       'channel 2 [A]': currConfigs[:, 1],
+                       'channel 3 [A]': currConfigs[:, 2]})
+    df.to_csv(filepath, index=False, header=True)
+        
 
 if __name__ == '__main__':
     ecbInit = openConnection()

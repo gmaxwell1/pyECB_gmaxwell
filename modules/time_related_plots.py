@@ -369,10 +369,10 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 if __name__ == "__main__":
     
-    data_directory = r'data_sets\testing_field_directions'
+    data_directory = r'data_sets\time_measurements_12_11'
     # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # # for item in files:
-    filepath = os.path.join(data_directory, '20_11_05_11-00-02_time_resolved.csv')
+    filepath = os.path.join(data_directory, '20_11_12_15-11-40_time_resolved.csv')
     # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
     generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
                         separate=False, statistics=True)
