@@ -51,15 +51,18 @@ def MainMenu(initialized):
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
             print(
                 '[5]: Generate a time varying field (sin and sqr waves are possible currently)')
-            print('[6]: Use feedback control for vector magnet to determine currents for a certain B-field direction\n')
-            print('[r] roll a die\n')
+            print(
+                '[6]: Use feedback control for vector magnet to determine currents for a certain B-field direction')
+            print('[h] do a hysteresis test.\n')
 
             c1 = input()
 
             if c1 == '1':
-                inp0 = input('Automatic or manual input? (m or nothing): ')
+                inp0 = input(
+                    'Automatic or manual input? (m or f or nothing): ')
                 datadir = input(
                     'Enter a valid directory name to save measurement data in: ')
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 if datadir == '':
                     callCurrentSweep(inp0)
                 else:
@@ -67,26 +70,29 @@ def MainMenu(initialized):
 
             # tentative implementation. Actual I-to-B actuation matrix needed. Many other features not added yet.
             elif c1 == '2':
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 callSweepVectorField()
 
             elif c1 == '3':
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 callRunCurrents()
 
             # tentative implementation. Actual I-to-B actuation matrix needed.
             elif c1 == '4':
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 callGenerateVectorField()
 
             elif c1 == '5':
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 callFunctionGen()
 
             elif c1 == '6':
+                c1 = input('Automatic exit after finish? (x for yes): ')
                 feedbackMode()
 
-            elif c1 == 'r':
-                # just for fun :D
-                c1 = np.random.randint(1, 7)
-                print('doing option ', c1, ': ')
-                c1 = str(c1)
+            elif c1 == 'h':
+                c1 = input('Automatic exit after finish? (x for yes): ')
+                callHysteresisSweep()
 
     else:
         print('not connected')
@@ -124,8 +130,6 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
         except:
             print('expected numerical value, defaulting to 200')
             steps = 200
-
-        c1 = input('Automatic exit after finish? (x for yes): ')
 
         with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
             char = input('Calibrate Metrolab sensor? (y/n): ')
@@ -174,8 +178,6 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             print('expected numerical value, defaulting to 1')
             steps = 1
 
-        c1 = input('Automatic exit after finish? (x for yes): ')
-
         with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
             char = input('Calibrate Metrolab sensor? (y/n): ')
             if char == 'y':
@@ -213,13 +215,55 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             print('expected numerical value, defaulting to 1')
             steps = 1
 
-        c1 = input('Automatic exit after finish? (x for yes): ')
-
         while randomRuns > 0:
             sweepCurrents(config=config, start_val=start_val,
                           end_val=end_val, steps=steps, datadir=datadir,
                           node=MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5))
             randomRuns = randomRuns-1
+
+
+def callHysteresisSweep():
+    """
+    Setup function to call the utility function 'sweepCurrents', see 'utility_functions.py'. Manages necessary inputs.
+
+    Args:
+        mode (str, optional): Decides whether a file with configurations or a manual input will be read. The third option is
+        using default configurations, such as the x, y or z direction. Defaults to 'm'.
+        datadir (str, optional): subdirectory to save measurements in. default: 'test_measurements'
+    """
+    inp1 = input('Configuration:\nChannel 1: ')
+    inp2 = input('Channel 2: ')
+    inp3 = input('Channel 3: ')
+    datadir = input('Which directory should the output file be saved in? ')
+    inp5 = input('maximum current in mA = ')
+    inp6 = input('# of steps: ')
+
+    try:
+        a1 = float(inp1)
+        b1 = float(inp2)
+        c1 = float(inp3)
+        config = np.array([a1, b1, c1])
+    except:
+        print(
+            'expected numbers (float or int), defaulting to (0,0,1)')
+        config = np.array([0, 0, 1])
+    try:
+        end_val = int(inp5)
+    except:
+        print('expected numerical value, defaulting to 1')
+        end_val = 1
+    try:
+        steps = int(inp6)
+    except:
+        print('expected numerical value, defaulting to 1')
+        steps = 1
+
+    if datadir != '':
+        sweepHysteresis(config_list=config, datadir=datadir,
+                        end_val=end_val, steps=steps, today=False)
+    else:
+        sweepHysteresis(config_list=config, end_val=end_val,
+                        steps=steps, today=False)
 
 
 def callSweepVectorField():
@@ -360,7 +404,7 @@ def callGenerateVectorField():
     #         char = input('Calibrate Metrolab sensor? (y/n): ')
     #         if char == 'y':
     #             calibration(node, calibrate=True)
-                
+
     generateMagneticField(magnitude, theta, phi, subdir=subdir)
 
 
@@ -453,8 +497,9 @@ def feedbackMode():
         B_0 = input('Component 1 = ')
         B_1 = input('Component 2 = ')
         B_2 = input('Component 3 = ')
-        B_info_arr = [[coordinates,np.array([float(B_0),float(B_1),float(B_2)])]]
-        
+        B_info_arr = [[coordinates, np.array(
+            [float(B_0), float(B_1), float(B_2)])]]
+
     else:
         inpFile = input('Enter a valid configuration file path: ')
         B_info_arr = []
@@ -462,32 +507,34 @@ def feedbackMode():
             contents = csv.reader(f)
             next(contents)
             for row in contents:
-                B_info_arr.append([row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
-    
+                B_info_arr.append(
+                    [row[0], np.array([float(row[1]), float(row[2]), float(row[3])])])
+
     BVectors = []
     currConfigs = []
     for k in range(len(B_info_arr)):
         B_info = B_info_arr[k]
-        BVector, dBdI, cur = fb.callableFeedback(B_info, maxCorrection=20, threshold=0.6, calibrate=True, ECB_active=True)
+        BVector, dBdI, cur = fb.callableFeedback(
+            B_info, maxCorrection=20, threshold=1, calibrate=True, ECB_active=True)
         BVectors.append(BVector)
         currConfigs.append(cur)
-    
+
     BVectors = np.array(BVectors)
     currConfigs = np.array(currConfigs)
 
     subdir = input('Which directory should the output file be saved in? ')
     filename = input('Enter a valid filename(no special chars): ')
-           
+
     if subdir == '':
         subdir = r'data_sets\linearization_matrices'
     if filename == '' or filename[0] == ' ':
         filename = 'dataset1'
-        
+
     now = datetime.now().strftime('%y_%m_%d_%H%M%S')
-    filename = f'{now}-{filename}.csv'    
-    
+    filename = f'{now}-{filename}.csv'
+
     filepath = os.path.join(subdir, filename)
-    
+
     df = pd.DataFrame({'expected Bx [mT]': BVectors[:, 0],
                        'expected By [mT]': BVectors[:, 1],
                        'expected Bz [mT]': BVectors[:, 2],
@@ -495,7 +542,7 @@ def feedbackMode():
                        'channel 2 [A]': currConfigs[:, 1],
                        'channel 3 [A]': currConfigs[:, 2]})
     df.to_csv(filepath, index=False, header=True)
-        
+
 
 if __name__ == '__main__':
     ecbInit = openConnection()
