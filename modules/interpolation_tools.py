@@ -15,12 +15,14 @@ import numpy as np
 from numpy.linalg import norm
 import os
 from scipy.optimize import curve_fit
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, SphericalVoronoi
 from math import isnan
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from functools import reduce
 
 # local imports
 from modules.analysis_tools import *
@@ -108,7 +110,7 @@ def find_start_of_saturation(I, mean_values, std_values, component = None, verbo
                             
     return i_min, i_max
 
-def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots = False, fraction_cutoff = 0.02,
+def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots = False, save_plots = False, fraction_cutoff = 0.02,
                                     affine_fct = lambda x, a, b: a*x + b):
     """
     Apply the linear fitting scheme of estimate_linear_fit_params_and_boundaries
@@ -201,26 +203,36 @@ def apply_fitting_to_files_in_directory(directory, verbose = False, show_plots =
         valid_coil = np.arange(3)[mask][0]  
         x = I[:, valid_coil]
 
-        if show_plots:
+        if show_plots or save_plots:
             fig, axs = plt.subplots(3)
             fig.set_size_inches(6, 8)
             for component in range(3):
                 axs[component].plot(x, mean_data[:,component], linestyle=None, marker= '.', label = 'measured')
                 axs[component].plot(x, x* slopes[component,valid_coil] + offsets[component], linestyle='--', 
                                 label='fitted: ({:.2f} mT/A)*I + {:.2f} mT'.format(slopes[component,valid_coil], offsets[component]))
+                # ymin = slopes[component, valid_coil]* x[i_min] + offsets[component]
+                # ymax = slopes[component, valid_coil]* x[i_max] + offsets[component]
                 ymin, ymax = axs[component].get_ylim()
                 axs[component].vlines([x[i_min], x[i_max]], ymin, ymax, alpha=0.5, linewidth=1, 
                             label='linear regime in [{:.2f} A, {:.2f} A]'.format(I[i_min, 0], I[i_max, 0]))
-                axs[component].hlines([B_max_1[component], B_max_2[component]], x[i_min], x[i_max], alpha=0.5, linewidth=1, 
-                            label='linear regime in [{:.2f} mT, {:.2f} mT]'.format(B_max_1[component], B_max_2[component]))
+                # axs[component].hlines([B_max_1[component], B_max_2[component]], x[i_min], x[i_max], alpha=0.5, linewidth=1, 
+                #             label='linear regime in [{:.2f} mT, {:.2f} mT]'.format(B_max_1[component], B_max_2[component]))
 
                 axs[component].set_ylabel('$B_{}$ [mT]'.format(['x', 'y', 'z'][component]))
                 axs[component].set_xlabel('$I_1$ [A]')
                 axs[component].set_ylim( 1.1*np.min(mean_data[:,component]), 1.1*np.max(mean_data[:,component]))
                 axs[component].legend()
-            fig.suptitle(data_filename)
             plt.tight_layout()
-            plt.show()
+            
+            if save_plots:
+                image_path = os.path.join(directory, '{}_linear_fits.png'.format(data_filename))
+                fig.savefig(image_path, dpi=300)
+            else: 
+                fig.suptitle(data_filename)
+            if show_plots:
+                plt.show()
+            else:
+                plt.close(fig)
 
     # convert lists to arrays
     list_B_directions = np.array(list_B_directions)
@@ -405,7 +417,7 @@ def add_reverse_directions(phis, phis_std, thetas, thetas_std, slopes, slopes_st
     theta -> 180° - theta
     - slopes, slopes_std, offsets, offsets_std (ndarrays of shape (2*num_files, 3, 3)):
     contain the fitted slopes and offsets as well as their respective standard deviations,
-    which are now complemented by the (negative) slopes and (same) offsets for the reverse directions. 
+    which are now complemented by the (same) slopes and offsets for the reverse directions. 
     """
     # check whether the reversed direction of first entry in thetas is already contained in thetas
     # in this way, it is prevented to add the reverse directions twice, while assuming that the 
@@ -438,7 +450,7 @@ def add_reverse_directions(phis, phis_std, thetas, thetas_std, slopes, slopes_st
 
         # while offsets and standard deviations of both slopes and offsets remain the same, 
         # the slopes get an overall negative sign
-        slopes_filled[N+i] = - slopes[i] 
+        # slopes_filled[N+i] = - slopes[i] 
 
     return phis_filled, phis_std_filled, thetas_filled, thetas_std_filled, slopes_filled, slopes_std_filled, offsets_filled, offsets_std_filled
 
@@ -521,7 +533,6 @@ def extract_fit_parameters_from_file(filepath):
     magnetic field and the respective standard deviations
     - B_max_1, B_max_2 (ndarray of length N): magnetic fields at the left (1) and right (2) boundary 
     of the linear regime, estimated for the first valid coil (i.e. with nonzero current)
-    - output_file_name (str): Name of csv file where the result are stored
     """
     # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -545,7 +556,10 @@ def extract_fit_parameters_from_file(filepath):
     B_max_1 = raw_data[:, 32:35]
     B_max_2 = raw_data[:, 35:38]
 
-    return filenames, slopes, slopes_std, offsets, offsets_std, B_directions, phis, phis_std, thetas, thetas_std, B_max_1, B_max_2
+    return filenames, slopes.astype(float), slopes_std.astype(float), \
+        offsets.astype(float), offsets_std.astype(float), B_directions.astype(float), \
+        phis.astype(float), phis_std.astype(float), thetas.astype(float), thetas_std.astype(float), \
+        B_max_1.astype(float), B_max_2.astype(float)
 
 def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colored_triangles = False, 
                                     color='gray'):
@@ -598,3 +612,286 @@ def add_triangles_to_3dplot(ax, pts, inidces_simplices, spherical = True, colore
 
         else:
             ax.plot(pts[s, 0], pts[s, 1], pts[s, 2], 'r-', alpha=0.4)
+
+def highlight_interpolation_area_in_3dplot(ax, pts, indices_interpolation, spherical = True, color='g'):
+    """
+    Highlight the relevant area/line/point for interpolation by pointing it in green 
+
+    Args:
+    - ax (Axes3D): Axis of plot with 3d projection
+    - pts (ndarray of shape (N, 3)): all vertices, which are points on the unit sphere
+    - indices_interpolation (ndarray of length 1,2 or 3): Integer array containing the indeces 
+    of the data points that are the vertices of relevant area or line (or only a single vertex is relevant)
+    - spherical (bool): Flag to switch between straight lines and great circles as edges of the triangles.
+    - color (str): valid color of Matplotlib used to draw the surface
+    """
+    # estimate magnitude/radius of considered sphere
+    radius = np.linalg.norm(pts[0])
+    
+    # if single vertex is considered, so no interpolation is required
+    if len(indices_interpolation) == 1:
+        ax.scatter( pts[indices_interpolation[0], 0], 
+                    pts[indices_interpolation[0], 1], 
+                    pts[indices_interpolation[0], 2], color=color, s=40)
+
+    
+    # if two vertices are considered, the interpolation happens on this line
+    elif len(indices_interpolation) == 2:      
+        if spherical:
+            # initialize arrary to generate spherical great circle segments
+            fractions = np.linspace(0, 1, 10)
+
+            # initialize array to store all positions along the path
+            lines = []
+            direction = pts[indices_interpolation[1]] - pts[indices_interpolation[0]]
+            [lines.append(pts[indices_interpolation[0]] + r*direction) for r in fractions]
+            
+            # normalize all points along path and multiply by radius, such that they point towards the sphere
+            lines = radius * (lines/ np.linalg.norm(lines, axis=1).reshape(-1,1))         
+
+        else:
+            lines = np.array(pts[indices_interpolation])
+
+        ax.plot(lines[:, 0], lines[:, 1], lines[:, 2], color=color, linestyle='-')
+    
+    # if three vertices obtained, plot the entire triangle that is relevant for interpolation
+    elif len(indices_interpolation) == 3:
+        # Cycle back to the first coordinate to plot the whole triangle
+        s = np.append(indices_interpolation, indices_interpolation[0])  
+        
+        if spherical:
+            # initialize arrary to generate spherical great circle segments
+            fractions = np.linspace(0, 1, 10, endpoint=False)
+
+            # initialize array to store all positions along the path
+            lines = []
+            for i in range(len(s)-1):
+                direction = pts[s[i+1]] - pts[s[i]]
+                [lines.append(pts[s[i]] + r*direction) for r in fractions]
+            # append the first point to close the loop 
+            lines.append(lines[0])
+            
+            # normalize all points along path and multiply by radius, such that they point towards the sphere
+            lines = radius * (lines/ np.linalg.norm(lines, axis=1).reshape(-1,1))         
+
+        else:
+            lines = np.array(pts[s])
+
+        # draw the surface
+        polygon = Poly3DCollection([lines], alpha=1.0)
+        polygon.set_color(color)
+        ax.add_collection3d(polygon)
+    else:
+        raise NotImplementedError('indices_interpolation must be of length 1, 2 or 3')
+
+
+def find_associated_triangle(test_vector, points, inidces_simplices):
+    """
+    Estimates the associated triangle and returns the according indices. 
+    This function exploits the fact that Voronoi diagrams are the dual graphs of Delauney triangulation.
+    Accoringly, searching for the associated triangle reduces to finding the closest Voronoi vertex.
+    If the test vector lies on a edge of a triangle, two Voronoi vertices are equally close to the vector.
+    Else, if three Voronoi vertices are equally close to the vector, the vector corresponds to a vertex
+    of the triangulation.
+
+    Args:
+    - test_vector (ndarray of length 3): vector for which associated triangle should be found
+    - points (ndarray of shape (N, 3)): All points on a sphere that correspond vertices of 
+    Delauney triangulation, which is estimated using scipy.spatial.ConvexHull
+    - inidces_simplices (ndarray of shape (nfacet, 3)): Integer array containing the indeces 
+    of the data points that form the vertices of the simplices
+
+    Return:
+    - indices (1d-array of length 1,2,3): Returns the indices of the elements in points that are closest 
+    the test vector. 
+    To get the corrsponding points in Carthesian coordinates, use `points[i_triang]` 
+    dd
+    """
+    # estimate radius of sphere
+    radius = np.linalg.norm(points[0])
+
+    # estimate Voronoi vertices, which are the circumcenters of the triangles
+    vor_vertices = SphericalVoronoi(points, radius=radius).vertices
+
+    # estimate distances between test vector and Voronoi vertices
+    distances = np.linalg.norm(vor_vertices - test_vector, axis=1)
+
+    # find closest Voronoi vertices and account for numerical imprecision with np.isclose
+    min_distance = np.min(distances)
+    i_min = np.nonzero(np.isclose(distances, min_distance))[0]
+    
+    # if i_min contains a single entry, the test vector lies within a triangle
+    if len(i_min) == 1:
+        return np.array(inidces_simplices[i_min]).flatten()
+
+    else:
+        indices_intersect = reduce(np.intersect1d, [inidces_simplices[i] for i in i_min])
+        # print('after intersection: {}'.format(indices_intersect))
+
+        # double check that none of the points descibred by indices_intersect equals to 
+        # test vector up to numerical imprecision
+        if len(indices_intersect) > 1:
+            for i in indices_intersect:
+                if np.all(np.isclose(test_vector, points[i])):
+                    return np.array([i])
+
+        return np.array(indices_intersect)
+        
+
+def area_planar_triangle(a, b, c):
+    """
+    Estimate area of a three dimensional triangle with vertices a, b, c
+
+    Args:
+    - a, b, c (ndarrays of length 3): vectors corresponding to vertices
+
+    Return: area
+    """
+    return 0.5 * np.linalg.norm(np.cross( b-a, c-a))
+
+def great_circle_distance(a,b):
+    """
+    Estimate shortest distance between two 3d-vectors on a sphere, 
+    i.e. the distance along a great circle
+
+    Args:
+    - a, b (ndarrays of length 3 or shape (N,3)): vectors corresponding to vertices
+    If only one array is of shape (N,3), the distances of the 1d-array with the second axis of the other 
+    array are computed. If both arrays are 2d, the distances are estimated along the first axis.
+    All vectors are assumed have the same magnitude to reduce unneccessary computations.
+    
+    Return: distance (float or array of length N) 
+    """
+    # magnitude of a
+    radius = np.linalg.norm(a, axis=-1)
+
+    # estimate angle, consider both the cases of 1d and 2d arrays, 
+    # note that np.dot is not generally symmetric if different dimensions are passed
+    if  b.ndim == 1 and (a.ndim == 1 or a.ndim == 2):
+        dot = np.dot(a,b) 
+    elif a.ndim == 1 and (b.ndim == 1 or b.ndim == 2):
+        dot = np.dot(b,a) 
+    elif a.ndim == 2 and a.shape == b.shape:
+        dot = [np.dot(a[i],b[i]) for i in range(len(a))]
+    else:
+        raise ValueError
+
+    return radius * np.arccos(dot / radius**2)
+
+def area_spherical_triangle(x, y, z):
+    """
+    Estimate area of a three dimensional triangle with vertices x, y, z on sphere.
+
+    Args:
+    - x, y, z (ndarrays of length 3): vectors corresponding to vertices, which are  
+    assumed to have the same magnitude.
+
+    Return: area of spherical trianlge (float)
+    """
+    # print('x: {}'.format(np.round(x, 3)))
+    # print('y: {}'.format(np.round(y, 3)))
+    # print('z: {}'.format(np.round(z, 3)))
+    # normalize input vectors
+    magnitude = np.linalg.norm(x)
+    x = x / magnitude
+    y = y / magnitude
+    z = z / magnitude
+
+    # estimate great circle distances between vertices
+    a = great_circle_distance(y, z)
+    b = great_circle_distance(x, z)
+    c = great_circle_distance(x, y)
+
+    # estimate spherical excess E = alpha + beta + gamma - Pi for angles at x,y,z
+    s = (a + b + c) / 2
+  
+    E = 4 * np.arctan(np.sqrt(np.tan(s/2) * np.tan((s-a)/2)* np.tan((s-b)/2)* np.tan((s-c)/2)))
+    return E * magnitude**2
+
+def apply_linear_interpolation(x, points, values, inidces_simplices, verbose=False):
+    """
+    Perform linear interpolation between provided points and respective values at these points 
+    for a test vector x. 
+
+    Args:
+    - x (ndarray of length 3): test vector at which values should be interpolated
+    - points (ndarray of shape (N, 3)): All points on a sphere that correspond vertices of 
+    Delauney triangulation, which is estimated using scipy.spatial.ConvexHull
+    - values (ndarray of shape (N, ...)): Objective values of interpolation that correspond 
+    to the locations defined in points: At point[i], values[i] must be returned
+    - inidces_simplices (ndarray of shape (nfacet, 3)): Integer array containing the indeces 
+    of the data points that form the vertices of the simplices
+
+    Return:
+    """
+    # find associated triangle/edge/vertex first
+    indices_interpol = find_associated_triangle(x, points, inidces_simplices)
+
+   
+    # if x corresponds to one of the vertices given by points, interpolation is trivial
+    if len(indices_interpol) == 1:
+        return values[indices_interpol[0]]
+    
+    # if x lies on edge of two triangles, i.e. between two vertices, linear interpolation is straight forward
+    elif len(indices_interpol) == 2:
+        # weights are distances to vertices normalized by overall distance 
+        distance_tot = great_circle_distance(points[indices_interpol[0]],  points[indices_interpol[1]])
+        
+        weights = great_circle_distance(x, points[indices_interpol]) / distance_tot
+        # flip weights, because distance between x and one vertex yields weight of the other vertex 
+        weights = np.flip(weights)
+        
+        return np.average(values[indices_interpol], weights=weights, axis=0)
+
+    # if x lies within a triangle, use areas of the three triangles formed by x and vertices as weights
+    elif len(indices_interpol) == 3:
+        # overall area of triangle
+        area_tot = area_spherical_triangle(*points[indices_interpol])
+        # print('area_tot = {:.3f}'.format(area_tot))
+
+        weights = np.zeros(3)
+        for i in range(3):
+            weights[i] = area_spherical_triangle(x, *points[np.delete(indices_interpol,i)]) 
+        # print('weights not normalized: {}'.format(np.round(weights, 3)))
+        # print('sum(areas) / area_tot = {:.4f}'.format(np.sum(weights)/area_tot))
+        weights /= area_tot
+
+        # return weights @ values[indices_interpol]
+        return np.average(values[indices_interpol], weights=weights, axis=0)
+
+    if verbose:
+        print('test vector: {}'.format(np.round(x, 3)))
+        print('indices interpolation: {}'.format(indices_interpol))
+        for i in indices_interpol:
+            print('vertex {}: {}'.format(np.round(points[i], 3), np.round(values[i], 3)))
+        print('interpolation result: {}'.format(np.round(np.average(values[indices_interpol], weights=weights, axis=0), 3)))
+
+
+    else:
+        raise NotImplementedError
+
+
+def extract_LUC_from_file(filepath):
+    """
+    Extract field vectors and associated coil currents from a csv-file.
+
+    Args: filepath (str): valid path of the csv-file
+
+    Return: 
+    - B_fields (ndarray of shape (N,3)): vectorial representation of B-fields
+    - phis, thetas (ndarray of length N): angular directions of magnetic field
+    - currents (ndarray of shape (N,3)): associated currents in coil 1, 2, 3
+    """
+    # extract data and convert to ndarray
+    raw_data = pd.read_csv(filepath).to_numpy()
+
+    # assign values to correct variables
+    B_fields = raw_data[:, 0:3]
+    currents = raw_data[:, 3:6]
+
+    # conversion to np.float needed, because np.degrees(phis) would fail else
+    phis = get_phi(B_fields)
+    thetas = get_theta(B_fields)
+
+    return B_fields, phis, thetas, currents
+

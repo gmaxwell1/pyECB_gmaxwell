@@ -36,7 +36,7 @@ except ModuleNotFoundError:
 finally:
     from modules.general_functions import ensure_dir_exists
     from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
-
+    from modules.analysis_tools import get_phi, get_theta
 
 #%%
 # Part 1 --------------------------------------------------------
@@ -129,8 +129,8 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
     The sign remains the same, such that a single set of ratios contains a 1 or a -1.
     - vectors (ndarray of shape(N,3)): Array containing the Carthesian coordinates
     of all considered vectors, posing a simple way for plotting of the latter
-    - thetas (ndarray of length 3): Contain latitude angles theta of all vectors
-    - phis (ndarray of length 3): Contain longitude angles phi of all vectors
+    - thetas (ndarray of length 3): Contain latitude angles theta of all vectors in radians
+    - phis (ndarray of length 3): Contain longitude angles phi of all vectors in radians
     """
     # estimate the distance between two points on equator along the circle
     distance_equator = 2 * np.pi / n_sectors
@@ -187,6 +187,29 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
 
     return np.array(ratios),  np.array(vectors), np.array(thetas), np.array(phis)
 
+def generate_test_points_whole_sphere(n_sectors, magnitude):
+    """
+    Generate a test set of points that are approximately equally spaced on a sphere with radius
+    magnitude and return a set of vectors.
+
+    Args:
+    - n_sectors (int >= 4): number of points on the equator. The number of different
+    latitude levels is n_sectors // 4. While there are n_sectors points on the equator 
+    and a single point on the north pole, the number of points on a fixed latitude 
+    (or elevation from the equator) is adapted automatically, such that all points are
+    approximately uniformly distributed on the sphere. 
+    Note: To ensure that points along x and y axis are considered, too, it is recommended
+    to set n_sectors to multiples of 4.
+    - magnitude (float): magnitude of vectors that are generated
+    """
+    _, vectors_upper, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
+                                        upper=True, include_equator=True)
+    _, vectors_lower, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
+                                        upper=False, include_equator=False)
+
+    # combine both hemispheres and return vectors
+    return np.append(vectors_upper, vectors_lower, axis=0)
+
 def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulation = False):
     """
     Generate and show 3d plot of sphere and the provided vectors.
@@ -195,7 +218,7 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
     - vectors (ndarray of shape(N, 3)): Contains normal vectors that should be plotted.
     - magnitude (float): magnitude of sphere that is plotted for a better visualization.
     If magnitude = 1, it corresponds to the unit sphere
-    - phis, thetas (ndarrays of length N): Spherical angles of passed vectors. Kind of redundant,
+    - phis, thetas (ndarrays of length N): Spherical angles in degrees of passed vectors. Kind of redundant,
     but it is easier to reuse the already defined angles than computing them from the vectors again.
     - add_tiangulation (bool): If True, triangulation between points is plotted as well.
     """
@@ -224,13 +247,17 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
     ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
                         alpha=0.05, antialiased=False, vmax=2)  
     
+    centers = []
     # plot all vectors as red dots
     ax.scatter(vectors[:,0], vectors[:,1], vectors[:,2], color='r')
     
     if add_tiangulation:
+        if phis is None or thetas is None:
+            phis = get_phi(vectors)
+            thetas = get_theta(vectors)
         # apply Delaunay triangulation on the surface of the sphere, which corresponds to finding convex Hull
-        _, inidces_simplices, points = delaunay_triangulation_spherical_surface(np.degrees(phis), 
-                                                                                np.degrees(thetas), 
+        _, inidces_simplices, points = delaunay_triangulation_spherical_surface(phis, 
+                                                                                thetas, 
                                                                                 radius=magnitude)
 
         # add triangles as lines
@@ -244,7 +271,10 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
 
     ax.view_init(30, 45)
 
-    return fig, ax
+    if add_tiangulation:
+        return fig, ax, inidces_simplices, points
+    else:
+        return fig, ax
 
 
 

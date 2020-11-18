@@ -16,6 +16,8 @@ analysis_correct_misalignment.py
 estimate_saturation_limits.py
 extract_linear_slopes.py
 test_interpolation.py
+spherical_plot_triangulation.py
+lookup_table_interpolation.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
