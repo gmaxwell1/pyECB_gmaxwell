@@ -204,7 +204,7 @@ def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
     return ret1, ret2
 
 
-def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, return_temp_data=False):
+def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10):
     """
     Measure magnetic flux density over time.
 
@@ -214,30 +214,28 @@ def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, 
                                    Results in smoother measurements. Defaults to 1.
         block_size (int, optional): How many measurements should be fetched at once. Defaults to 1.
         duration (int, optional): Total duration of measurement. Defaults to 10.
-        return_temp_data (bool, optional): Temperature measured by sensor will or will not be returned. This is a dimensionless value between 0 and 64k. 
-                                           Not calibrated, mainly useful for detecting problems due to temperature fluctuations. Defaults to False.
 
     Raises:
         ValueError: If for some reason the number of time values and B field values is different.
 
     Returns:
-        dictionary containing lists of floats: Bx, By, Bz, timeline 
-        (x, y and z components of B field, times of measurements)
-        list of floats: temp (temperature values as explained above)
+        dictionary containing lists of floats: Bx, By, Bz, timeline, temp 
+        (x, y and z components of B field, times of measurements, temperature values 
+        are dimensionless values between 0 and 64k)
     """
     with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT') as node:
         # calibration(node, meas_height=1.5)
-
+    # node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT')
         thread = threading.Thread(target=node.start_acquisition)
         thread.start()
         sleep(duration)
         node.stop = True
-
+        thread.join()
         # Sensor coordinates to preferred coordinates transformation
         xValues = np.array(node.data_stack['Bz'])
         #xOffset = 0.55
         xValues = -xValues  # np.subtract(-xValues, xOffset)
-        print
+        # print
         # Sensor coordinates to preferred coordinates transformation, offset correction
         yValues = np.array(node.data_stack['Bx'])
         #yOffset = 2.40
@@ -252,19 +250,17 @@ def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, 
         for ind in range(len(timeline)):
             timeline[ind] = round(timeline[ind]-t_offset, 3)
 
-        node.data_stack['Timestamp'] = timeline
+        # node.data_stack['Timestamp'] = timeline
 
-        try:
-            if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
-                raise ValueError(
-                    "length of Bx, By, Bz do not match that of the timeline")
-            else:
-                if return_temp_data:
-                    return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'temp': node.data_stack['Temperature'], 'time': timeline}
-
-                return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'time': timeline}
-        except:
-            return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
+    try:
+        if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
+            raise ValueError(
+                "length of Bx, By, Bz do not match that of the timeline")
+        else:
+            return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'temp': node.data_stack['Temperature'], 'time': timeline}
+    except Exception as e:
+        print(e)
+        return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0, 'temp': 0}
 
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_sets', data_filename_postfix='B_field_vs_I'):
@@ -320,7 +316,7 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
 if __name__ == '__main__':
 
     with MetrolabTHM1176Node() as node:
-        calibration(node, calibrate=True)
+        calibration(node, calibrate=False)
         # initialize actuators
     # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
     # CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)

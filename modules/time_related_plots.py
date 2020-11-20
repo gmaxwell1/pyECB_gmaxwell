@@ -116,59 +116,94 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
 
     times = raw_data[:, 0]
     fields = raw_data[:, 1:4]
+    temp = raw_data[:, 4]
+    numplots = 1
 
     if not separate:
         # generate Figure and Axis instances
-        fig, ax = plt.subplots()
-        ax = np.array([ax])
+        if 't' in plot_components:
+            numplots = 2
+        fig, ax = plt.subplots(numplots, sharex=True)
+        if numplots == 1:
+            ax = np.array([ax])
     else:
-        fig, ax = plt.subplots(len(plot_components))
-        fig.set_size_inches(6, len(plot_components) * 3)
+        numplots = len(plot_components)
+        fig, ax = plt.subplots(numplots, sharex=True)
+        fig.set_size_inches(6, numplots * 3)
 
     # plot the desired contents
-    if show_dev_from_mean:
-        # ax[0].hlines
-        if 'x' in plot_components:
-            ax[0].plot(times, fields[:, 0] - np.mean(fields[:, 0]),
-                       label='$\Delta$ $B_x$', color='C0')
-        if 'y' in plot_components:
-            ax[1].plot(times, fields[:, 1] - np.mean(fields[:, 1]),
-                       label='$\Delta$ $B_y$', color='C1')
-        if 'z' in plot_components:
-            ax[2].plot(times, fields[:, 2] - np.mean(fields[:, 2]),
-                       label='$\Delta$ $B_z$', color='C2')
-        # if 'm' in plot_components:
-        #     magn_B_fields = np.linalg.norm(fields, axis=1)
-        #     ax.plot(times, magn_B_fields - np.mean(magn_B_fields), label = '$\Delta$ $|B|$')
-        # if 'p' in plot_components:
-        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-        #     ax.plot(times, inplane_B_fields - np.mean(inplane_B_fields), label = '$\Delta$ $|B_{xy}|$')
-    else:
-        ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
-        if 'x' in plot_components:
-            if separate:
-                ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
-                ax[0].set_ylabel('magnetic field, $B_x$ [mT]')
-            else:
-                ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
-        if 'y' in plot_components:
-            if separate:
-                ax[1].plot(times, fields[:, 1], label='$B_y$', color='C1')
-                ax[1].set_ylabel('magnetic field, $B_y$ [mT]')
-            else:
-                ax[0].plot(times, fields[:, 1], label='$B_y$', color='C1')
-        if 'z' in plot_components:
-            if separate:
-                ax[2].plot(times, fields[:, 2], label='$B_z$', color='C2')
-                ax[2].set_ylabel('magnetic field, $B_z$ [mT]')
-            else:
-                ax[0].plot(times, fields[:, 2], label='$B_z$', color='C2')
-        # if 'm' in plot_components:
-        #     magn_B_fields = np.linalg.norm(fields, axis=1)
-        #     ax.plot(times, magn_B_fields, label = '$|B|$')
-        # if 'p' in plot_components:
-        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-        #     ax.plot(times, inplane_B_fields, label = '|$B_{xy}$|')
+    i = 0
+    for c in plot_components:
+        if show_dev_from_mean:
+            if c == 'x':
+                if separate:
+                    ax[0].plot(times, fields[:, 0] - np.mean(fields[:, 0]),
+                                 label='$\Delta$ $B_x$', color='C0')
+                    ax[0].set_ylabel('$\Delta$ $B_x$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 0] - np.mean(fields[:, 0]),
+                                 label='$\Delta B_x$', color='C0')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 'y':
+                if separate:
+                    ax[i].plot(times, fields[:, 1] - np.mean(fields[:, 1]),
+                                 label='$\Delta B_y$', color='C1')
+                    ax[i].set_ylabel('$\Delta$ $B_y$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 1] - np.mean(fields[:, 1]),
+                                 label='$\Delta B_y$', color='C1')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 'z':
+                if separate:
+                    ax[i].plot(times, fields[:, 2] - np.mean(fields[:,2]),
+                                 label='$\Delta B_z$', color='C2')
+                    ax[i].set_ylabel('$\Delta$ $B_z$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 2] - np.mean(fields[:,2]),
+                                 label='$\Delta B_z$', color='C2')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 't':
+                if separate:
+                    ax[numplots-1].plot(times, temp - np.mean(temp),
+                                          label='$\Delta T$', color='C3')
+                    ax[numplots-1].set_ylabel('Temp. Deviation $\Delta$ $T$ [no unit]')
+                else:
+                    ax[numplots-1].plot(times, temp - np.mean(temp),
+                                          label='$\Delta T$', color='C3')
+                    ax[numplots-1].set_ylabel('Temp. Deviation $\Delta$ $T$ [no unit]')
+                    ax[numplots-1].legend()
+        else:
+            if c == 'x':
+                if separate:
+                    ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
+                    ax[0].set_ylabel('magnetic field, $B_x$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 'y':
+                if separate:
+                    ax[i].plot(times, fields[:, 1], label='$B_y$', color='C1')
+                    ax[i].set_ylabel('magnetic field, $B_y$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 1], label='$B_y$', color='C1')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 'z':
+                if separate:
+                    ax[i].plot(times, fields[:, 2], label='$B_z$', color='C2')
+                    ax[i].set_ylabel('magnetic field, $B_z$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 2], label='$B_z$', color='C2')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 't':
+                if separate:
+                    ax[numplots-1].plot(times, fields[:, 1], label='$T$', color='C3')
+                    ax[numplots-1].set_ylabel('Absolute temperature, $T$ [no unit]')
+                else:
+                    ax[numplots-1].plot(times, temp, label='$T$', color='C3')
+                    ax[numplots-1].set_ylabel('Absolute temperature, $T$ [no unit]')
+                    ax[numplots-1].legend()
+                    
+        i = i+1
 
     # label axes
     ax[-1].set_xlabel('time, $t$ [s]')
@@ -188,9 +223,12 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
         mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2), 2)
         theta = round(np.degrees(np.arccos(mag_z/mag)), 2)
         phi = round(np.degrees(np.arctan2(mag_y, mag_x)), 2)
+        
+        delta_temp = np.amax(temp) - np.amin(temp)
 
-        ax[0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
-                        .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
+        ax[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$|B|$ = {mag} $mT$\n$B_{{y,avg}}$ = {mag_y} '
+                          f'$\pm$ {std_y} $mT$\t$\\theta$ = {theta}°\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$'
+                          f'\t$\\phi$ = {phi}°\n\t$\Delta T$ = {delta_temp}', fontsize=16)
 
         plt.tight_layout()
 
@@ -374,16 +412,25 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 if __name__ == "__main__":
 
-    data_directory = r'data_sets\zero_offset_measuring'
+    data_directory = r'data_sets\demagnetization_test'
     # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # # for item in files:
     filepath = os.path.join(
-        data_directory, '20_11_18_10-36-21_time_resolved.csv')
+        data_directory, '20_11_20_16-04-58_time_resolved.csv')
+    # raw_data = pd.read_csv(filepath).to_numpy()
+    # reduced_data = raw_data[1:36001,:]
+    # df = pd.DataFrame({ 'time [s]': reduced_data[:, 0], 
+    #                     'Bx [mT]':  reduced_data[:, 1], 
+    #                     'By [mT]':  reduced_data[:, 2], 
+    #                     'Bz [mT]':  reduced_data[:, 3],
+    #                     'Temperature':  reduced_data[:, 4]})
+    # newPath = os.path.join(data_directory, '20_11_20_00-00-33_partial.csv')
+    # df.to_csv(newPath, index=False, header=True)
     # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
-    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
+    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyzt', save_image=False, save_dir=data_directory,
                         separate=False, statistics=True)
 
-    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_03_11\20_11_03_15-31-01_time_resolved.csv', 'z', 2.5)
+    # fig, ax, times, fields = spectralAnalysis(newPath, 'xyz', 2.5)
 
     # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
     #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
@@ -402,19 +449,19 @@ if __name__ == "__main__":
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
     # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
 
-    # mag_x = round(np.mean(fields[:,0]),2)
-    # mag_y = round(np.mean(fields[:,1]),2)
-    # mag_z = round(np.mean(fields[:,2]),2)
+    # mag_x = round(np.mean(fields[0]),2)
+    # mag_y = round(np.mean(fields[1]),2)
+    # mag_z = round(np.mean(fields[2]),2)
 
-    # std_x = round(np.std(fields[:,0]),2)
-    # std_y = round(np.std(fields[:,1]),2)
-    # std_z = round(np.std(fields[:,2]),2)
+    # std_x = round(np.std(fields[0]),2)
+    # std_y = round(np.std(fields[1]),2)
+    # std_z = round(np.std(fields[2]),2)
 
     # mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2),2)
     # theta = round(np.degrees(np.arccos(mag_z/mag)),2)
     # phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
 
-    # ax[0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
+    # ax[0,0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
     #                 .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
 
     # plt.tight_layout()

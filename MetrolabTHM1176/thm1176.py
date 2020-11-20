@@ -316,7 +316,7 @@ class MetrolabTHM1176Node(object):
 
 if __name__ == '__main__':
 
-    params = {'block_size': 15, 'period': 1.0 / 100.0,
+    params = {'block_size': 1, 'period': 0.5,
               'range': '0.3T', 'average': 1, 'unit': 'MT'}
 
     # item_name = ['Bx', 'By', 'Bz', 'Temperature']
@@ -327,13 +327,21 @@ if __name__ == '__main__':
     # You may want to change this to your desired file
 
     # You may want to ahve a smarter way of fetching the resource name
-    thm = MetrolabTHM1176Node(**params)
-    sleep(1 - time() % 1)
-    for i in range(15):
-        print(thm.measureFieldmT())
-        sleep(1 - time() % 1)
-
     # data_stack = []  # list is thread safe
+    for i in range(3):
+        with MetrolabTHM1176Node(**params) as thm:
+            thread = threading.Thread(target=thm.start_acquisition)
+            thread.start()
+            sleep(10)
+            thm.stop = True
+            thread.join()
+        print(thm.data_stack)
+
+
+    # sleep(1 - time() % 1)
+    # for i in range(15):
+    #     print(thm.measureFieldmT())
+    #     sleep(1 - time() % 1)
 
     # # Start the monitoring thread
     # thread = threading.Thread(target=thm.start_acquisition)

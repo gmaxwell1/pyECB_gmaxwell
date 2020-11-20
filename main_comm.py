@@ -271,7 +271,7 @@ def getCurrents():
     return result
 
 
-def getTemps():
+def getTemps(verbose=False):
     """
     Get temperature values from each sensor, print them to the console
 
@@ -284,11 +284,9 @@ def getTemps():
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
-    else:
-        print("Channel: 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
-        print("Temperature [°C]: {0} \t {1} \t {2} \t {3} \t {4} \t {5} \t {6} \t {7}"
-              .format(result[0], result[1], result[2], result[3], result[4],
-                      result[5], result[6], result[7]))
+    if verbose:
+        print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
+        print(f"Temperature [°C]: {result[0]} \t {result[1]} \t {result[2]} \t {result[3]} \t {result[4]} \t {result[5]} \t {result[6]} \t {result[7]}")
 
     return (result, hall_list, currents_list, coil_status)
 
@@ -310,36 +308,46 @@ def getStatus():
     return status
 
 
-def demagnetizeCoils():
+def demagnetizeCoils(current_config=np.array([1000,1000,1000])):
     """
     Try to eliminate any hysterisis effects by applying a slowly oscillating and decaying electromagnetic field to the coils.
+    
+    Args:
+        - previous_amp (int, optional): the maximum current value (directly) previously applied to coils
     """
-    global ECB_ACT_CURRENTS
-
-    tspan = np.linspace(0, 5*np.pi, 41)  # change current every ~0.5 s
-    func1 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    func2 = 1000 * np.sin(tspan + np.pi/4) * (1/(tspan + 1))
-    func3 = 1000 * np.sinc(tspan + np.pi/4)
+    
+    # print(ampl)
+    tspan = np.linspace(0, 12*np.pi, 100)
+    func1 = 3 * current_config[0] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func2 = 3 * current_config[1] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func3 = 3 * current_config[2] * np.cos(tspan) * np.exp(-0.2*tspan)
 
     # print(func1)
     desCurrents = [0, 0, 0, 0, 0, 0, 0, 0]
-
+    sleep(1 - time() % 1)
     for k in range(len(tspan)):
         desCurrents[0] = int(func1[k])
         desCurrents[1] = int(func2[k])
         desCurrents[2] = int(func3[k])
 
         setCurrents(desCurrents=desCurrents, direct=b'0')
-        sleep(0.2)
+        sleep(0.2 - time() * 5 % 1 / 5)
 
 
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
     print(initECBapi(ECB_ADDRESS, ECB_PORT))
     print(enableECBCurrents())
-    setCurrents(desCurrents=[199, 0, 0, 0, 0, 0, 0, 0], direct=b'0')
-    print(getECBRevision())
-    sleep(0.5)
+    setCurrents(desCurrents=[5000, 5000, 0, 0, 0, 0, 0, 0], direct=b'0')
+    sleep(20)
+    # print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
+    # for i in range(15):
+    #     (result, hall_list, currents_list, coil_status) = getTemps()
+    #     print(f"\rTemperature [°C]: {result[0]} \t {result[1]} \t {result[2]} \t {result[3]} \t {result[4]} \t {result[5]} \t {result[6]} \t {result[7]}",end='',flush=True)
+    #     sleep(1 - time() % 1)
+    disableECBCurrents()
+    
+    enableECBCurrents()
     demagnetizeCoils()
     disableECBCurrents()
     exitECBapi()

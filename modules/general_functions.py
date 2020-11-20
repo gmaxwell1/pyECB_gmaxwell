@@ -236,9 +236,12 @@ def save_time_resolved_measurement(results_dict, directory, now=False):
     ensure_dir_exists(directory)
     data_filepath = os.path.join(directory, output_file_name)
     
+  
     df = pd.DataFrame({ 'time [s]': results_dict['time'], 
-                        'mean Bx [mT]':  results_dict['Bx'], 
-                        'mean By [mT]':  results_dict['By'], 
-                        'mean Bz [mT]':  results_dict['Bz']})
+                        'Bx [mT]':  results_dict['Bx'], 
+                        'By [mT]':  results_dict['By'], 
+                        'Bz [mT]':  results_dict['Bz'],
+                        'Temperature':  results_dict['temp']})
+        
     df.to_csv(data_filepath, index=False, header=True)
     

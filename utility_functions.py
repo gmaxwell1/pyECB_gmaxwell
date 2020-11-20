@@ -39,7 +39,7 @@ windings = 508  # windings per coil
 resistance = 0.47  # resistance per coil
 
 ########## list for storing measured values ##########
-returnDict = {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
+returnDict = {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0, 'temp': 0}
 # order of data: Bx list, By list, Bz list, time list
 # threadLock = threading.Lock()
 flags = [1]
@@ -60,10 +60,6 @@ class myMeasThread(threading.Thread):
                             (default: 1)
         duration (float): duration of measurement series
                             (default: 10)
-        tempData (bool): Fetch temperature data or not?
-                            (default: False)
-
-        self.returnList is a tuple containing the returned values from the measurement.
     """
 
     def __init__(self, threadID, **kwargs):
@@ -97,11 +93,6 @@ class myMeasThread(threading.Thread):
         else:
             self.duration = 10
 
-        if 'tempData' in keys:
-            self.tempData = kwargs['tempData']
-        else:
-            self.tempData = False
-
     def run(self):
         global returnDict
 
@@ -110,8 +101,7 @@ class myMeasThread(threading.Thread):
 
         try:
             returnDict = timeResolvedMeasurement(period=self.period, average=self.averaging,
-                                                 block_size=self.block_size, duration=self.duration,
-                                                 return_temp_data=self.tempData)
+                                                 block_size=self.block_size, duration=self.duration)
         except Exception as e:
             print('There was a problem!')
             print(e)
@@ -300,7 +290,6 @@ def sweepHysteresis(config_list=None, datadir='hysteresis_tests', end_val=1, ste
             desCurrents[0:3] = sign[j]*current_direction*half_curr_steps[k]
             all_curr_vals[i + j*steps] = sign[j] * \
                 current_direction*half_curr_steps[k]
-            print(desCurrents)
 
             # tentative estimation of resulting B field
             B_expected = tr.computeMagField(
@@ -697,21 +686,38 @@ def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, fines
 
 
 if __name__ == "__main__":
-    params = {'block_size': 1, 'period': 0.5, 'duration': 3600, 'averaging': 1}
+    params = {'block_size': 20, 'period': 0.05, 'duration': 120, 'averaging': 1}
+    # block_size, period, duration, averaging = 30, 0.05, 20, 5
 
+    # i = 0
+    # while i < 10:
     faden = myMeasThread(1, **params)
     faden.start()
-    # # print(ECB_ERR)
-    # print(openConnection())
+    
+    magnitude = 100
+    theta = 90
+    phi = 30
+    B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+    print(B_vector)
+    I_vector = tr.computeCoilCurrents(B_vector)
+    ampl = np.amax(np.abs(I_vector))
+    print(I_vector)
+    # returnDict = timeResolvedMeasurement(period=period, average=averaging,
+    #                         block_size=block_size, duration=duration)
+    openConnection()
+    # sleep(0.2)
+
     # # print()
     # # functionGenerator([1,1,1], ampl=3000, function='sin', frequency=1, finesse=20, duration=4*np.pi, meas=False, measDur=1.2*4*np.pi)
-    # runCurrents(np.array([-960, -1300, -2350]), 5)
-    # runCurrents(np.array([0, 0, 0]), 5)
-    # enableCurrents()
-    # demagnetizeCoils()
-    # disableCurrents()
+    runCurrents(I_vector, 30)
+    # runCurrents([129.0,357.0,-402.0], t=60)
+    enableCurrents()
+    demagnetizeCoils(I_vector)
+    disableCurrents()
 
     faden.join()
-    # closeConnection()
+    closeConnection()
+    
+    # print(returnDict)
 
-    strm(returnDict, r'data_sets\zero_offset_measuring', now=True)
+    strm(returnDict, r'data_sets\demagnetization_test', now=True)
