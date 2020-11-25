@@ -22,10 +22,11 @@ from time import sleep, time
 import threading
 import matplotlib.pyplot as plt
 
+
 class MetrolabTHM1176Node(object):
     """
     Class representing the metrolab THM1176-MF magnetometer. Can be used to read out data and adapt the sensor's settings.
-    
+
     kwargs:
     - 'block_size': number of measured values to fetch at once. int > 0
     - 'period': trigger period, should be in the interval (122e-6, 2.79)
@@ -33,31 +34,34 @@ class MetrolabTHM1176Node(object):
     - 'average': number of measured values to average over. int > 0
     - 'n_digits': number of digits results are rounded to. int > 0
     - 'unit': unit of measured magnetic field. 'T', 'MT', 'UT', 'NT', 'GAUSs', 'KGAUss', 'MGAUss', 'MAHZp' are possible.
-    
+
     defaults = {'block_size': 10, 'period': 0.5, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
     """
     ranges = ['0.1T', '0.3T', '1T', '3T']
     trigger_period_bounds = (122e-6, 2.79)
     base_fetch_cmd = ':FETC:ARR:'
     axes = ['X', 'Y', 'Z']
-    fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp', 'Temperature']  # Order matters, this is linked to the fetch command that is sent to retrived data
-    
-    defaults = {'block_size': 10, 'period': 0.1, 'range': '0.1T', 'average': 1, 'unit' : 'MT', 'n_digits' : 5}
-    
+    # Order matters, this is linked to the fetch command that is sent to retrived data
+    fetch_kinds = ['Bx', 'By', 'Bz', 'Timestamp', 'Temperature']
+
+    defaults = {'block_size': 10, 'period': 0.1, 'range': '0.1T',
+                'average': 1, 'unit': 'MT', 'n_digits': 5}
+
     def __init__(self, *args, **kwargs):
-        
+
         logging.basicConfig(filename='metrolab.log', level=logging.DEBUG)
-        
+
         self.sensor = usbtmc.Instrument(0x1bfa, 0x0498)
-        
-        self.max_transfer_size = 49216  # (4096 samples * 3 axes * 4B/sample + 64B for time&temp&...
+
+        # (4096 samples * 3 axes * 4B/sample + 64B for time&temp&...
+        self.max_transfer_size = 49216
         # Show sensor name in Terminal
         ret = self.sensor.ask("*IDN?")
         print(ret)
 
         self.average_count = self.defaults['average']
         self.unit = self.defaults['unit']
-        self.range = self.defaults['range'] # can be 0.1, 0.3, 1 or 3
+        self.range = self.defaults['range']  # can be 0.1, 0.3, 1 or 3
         self.n_digits = self.defaults['n_digits']
         self.period = self.defaults['period']
         self.block_size = self.defaults['block_size']
@@ -71,17 +75,17 @@ class MetrolabTHM1176Node(object):
 
         # from online repo for sensor
         self.stop = False
-        self.last_reading = {fetch_kind: None for fetch_kind in self.fetch_kinds}
+        self.last_reading = {
+            fetch_kind: None for fetch_kind in self.fetch_kinds}
         self.data_stack = {fetch_kind: [] for fetch_kind in self.fetch_kinds}
         self.errors = []
-        
+
         self.setup(**kwargs)
-        
+
         logging.info('... End init')
 
-
-
-     ### from online repo found for reading sensor!       
+    # from online repo found for reading sensor!
+    # v v v v v v v v v v v v v v v v v v v v v v
     def setup(self, **kwargs):
         '''
         :param kwargs:
@@ -110,11 +114,10 @@ class MetrolabTHM1176Node(object):
         if 'n_digits' in keys:
             if kwargs['n_digits'] < 5:
                 self.n_digits = kwargs['n_digits']
-            
+
         if 'unit' in keys:
             self.unit = kwargs['unit']
-            
-        
+
         self.sensor.write(":UNIT " + self.unit)
         self.sensor.write(":SENS " + self.range)
         self.sensor.write(":SENS:AUTO OFF")
@@ -123,11 +126,11 @@ class MetrolabTHM1176Node(object):
 
         cmd = ''
         for axis in self.axes:
-            cmd += self.base_fetch_cmd + axis + '? {},{};'.format(self.block_size, self.n_digits)
+            cmd += self.base_fetch_cmd + axis + \
+                '? {},{};'.format(self.block_size, self.n_digits)
         cmd += ':FETC:TIM?;:FETCH:TEMP?;*STB?'
         self.fetch_cmd = cmd
-          
-    
+
     def start_acquisition(self):
         """
         Fetch data from probe buffer
@@ -146,7 +149,6 @@ class MetrolabTHM1176Node(object):
 
         self.stop_acquisition()
 
-
     def stop_acquisition(self):
         """
         Stop fetching data from probe buffer.
@@ -154,8 +156,7 @@ class MetrolabTHM1176Node(object):
         res = self.sensor.ask(':ABORT;*STB?')
         print("Stopping acquisition...")
         print("THM1176 status: {}".format(res))
-        
-        
+
     def str_conv(self, input_str, kind):
         if kind == 'Timestamp':
             val = int(input_str, 0) * 1e-9
@@ -187,7 +188,7 @@ class MetrolabTHM1176Node(object):
                     print("Error code: {}".format(res))
                     res = self.sensor.ask(':SYSTEM:ERROR?;*STB?')
                     self.errors.append(res)
-                    
+
     # added by gmaxwell
     def set_periodic_trigger(self):
         """
@@ -200,31 +201,29 @@ class MetrolabTHM1176Node(object):
         self.sensor.write(':TRIG:TIM {:f}S'.format(self.period))
         self.sensor.write(':TRIG:COUN {}'.format(self.block_size))
         self.sensor.write(':INIT:CONT ON')
-                            
-        
-    ### original
+
+    # original from here on
+
     def calibrate(self):
         self.sensor.write(":CAL:INIT")
         self.sensor.write(":CAL:STAT ON")
-        sleep(5) # wait for calibration to finish
-        
-    
+        sleep(5)  # wait for calibration to finish
+
     def setAveragingCount(self):
         avg_max = int(self.sensor.ask(":AVER:COUN? MAX"))
-        
+
         if self.average_count <= avg_max and self.average_count > 0:
             self.sensor.write(":AVER:COUN {}".format(str(self.average_count)))
             return True
         else:
-            print("MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
+            print(
+                "MetrolabTHM1176:setAveragingCount: value has to be between 1 and " + str(avg_max))
             return False
 
-    
     def getNumMeasurements(self):
         ret = self.sensor.ask(':CALC:AVER:COUNT?')
         return int(ret)
-    
-            
+
     def measureFieldmT(self):
         """
         Make a measurement now, disregarding and resetting all trigger and acquisition settings.
@@ -232,20 +231,22 @@ class MetrolabTHM1176Node(object):
         Returns:
             list of 3 floats: [Bx, By, Bz] (the measured magnetic field amplitudes)
         """
-        Bx = float(self.sensor.ask(':measure:scalar:flux:x? 0.01T,' + str(self.n_digits)).strip('MT'))
-        By = float(self.sensor.ask(':measure:y? 0.01T,' + str(self.n_digits)).strip('MT'))
-        Bz = float(self.sensor.ask(':measure:z? 0.01T,' + str(self.n_digits)).strip('MT'))
-                
+        Bx = float(self.sensor.ask(
+            ':measure:scalar:flux:x? 0.01T,' + str(self.n_digits)).strip('MT'))
+        By = float(self.sensor.ask(':measure:y? 0.01T,' +
+                                   str(self.n_digits)).strip('MT'))
+        Bz = float(self.sensor.ask(':measure:z? 0.01T,' +
+                                   str(self.n_digits)).strip('MT'))
+
         return [Bx, By, Bz]
-                  
-                
+
     def measureFieldArraymT(self, num_meas=10):
         """
         Make a certain number of measurements of each field direction.
 
         Args:
             num_meas (int, optional): How many times to measure each component. Defaults to 10.
-            
+
         Raises:
             ValueError: if not all measurements were made correctly.
 
@@ -256,90 +257,91 @@ class MetrolabTHM1176Node(object):
         Bx = []
         for val in Bx_str:
             Bx.append(float(val.strip('MT')))
-        
+
         ret = self.sensor.ask(":READ:array:y? " + str(num_meas) + ", 0.01T,5")
         By_str = ret.split(",")
         By = []
         for val in By_str:
             By.append(float(val.strip('MT')))
-            
+
         ret = self.sensor.ask(":READ:array:z? " + str(num_meas) + ", 0.01T,5")
         Bz_str = ret.split(",")
         Bz = []
         for val in Bz_str:
             Bz.append(float(val.strip('MT')))
-        
+
         if (len(Bx) != num_meas or len(By) != num_meas or len(Bz) != num_meas):
             raise ValueError("length of Bx, By, Bz do not match num_meas")
-                
+
         return [Bx, By, Bz]
 
-        
     def getAvailableUnits(self):
         unit_str = self.sensor.ask(":UNIT:ALL?")
         return unit_str.split(',')
-    
-    
+
     def getUnit(self):
         units_str = self.sensor.ask(":UNIT?")
         return units_str
 
-    
     def getAvailableSenseRangeUpper(self):
         upper_str = self.sensor.ask(':SENS:ALL?')
         return upper_str.split(',')
-    
-        
+
     def getSenseRangeUpper(self):
         upper_str = self.sensor.ask(":SENSE:RANGE:UPPER?")
         return upper_str
-    
-    
+
     def setAutoRangeEnabled(self, on):
         str = 'ON' if on else 'OFF'
         self.sensor.write(':SENS:AUTO ' + str)
-        
-    
+
     def isAutoRangeEnabled(self):
         ret = self.sensor.ask(':SENS:AUTO?')
         return ret == 'ON'
-    
-    # context manager to ba able to use a with...as... statement    
+
+    # context manager to ba able to use a with...as... statement
     def __enter__(self):
         if not self.sensor.connected:
             self.sensor.open()
-            
+
         return self
-    
-    
+
     def __exit__(self, type, value, traceback):
         if self.sensor.connected:
             self.sensor.close()
             return not self.sensor.connected
         else:
             return isinstance(value, TypeError)
-        
-        
+
+
 if __name__ == '__main__':
-    
-    params = {'block_size': 15, 'period': 1.0 / 100.0, 'range': '0.3T', 'average': 1, 'unit': 'MT'}
+
+    params = {'block_size': 1, 'period': 0.5,
+              'range': '0.3T', 'average': 1, 'unit': 'MT'}
 
     # item_name = ['Bx', 'By', 'Bz', 'Temperature']
     # labels = ['Bx', 'By', 'Bz', 'T']
     # curve_type = ['F', 'F', 'F', 'T']
     # to_show = [True, True, True, False]
-    # output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'  
+    # output_file = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\data_sets\testplots.dat'
     # You may want to change this to your desired file
 
-    
-    thm = MetrolabTHM1176Node(**params)  # You may want to ahve a smarter way of fetching the resource name
-    sleep(1 - time()  % 1)
-    for i in range(15):
-        print(thm.measureFieldmT())
-        sleep(1 - time()  % 1)
-
-
+    # You may want to ahve a smarter way of fetching the resource name
     # data_stack = []  # list is thread safe
+    for i in range(3):
+        with MetrolabTHM1176Node(**params) as thm:
+            thread = threading.Thread(target=thm.start_acquisition)
+            thread.start()
+            sleep(10)
+            thm.stop = True
+            thread.join()
+        print(thm.data_stack)
+
+
+    # sleep(1 - time() % 1)
+    # for i in range(15):
+    #     print(thm.measureFieldmT())
+    #     sleep(1 - time() % 1)
 
     # # Start the monitoring thread
     # thread = threading.Thread(target=thm.start_acquisition)
@@ -353,16 +355,16 @@ if __name__ == '__main__':
 
     # plotdata = [thm.data_stack[key] for key in item_name]
     # timeline = thm.data_stack['Timestamp']
-    
+
     # t_offset = timeline[0]
     # for ind in range(len(timeline)):
     #     timeline[ind] = round(timeline[ind]-t_offset, 3)
-    
+
     # print(len(plotdata[0]), plotdata[0])
     # print(len(plotdata[1]), plotdata[1])
     # print(len(plotdata[2]), plotdata[2])
     # print(len(timeline), timeline)
-    
+
     # Plotting stuff
     # initialize figure
 

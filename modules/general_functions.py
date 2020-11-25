@@ -216,7 +216,7 @@ def ensure_dir_exists(directory, access_rights=0o755, purpose_text='', verbose=F
         print('Failed to create new directory due to {} error'.format(e))
         return -1
 
-def save_time_resolved_measurement(results_dict, directory, now=False):
+def save_time_resolved_measurement(results_dict, directory, label='time_resolved', now=False):
     """
     Write the provided times and field (optionally also standard deviations) to the file 'time_resolved.csv' 
     or 'yyy_mm_dd_hh-mm-ss_means_'+label+'.csv' in provided directory.
@@ -230,15 +230,18 @@ def save_time_resolved_measurement(results_dict, directory, now=False):
     """
     if now:
         time_stamp = datetime.now().strftime("%y_%m_%d_%H-%M-%S") 
-        output_file_name = "{}_time_resolved.csv".format(time_stamp)
+        output_file_name = "{}_{}.csv".format(time_stamp, label)
     else:
-        output_file_name = 'time_resolved.csv'     
+        output_file_name = label + '.csv'     
     ensure_dir_exists(directory)
     data_filepath = os.path.join(directory, output_file_name)
     
+  
     df = pd.DataFrame({ 'time [s]': results_dict['time'], 
-                        'mean Bx [mT]':  results_dict['Bx'], 
-                        'mean By [mT]':  results_dict['By'], 
-                        'mean Bz [mT]':  results_dict['Bz']})
+                        'Bx [mT]':  results_dict['Bx'], 
+                        'By [mT]':  results_dict['By'], 
+                        'Bz [mT]':  results_dict['Bz'],
+                        'Temperature':  results_dict['temp']})
+        
     df.to_csv(data_filepath, index=False, header=True)
     

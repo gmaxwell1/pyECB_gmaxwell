@@ -30,9 +30,10 @@ from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
 ########## sensor cube/Conexcc ports ##########
 # port_sensor = 'COM3'
-z_COM_port = 'COM6' # z-coordinate controller
+z_COM_port = 'COM6'  # z-coordinate controller
 y_COM_port = 'COM5'
 x_COM_port = 'COM4'
+
 
 def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas', verbose=False):
     """
@@ -73,33 +74,36 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
         node (MetrolabTHM1176Node): instance of the sensor
         calibrate (boolean): If true, calibrate in zero-field chamber. If false, only move stage to measuring position.
     """
-    
+
     # initialize actuators
-    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4,
+                   set_axis='z', verbose=False)
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4,
+                   set_axis='y', verbose=False)
+    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4,
+                   set_axis='x', verbose=False)
     CC_Z.wait_for_ready()
     CC_Y.wait_for_ready()
     CC_X.wait_for_ready()
-    
+
     if calibrate:
         cal_pos_z = 20
         start_pos_z = CC_Z.read_cur_pos()
         total_distance_z = cal_pos_z-start_pos_z
-        
+
         cal_pos_y = 0
         start_pos_y = CC_Y.read_cur_pos()
         total_distance_y = abs(cal_pos_y-start_pos_y)
-        
+
         cal_pos_x = 20
         start_pos_x = CC_X.read_cur_pos()
         total_distance_x = abs(cal_pos_x-start_pos_x)
-        
+
         print('Moving to calibration position...')
         CC_Z.move_absolute(new_pos=cal_pos_z)
         CC_Y.move_absolute(new_pos=cal_pos_y)
         CC_X.move_absolute(new_pos=cal_pos_x)
-        
+
         if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
             progressBar(CC_Y, start_pos_y, total_distance_y)
         elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
@@ -107,27 +111,28 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
         else:
             progressBar(CC_Z, start_pos_z, total_distance_z)
 
-        char = input('Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+        char = input(
+            'Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
         if char == '':
             node.calibrate()
         input('Press enter to continue measuring')
-    
+
     meas_offset_z = 8.3
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
-    
-    meas_offset_y = 15.9
+
+    meas_offset_y = 14.8
     start_pos_y = CC_Y.read_cur_pos()
     total_distance_y = abs(meas_offset_y-start_pos_y)
-    
-    meas_offset_x = 5.0
+
+    meas_offset_x = 5.2
     start_pos_x = CC_X.read_cur_pos()
     total_distance_x = abs(meas_offset_x-start_pos_x)
-    
+
     CC_Z.move_absolute(new_pos=meas_offset_z)
     CC_Y.move_absolute(new_pos=meas_offset_y)
     CC_X.move_absolute(new_pos=meas_offset_x)
-    
+
     if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
         progressBar(CC_Y, start_pos_y, total_distance_y)
     elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
@@ -138,13 +143,14 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
 
 def progressBar(CC: ConexCC, start_pos, total_distance):
     while not CC.is_ready():
-            sleep(0.02)
-            pos = CC.read_cur_pos()
-            ratio = (abs(pos-start_pos) / total_distance)
-            left = int(ratio * 30)
-            right = 30-left
-            print('\r[' + '#' * left + ' ' * right + ']', f' {ratio * 100:.0f}%', sep='', end='', flush=True)
-    
+        sleep(0.02)
+        pos = CC.read_cur_pos()
+        ratio = (abs(pos-start_pos) / total_distance)
+        left = int(ratio * 30)
+        right = 30-left
+        print('\r[' + '#' * left + ' ' * right + ']',
+              f' {ratio * 100:.0f}%', sep='', end='', flush=True)
+
     print('')
 
 
@@ -169,7 +175,7 @@ def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
     # if dataDir is not None:
     #     ensure_dir_exists(dataDir, verbose=False)
 
-    # perform measurement and collect the raw data 
+    # perform measurement and collect the raw data
     for _ in range(max_num_retrials):
         try:
             # an N by 3 array
@@ -178,14 +184,14 @@ def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
             pass
         else:
             break
-    
+
     try:
         # due to the setup, transform sensor coordinates to magnet coordinates
-        meas_data = sensor_to_magnet_coordinates(meas_data) 
+        meas_data = sensor_to_magnet_coordinates(meas_data)
     # if it was not possible to obtain valid measurement results after max_num_retrials, raise MeasurementError, too
     except UnboundLocalError:
         raise MeasurementError
-    
+
     if average:
         # compute the mean and std from raw data for each sensor
         mean_data = np.mean(meas_data, axis=0)
@@ -197,7 +203,8 @@ def measure(node: MetrolabTHM1176Node, N=10, max_num_retrials=5, average=False):
 
     return ret1, ret2
 
-def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, return_temp_data=False):
+
+def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10):
     """
     Measure magnetic flux density over time.
 
@@ -207,57 +214,54 @@ def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10, 
                                    Results in smoother measurements. Defaults to 1.
         block_size (int, optional): How many measurements should be fetched at once. Defaults to 1.
         duration (int, optional): Total duration of measurement. Defaults to 10.
-        return_temp_data (bool, optional): Temperature measured by sensor will or will not be returned. This is a dimensionless value between 0 and 64k. 
-                                           Not calibrated, mainly useful for detecting problems due to temperature fluctuations. Defaults to False.
 
     Raises:
         ValueError: If for some reason the number of time values and B field values is different.
 
     Returns:
-        dictionary containing lists of floats: Bx, By, Bz, timeline 
-        (x, y and z components of B field, times of measurements)
-        list of floats: temp (temperature values as explained above)
+        dictionary containing lists of floats: Bx, By, Bz, timeline, temp 
+        (x, y and z components of B field, times of measurements, temperature values 
+        are dimensionless values between 0 and 64k)
     """
     with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT') as node:
         # calibration(node, meas_height=1.5)
-        
+    # node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT')
         thread = threading.Thread(target=node.start_acquisition)
         thread.start()
         sleep(duration)
         node.stop = True
-        
+        thread.join()
         # Sensor coordinates to preferred coordinates transformation
         xValues = np.array(node.data_stack['Bz'])
         #xOffset = 0.55
-        xValues = -xValues # np.subtract(-xValues, xOffset)
-        print
+        xValues = -xValues  # np.subtract(-xValues, xOffset)
+        # print
         # Sensor coordinates to preferred coordinates transformation, offset correction
         yValues = np.array(node.data_stack['Bx'])
         #yOffset = 2.40
-        yValues = -yValues# np.subtract(-yValues, yOffset)
+        yValues = -yValues  # np.subtract(-yValues, yOffset)
         # Sensor coordinates to preferred coordinates transformation, offset correction
         zValues = node.data_stack['By']
         # zValues = np.subtract(zValues, -1.11)
-            
+
         timeline = node.data_stack['Timestamp']
-        
+
         t_offset = timeline[0]
         for ind in range(len(timeline)):
             timeline[ind] = round(timeline[ind]-t_offset, 3)
-        
-        node.data_stack['Timestamp'] = timeline
-        
-        try:
-            if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
-                raise ValueError("length of Bx, By, Bz do not match that of the timeline")  
-            else:
-                if return_temp_data:
-                    return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'temp': node.data_stack['Temperature'],'time': timeline}
-                
-                return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'time': timeline}
-        except:
-            return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0}
-        
+
+        # node.data_stack['Timestamp'] = timeline
+
+    try:
+        if (len(node.data_stack['Bx']) != len(timeline) or len(node.data_stack['By']) != len(timeline) or len(node.data_stack['Bz']) != len(timeline)):
+            raise ValueError(
+                "length of Bx, By, Bz do not match that of the timeline")
+        else:
+            return {'Bx': xValues.tolist(), 'By': yValues.tolist(), 'Bz': zValues.tolist(), 'temp': node.data_stack['Temperature'], 'time': timeline}
+    except Exception as e:
+        print(e)
+        return {'Bx': 0, 'By': 0, 'Bz': 0, 'time': 0, 'temp': 0}
+
 
 def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_sets', data_filename_postfix='B_field_vs_I'):
     """
@@ -271,25 +275,25 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
-    
+
     if directory is not None:
         ensure_dir_exists(directory, verbose=False)
-        
+
     try:
         if len(I[0]) == 3:
             # depending on which function in main_menu.py was used to measure
             df = pd.DataFrame({'channel 1 [A]': I[:, 0],
-                            'channel 2 [A]': I[:, 1],
-                            'channel 3 [A]': I[:, 2],
-                            'mean Bx [mT]': mean_data[:, 0],
-                            'mean By [mT]': mean_data[:, 1],
-                            'mean Bz [mT]': mean_data[:, 2],
-                            'std Bx [mT]': std_data[:, 0],
-                            'std By [mT]': std_data[:, 1],
-                            'std Bz [mT]': std_data[:, 2],
-                            'expected Bx [mT]': expected_fields[:, 0],
-                            'expected By [mT]': expected_fields[:, 1],
-                            'expected Bz [mT]': expected_fields[:, 2]})
+                               'channel 2 [A]': I[:, 1],
+                               'channel 3 [A]': I[:, 2],
+                               'mean Bx [mT]': mean_data[:, 0],
+                               'mean By [mT]': mean_data[:, 1],
+                               'mean Bz [mT]': mean_data[:, 2],
+                               'std Bx [mT]': std_data[:, 0],
+                               'std By [mT]': std_data[:, 1],
+                               'std Bz [mT]': std_data[:, 2],
+                               'expected Bx [mT]': expected_fields[:, 0],
+                               'expected By [mT]': expected_fields[:, 1],
+                               'expected Bz [mT]': expected_fields[:, 2]})
 
     except:
         df = pd.DataFrame({'I (all Channels) [A]': I,
@@ -309,31 +313,42 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
     df.to_csv(file_path, index=False, header=True)
 
 
-
 if __name__ == '__main__':
-    
-    # CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
-    # CC_X.wait_for_ready()
-    # CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    # CC_Y.wait_for_ready()
-    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    # CC_Z.wait_for_ready()
-    
-    # meas_offset_z = 8.3
-    
-    # meas_offset_y = 15.9
 
-    # meas_offset_x = 5.0
-    
-    # CC_Z.move_absolute(new_pos=meas_offset_z)
-    # CC_Y.move_absolute(new_pos=meas_offset_y)
-    # CC_X.move_absolute(new_pos=meas_offset_x)
-    # start_pos_x = CC_X.read_cur_pos()
-    # print(start_pos_x)
-    # start_pos_y = CC_Y.read_cur_pos()
-    # print(start_pos_y)
-    # start_pos_z = CC_Z.read_cur_pos()
-    # print(start_pos_z)
+    # with MetrolabTHM1176Node() as node:
+    #     calibration(node, calibrate=False)
+    # initialize actuators
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
+    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
+    CC_Z.wait_for_ready()
+    CC_Y.wait_for_ready()
+    CC_X.wait_for_ready()
+
+    # cal_pos_z = 21
+    start_pos_z = CC_Z.read_cur_pos()
+    # total_distance_z = cal_pos_z-start_pos_z
+
+    # cal_pos_y = 0
+    start_pos_y = CC_Y.read_cur_pos()
+    # total_distance_y = abs(cal_pos_y-start_pos_y)
+
+    # cal_pos_x = 21
+    start_pos_x = CC_X.read_cur_pos()
     # total_distance_x = abs(cal_pos_x-start_pos_x)
-    with MetrolabTHM1176Node() as node:
-        calibration(node, calibrate=True)
+    print(start_pos_x, ' ', start_pos_y, ' ', start_pos_z, ' ')
+    # print('Moving to calibration position...')
+    CC_Z.move_absolute(new_pos=0)
+    # CC_Y.move_absolute(new_pos=cal_pos_y)
+    # CC_X.move_absolute(new_pos=cal_pos_x)
+
+    # if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
+    #     progressBar(CC_Y, start_pos_y, total_distance_y)
+    # elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
+    #     progressBar(CC_X, start_pos_x, total_distance_x)
+    # else:
+    #     progressBar(CC_Z, start_pos_z, total_distance_z)
+    # with MetrolabTHM1176Node() as node:
+    #     char = input('Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
+    #     if char == '':
+    #         node.calibrate()

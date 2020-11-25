@@ -52,6 +52,7 @@ def print_time(thread: inputThread, delay):
             print(
                 f"\rTime on thread {thread.threadID}: {now: %H:%M:%S}", end='', flush=True)
 
+
 # global variable
 flags = [1]
 
@@ -117,11 +118,10 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
         derivatives = localLinearization(
             node, configCurrents=configCurrents, currentStep=currentStep, numSteps=10)
         print(derivatives)
-        disableCurrents()
+        demagnetizeCoils()
+        sleep(0.2)
+        node.calibrate()
 
-        calibration(node, calibrate=calibrate)
-
-        enableCurrents()
         desCurrents[0:3] = configCurrents.tolist()
         setCurrents(desCurrents=desCurrents, direct=b'1')
         # goodCurrentValues.append(desCurrents[0:3])
@@ -176,7 +176,7 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
             if noError:
                 count = count + 1
             # if at least 10 consecutive measurements are within the error margin, the config is good enough.
-            if count >= 50:
+            if count >= 20:
                 flags.insert(0, '')
 
             deltaCurrent = np.linalg.inv(derivatives).dot(fieldDiff)
@@ -191,7 +191,7 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
                                 int(desCurrents[2]+deltaCurrent[2])]
             setCurrents(desCurrents=desCurrents)
             # wait for stabilization
-            sleep(0.4)
+            sleep(0.3)
 
     # current configurations with little to no error -> hopefully a good estimate
     # of the required currents for a given direction.
@@ -199,7 +199,6 @@ def callableFeedback(BField, currentStep=20, maxCorrection=30, threshold=0.5, ca
 
     print(f'\nBest config for channels 1, 2, 3: ({int(modeCurrents[0][0])},'
           f' {int(modeCurrents[0][1])}, {int(modeCurrents[0][2])})\n')
-    demagnetizeCoils()
     disableCurrents()
     if not ECB_active:
         closeConnection()
@@ -387,26 +386,30 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
 
     for i in range(3):
         # randomize whether the current is increased or decreased
-        # a = np.random.randn()
+        a = np.random.randn()
         prefac = 1
-        # if not np.sign(a) > 0:
-        #     prefac = -1
-        
+        if not np.sign(a) > 0:
+            prefac = -1
+
         initialOffset = prefac * numSteps * currentStep
+        desCurrents[0:3] = configCurrents.tolist()
         desCurrents[0:3] = [int(desCurrents[0] + initialOffset * currentRefs[i, 0]),
-                            int(desCurrents[1] + initialOffset * currentRefs[i, 1]),
+                            int(desCurrents[1] +
+                                initialOffset * currentRefs[i, 1]),
                             int(desCurrents[2] + initialOffset * currentRefs[i, 2])]
         setCurrents(desCurrents=desCurrents, direct=b'1')
+
+        currentStep = - prefac * currentStep
         # increase or decrease current by step size 2*N times
         for j in range(2 * numSteps):
-            currentStep = - prefac * currentStep
             desCurrents[0:3] = [int(desCurrents[0] + currentStep * currentRefs[i, 0]),
-                                int(desCurrents[1] + currentStep * currentRefs[i, 1]),
+                                int(desCurrents[1] +
+                                    currentStep * currentRefs[i, 1]),
                                 int(desCurrents[2] + currentStep * currentRefs[i, 2])]
             setCurrents(desCurrents=desCurrents)
-            
+
             sleep(0.2)
-            
+
             newBMeasurement = gen.sensor_to_magnet_coordinates(
                 np.array(node.measureFieldmT()))
             print(

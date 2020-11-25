@@ -34,7 +34,7 @@ ECB_PORT = "7070"
 ECB_ERR = 0
 # Max current on any coil in [mA] (default value)
 ECB_MAX_CURR = 19800
-ECB_ACT_CURRENTS = [0,0,0,0,0,0,0,0]
+ECB_ACT_CURRENTS = [0, 0, 0, 0, 0, 0, 0, 0]
 ECB_CURRENTS_ENABLED = False
 # ECB_MAX_TEMP = 50
 ##### 7: 0x07 = 00000111 , that is, 3 sensors enabled #####
@@ -89,9 +89,8 @@ def _chk(msg):
             print("ECB set hearbeat timeout communication error")
         if msg == 71:
             print("ECB get hearbeat timeout communication error")
-        print(
-            "Unhandled error number: {}. \
-            See DCx_User_and_SDK_Manual.pdf for details".format(msg))
+        print(f"Unhandled error number: {msg}. \n"
+              "See DCx_User_and_SDK_Manual.pdf for details")
 
 
 def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
@@ -105,7 +104,7 @@ def openConnection(IPAddress=ECB_ADDRESS, port=ECB_PORT):
     Returns: ECB error code
     """
     global ECB_ERR
-    
+
     ECB_ERR = initECBapi(IPAddress, port)
 
     if ECB_ERR != 0:
@@ -132,6 +131,7 @@ def enableCurrents():
     global ECB_CURRENTS_ENABLED
 
     ECB_ERR = enableECBCurrents()
+    setDesCurrents([0, 0, 0, 0, 0, 0, 0, 0], b'0')
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
@@ -147,11 +147,11 @@ def disableCurrents():
 
     Returns: error code iff an error occurs, otherwise False (whether ECB currents are enabled)
     """
-    global ECB_ERR    
+    global ECB_ERR
     global ECB_CURRENTS_ENABLED
     global ECB_ACT_CURRENTS
 
-    ECB_ACT_CURRENTS = [0,0,0,0,0,0,0,0]
+    ECB_ACT_CURRENTS = [0, 0, 0, 0, 0, 0, 0, 0]
     ECB_ERR = disableECBCurrents()
 
     if ECB_ERR != 0:
@@ -172,7 +172,7 @@ def setMaxCurrent(maxValue=19000):
     """
     global ECB_ERR
     global ECB_MAX_CURR
-        
+
     if maxValue < 19800:
         ECB_ERR = setMaxCurrent(maxValue)
         if ECB_ERR != 0:
@@ -198,14 +198,14 @@ def _setCurrents_(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     """
     global ECB_ERR
     global ECB_ACT_CURRENTS
-    
+
     ECB_ACT_CURRENTS = desCurrents
     ECB_ERR = setDesCurrents(desCurrents, direct)
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
-    
+
 
 def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     """
@@ -222,7 +222,7 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
     global ECB_ERR
     global ECB_ACT_CURRENTS
     global ECB_MAX_CURR
-    
+
     for i in range(len(desCurrents)):
         if abs(desCurrents[i]) > ECB_MAX_CURR:
             print("desired current exceeds limit")
@@ -230,7 +230,7 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
 
     # Here we make sure that the current never increases more than 500mA every 50ms.
     while ECB_ACT_CURRENTS != desCurrents:
-        desCurrents_temp = [0,0,0,0,0,0,0,0]
+        desCurrents_temp = [0, 0, 0, 0, 0, 0, 0, 0]
         diff = np.array(desCurrents)-np.array(ECB_ACT_CURRENTS)
         # print(diff)
         for i in range(len(desCurrents)):
@@ -239,7 +239,7 @@ def setCurrents(desCurrents=[0, 0, 0, 0, 0, 0, 0, 0], direct=b'0'):
                 desCurrents_temp[i] = ECB_ACT_CURRENTS[i] + 500*sign
             else:
                 desCurrents_temp[i] = ECB_ACT_CURRENTS[i] + diff[i]
-        # use setDesCurrents here 
+        # use setDesCurrents here
         # debugging
         ECB_ACT_CURRENTS = desCurrents_temp
         ECB_ERR = setDesCurrents(desCurrents_temp, direct)
@@ -257,7 +257,7 @@ def getCurrents():
     Returns: a list of all the currents (or an error code)
     """
     global ECB_ERR
-    
+
     (ECB_ERR, result) = getActCurrents()
 
     if ECB_ERR != 0:
@@ -272,24 +272,22 @@ def getCurrents():
     return result
 
 
-def getTemps():
+def getTemps(verbose=False):
     """
     Get temperature values from each sensor, print them to the console
 
     returns: a tuple with all of the values of interest if no error occurs otherwise an error code is returned
     """
     global ECB_ERR
-    
+
     (ECB_ERR, result, hall_list, currents_list, coil_status) = getCoilValues()
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
         return ECB_ERR
-    else:
-        print("Channel: 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
-        print("Temperature [°C]: {0} \t {1} \t {2} \t {3} \t {4} \t {5} \t {6} \t {7}"
-              .format(result[0], result[1], result[2], result[3], result[4],
-                      result[5], result[6], result[7]))
+    if verbose:
+        print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
+        print(f"Temperature [°C]: {result[0]} \t {result[1]} \t {result[2]} \t {result[3]} \t {result[4]} \t {result[5]} \t {result[6]} \t {result[7]}")
 
     return (result, hall_list, currents_list, coil_status)
 
@@ -301,7 +299,7 @@ def getStatus():
     returns: status, or error code iff there is an error
     """
     global ECB_ERR
-    
+
     (ECB_ERR, status) = getECBStatus()
 
     if ECB_ERR != 0:
@@ -311,47 +309,46 @@ def getStatus():
     return status
 
 
-def demagnetizeCoils():
+def demagnetizeCoils(current_config=np.array([1000,1000,1000])):
     """
     Try to eliminate any hysterisis effects by applying a slowly oscillating and decaying electromagnetic field to the coils.
+    
+    Args:
+        - previous_amp (int, optional): the maximum current value (directly) previously applied to coils
     """
-    global ECB_ACT_CURRENTS
     
-    tspan = np.linspace(0, 5*np.pi, 41) # change current every ~0.5 s
-    func1 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    func2 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    func3 = 1000 * np.cos(tspan + np.pi/4) * (1/(tspan + 1))
-    
+    # print(ampl)
+    tspan = np.linspace(0, 12*np.pi, 100)
+    func1 = 3 * current_config[0] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func2 = 3 * current_config[1] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func3 = 3 * current_config[2] * np.cos(tspan) * np.exp(-0.2*tspan)
+
     # print(func1)
-    desCurrents = [0,0,0,0,0,0,0,0]
-    
+    desCurrents = [0, 0, 0, 0, 0, 0, 0, 0]
+    sleep(1 - time() % 1)
     for k in range(len(tspan)):
         desCurrents[0] = int(func1[k])
         desCurrents[1] = int(func2[k])
         desCurrents[2] = int(func3[k])
-        
+
         setCurrents(desCurrents=desCurrents, direct=b'0')
-        sleep(0.2)
-        
+        sleep(0.2 - time() * 5 % 1 / 5)
+
 
 ########## operate the ECB in the desired mode (test stuff out) ##########
 if __name__ == '__main__':
     print(initECBapi(ECB_ADDRESS, ECB_PORT))
-    enableECBCurrents()
-    # generateMagField(magnitude=60,theta=0,phi=0)
-    #setDesCurrents([2232,2232,2232,0,0,0,0,0], currDirectParam)
-
-    # getCurrents()
-    #print(getStatus())
-    # pollCurrents(100,10)
-    #sleep(10)
-    print(ECB_ACT_CURRENTS)
-    setCurrents([3000,-2000,768,0,0,0,0,0],b'0')
-    print(ECB_ACT_CURRENTS)
-    sleep(4)
-    demagnetizeCoils()
-    print(ECB_ACT_CURRENTS)
+    print(enableECBCurrents())
+    setCurrents(desCurrents=[1, 0, 0, 0, 0, 0, 0, 0], direct=b'0')
+    sleep(20)
+    # print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
+    # for i in range(15):
+    #     (result, hall_list, currents_list, coil_status) = getTemps()
+    #     print(f"\rTemperature [°C]: {result[0]} \t {result[1]} \t {result[2]} \t {result[3]} \t {result[4]} \t {result[5]} \t {result[6]} \t {result[7]}",end='',flush=True)
+    #     sleep(1 - time() % 1)
     disableECBCurrents()
-    exitECBapi()
-
     
+    # enableECBCurrents()
+    # demagnetizeCoils()
+    # disableECBCurrents()
+    exitECBapi()

@@ -19,7 +19,7 @@ import pandas as pd
 
 # Lookup table for current/magnetic field values
 LookupTable = {}
-filepathLUT = r'data_sets\linearization_matrices\20_11_12_181507-simpleLUT.csv'
+filepathLUT = r'data_sets\linearization_matrices\20_11_16_180159-86LUT.csv'
 
 def buildLUT(path=filepathLUT):
     global LookupTable

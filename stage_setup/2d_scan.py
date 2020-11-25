@@ -29,46 +29,59 @@ finally:
     from modules.calibrate_cube import grid_2D_cube
     from modules.calibration import grid_2D
     from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
+    from main_comm import *
 
 # %%
 # set measurement parameters and folder name
-sampling_size = 25 # number of measurements per sensor for averaging
+sampling_size = 15 # number of measurements per sensor for averaging
 
-directory = './test_data/2d_scans'
+directory = './data_sets/2d_scans_different_fields'
 
 # number of grid points per dimension
-grid_number = 15
+grid_number = 20
 
 # %%
 # initialize actuators
-init_pos = np.array([3., 13, 10.0])
-COM_ports = ['COM7', 'COM6', 'COM5']
+init_pos = np.array([3, 13, 8.3])
+# ports for Magnebotix PC
+COM_ports = ['COM4', 'COM5', 'COM6']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
 
 # %%
 # manually adjust stage position
-z_offset = 8.25
-new_pos = [3, 13, z_offset]
-_ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
+# z_offset = 8.3
+# new_pos = 
+# _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 
 # %%
 # set the bounds for x and y that are used for the scan
-limits_x = [0.0, 9.0]
-limits_y = [10.0, 21.0]
+limits_x = [4.4, 6.4]
+limits_y = [14.0, 16.0]
 
 # set the bounds for x and y that are used for the scan, relative to mid position
 # mid = [7.8866, 0.0166]
 # distance = 2
 # limits_x = [mid[0] - distance, mid[0] + distance]
 # limits_y = [0, 4]
-
+desCurrents = [0] * 8
+# set currents in coils
+openConnection()
+currentConfig = [1,1,1]
+# integer value, mA
+currentStrength = 2000
+for i in range(len(currentConfig)):
+        desCurrents[i] = currentStrength * currentConfig[i]
+enableCurrents()
+demagnetizeCoils()
+sleep(0.3)
+setCurrents(desCurrents, b'1')
 
 #%%
 # perform actual 2d scan
-with MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=5) as node:
-
+# with MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1) as node:
+node = MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1)
     # CC_Y.move_absolute(0.0)
     # CC_Z.move_absolute(21.0)
     # state = False
@@ -86,11 +99,12 @@ with MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=5) a
     # state = False
     # while not state:
     #     state = CC_Z.is_ready() and CC_Y.is_ready()
+filename_suffix = f'2d_scan_({currentConfig[0]}_{currentConfig[1]}_{currentConfig[2]})'
+positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, 8.3, xlim=limits_x, ylim=limits_y, grid_number=grid_number,
+                                                     sampling_size=sampling_size, save_data=True,suffix=filename_suffix, directory=directory)
+disableCurrents()
 
-    positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, z_offset, 
-                                      xlim=limits_x, ylim=limits_y, grid_number=grid_number,
-                                      sampling_size=sampling_size, save_data=True, directory=directory)
-
+closeConnection()
 
 #%%
 # this part uses the Calibration Cube as Sensor

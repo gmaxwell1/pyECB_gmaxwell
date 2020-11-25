@@ -20,6 +20,24 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator
 from datetime import datetime
 
 
+# low pass filter with cutoff at 1 Hz to cut out noise from 100 Hz measurements
+lowPass100Hz = np.array([-0.0000,  0.0012,  0.0013,  0.0020,  0.0030,  0.0041,  0.0055,  0.0072,  0.0091,  0.0113,
+                         0.0137,  0.0164,  0.0192,  0.0222, 0.0253,  0.0284,  0.0315,  0.0344,  0.0372,  0.0398,
+                         0.0420,  0.0439,  0.0453,  0.0463,  0.0468,  0.0468,  0.0463,  0.0453, 0.0439,  0.0420,  0.0398,
+                         0.0372,  0.0344,  0.0315,  0.0284,  0.0253,  0.0222,  0.0192,  0.0164,  0.0137,  0.0113,  0.0091,
+                         0.0072,  0.0055,  0.0041,  0.0030,  0.0020,  0.0013,  0.0012, -0.0000])
+
+lowPass100Hz_1 = np.array([0.0002, 0.0005, 0.0010, 0.0017, 0.0027, 0.0040, 0.0058, 0.0080, 0.0108, 0.0140, 0.0176, 0.0217,
+                           0.0260, 0.0305, 0.0351, 0.0395, 0.0436, 0.0473, 0.0503, 0.0526, 0.0540, 0.0544, 0.0540, 0.0526,
+                           0.0503, 0.0473, 0.0436, 0.0395, 0.0351, 0.0305, 0.0260, 0.0217, 0.0176, 0.0140, 0.0108, 0.0080,
+                           0.0058, 0.0040, 0.0027, 0.0017, 0.0010, 0.0005, 0.0002])
+
+
+lowPass20Hz = np.array([-0.0184, 0.0246, 0.1335, 0.2671, 0.3285, 0.2671, 0.1335, 0.0246, -0.0184])
+
+
+
+
 def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     """
     Extract and return time and field data from the provided file.
@@ -36,7 +54,7 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     - B_fields (ndarray of shape (measure_runs, 3)): contains measured x,y,z-components of magnetic field. 
     If , B_fields is an ndarray of shape (number_sensors, measure_runs, 3)
     """
-    # import the measurement data from csv file 
+    # import the measurement data from csv file
     dataD = pd.read_csv(filepath)
     if sys.version_info[0] == 3:
         data = dataD.to_numpy()
@@ -47,8 +65,8 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
         # estimate number of measurement rounds
         measure_runs = len(data)
 
-        # collect results for each sensor and save mean, std and abs(std/mean)     
-        times = data[:,0]
+        # collect results for each sensor and save mean, std and abs(std/mean)
+        times = data[:, 0]
         B_fields = data[:, 1:4]
 
     else:
@@ -57,10 +75,10 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
             number_sensors = 63
         else:
             number_sensors = 64
-        
+
         # estimate number of measurement rounds
         measure_runs = len(data) // number_sensors
-    
+
         # initialize arrays for measurement outcomes
         times = np.zeros((number_sensors, measure_runs))
         B_fields = np.zeros((number_sensors, measure_runs, 3))
@@ -70,16 +88,17 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
             # collect data for sensor i
             sensor_i_data = np.zeros((measure_runs, 5))
             for k in range(measure_runs):
-                if (data[i+k*number_sensors,:].dtype == 'float64'):
-                    sensor_i_data[k,:] = data[i+k*number_sensors,:]
+                if (data[i+k*number_sensors, :].dtype == 'float64'):
+                    sensor_i_data[k, :] = data[i+k*number_sensors, :]
                 else:
-                    print("could not convert data properly! wrong data type: ", data[i+k*number_sensors,:].dtype)
-                    sensor_i_data[k,:] = 0
-            
-            times[i,:] = sensor_i_data[:,0]
-            B_fields[i,:,:] = sensor_i_data[:, 2:5]
-        
-    return  times, B_fields
+                    print("could not convert data properly! wrong data type: ",
+                          data[i+k*number_sensors, :].dtype)
+                    sensor_i_data[k, :] = 0
+
+            times[i, :] = sensor_i_data[:, 0]
+            B_fields[i, :, :] = sensor_i_data[:, 2:5]
+
+    return times, B_fields
 
 
 def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz', separate=False,
@@ -112,85 +131,127 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     """
     # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
-    
-    times = raw_data[:,0]
-    fields = raw_data[:,1:4]
-    
+
+    times = raw_data[:, 0]
+    fields = raw_data[:, 1:4]
+    if len(raw_data[0]) == 5:
+        temp = raw_data[:, 4]
+    numplots = 1
+
     if not separate:
         # generate Figure and Axis instances
-        fig, ax = plt.subplots()
-        ax = np.array([ax])
+        if 't' in plot_components:
+            numplots = 2
+        fig, ax = plt.subplots(numplots, sharex=True)
+        if numplots == 1:
+            ax = np.array([ax])
+        fig.set_size_inches(8, 5)
     else:
-        fig, ax = plt.subplots(len(plot_components))
-        fig.set_size_inches(6, len(plot_components) * 3)
-        
-    
+        numplots = len(plot_components)
+        fig, ax = plt.subplots(numplots, sharex=True)
+        fig.set_size_inches(8, numplots * 3)
+
     # plot the desired contents
-    if show_dev_from_mean:
-        # ax[0].hlines
-        if 'x' in plot_components:
-            ax[0].plot(times, fields[:,0] - np.mean(fields[:,0]), label='$\Delta$ $B_x$', color='C0')
-        if 'y' in plot_components:
-            ax[1].plot(times, fields[:,1] - np.mean(fields[:,1]), label='$\Delta$ $B_y$', color='C1')
-        if 'z' in plot_components:
-            ax[2].plot(times, fields[:,2] - np.mean(fields[:,2]), label='$\Delta$ $B_z$', color='C2')
-        # if 'm' in plot_components:
-        #     magn_B_fields = np.linalg.norm(fields, axis=1)
-        #     ax.plot(times, magn_B_fields - np.mean(magn_B_fields), label = '$\Delta$ $|B|$')
-        # if 'p' in plot_components:
-        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-        #     ax.plot(times, inplane_B_fields - np.mean(inplane_B_fields), label = '$\Delta$ $|B_{xy}|$')
-    else:
-        ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
-        if 'x' in plot_components:
-            if separate:
-                ax[0].plot(times, fields[:,0], label = '$B_x$', color='C0')
-                ax[0].set_ylabel('magnetic field, $B_x$ [mT]')                
-            else:
-                ax[0].plot(times, fields[:,0], label = '$B_x$', color='C0')
-        if 'y' in plot_components:
-            if separate:
-                ax[1].plot(times, fields[:,1], label = '$B_y$', color='C1')
-                ax[1].set_ylabel('magnetic field, $B_y$ [mT]')
-            else:
-                ax[0].plot(times, fields[:,1], label = '$B_y$', color='C1')
-        if 'z' in plot_components:
-            if separate:
-                ax[2].plot(times, fields[:,2], label = '$B_z$', color='C2')
-                ax[2].set_ylabel('magnetic field, $B_z$ [mT]')
-            else:
-                ax[0].plot(times, fields[:,2], label = '$B_z$', color='C2')
-        # if 'm' in plot_components:
-        #     magn_B_fields = np.linalg.norm(fields, axis=1)
-        #     ax.plot(times, magn_B_fields, label = '$|B|$')
-        # if 'p' in plot_components:
-        #     inplane_B_fields = np.linalg.norm(fields[:,:2], axis=1)
-        #     ax.plot(times, inplane_B_fields, label = '|$B_{xy}$|')
+    i = 0
+    for c in plot_components:
+        if show_dev_from_mean:
+            if c == 'x':
+                if separate:
+                    ax[0].plot(times, fields[:, 0] - np.mean(fields[:, 0]),
+                                 label='$\Delta$ $B_x$', color='C0')
+                    ax[0].set_ylabel('$\Delta$ $B_x$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 0] - np.mean(fields[:, 0]),
+                                 label='$\Delta B_x$', color='C0')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 'y':
+                if separate:
+                    ax[i].plot(times, fields[:, 1] - np.mean(fields[:, 1]),
+                                 label='$\Delta B_y$', color='C1')
+                    ax[i].set_ylabel('$\Delta$ $B_y$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 1] - np.mean(fields[:, 1]),
+                                 label='$\Delta B_y$', color='C1')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 'z':
+                if separate:
+                    ax[i].plot(times, fields[:, 2] - np.mean(fields[:,2]),
+                                 label='$\Delta B_z$', color='C2')
+                    ax[i].set_ylabel('$\Delta$ $B_z$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 2] - np.mean(fields[:,2]),
+                                 label='$\Delta B_z$', color='C2')
+                    ax[0].set_ylabel('Magnetic Field Deviation $\Delta$ $B$ [mT]')
+            elif c == 't':
+                if separate:
+                    ax[numplots-1].plot(times, temp - np.mean(temp),
+                                          label='$\Delta T$', color='C3')
+                    ax[numplots-1].set_ylabel('Temp. Deviation $\Delta$ $T$ [no unit]')
+                else:
+                    ax[numplots-1].plot(times, temp - np.mean(temp),
+                                          label='$\Delta T$', color='C3')
+                    ax[numplots-1].set_ylabel('Temp. Deviation $\Delta$ $T$ [no unit]')
+                    ax[numplots-1].legend()
+        else:
+            if c == 'x':
+                if separate:
+                    ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
+                    ax[0].set_ylabel('magnetic field, $B_x$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 0], label='$B_x$', color='C0')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 'y':
+                if separate:
+                    ax[i].plot(times, fields[:, 1], label='$B_y$', color='C1')
+                    ax[i].set_ylabel('magnetic field, $B_y$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 1], label='$B_y$', color='C1')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 'z':
+                if separate:
+                    ax[i].plot(times, fields[:, 2], label='$B_z$', color='C2')
+                    ax[i].set_ylabel('magnetic field, $B_z$ [mT]')
+                else:
+                    ax[0].plot(times, fields[:, 2], label='$B_z$', color='C2')
+                    ax[0].set_ylabel('magnetic flux density, $B$ [mT]')
+            elif c == 't':
+                if separate:
+                    ax[numplots-1].plot(times, fields[:, 1], label='$T$', color='C3')
+                    ax[numplots-1].set_ylabel('Absolute temperature, $T$ [no unit]')
+                else:
+                    ax[numplots-1].plot(times, temp, label='$T$', color='C3')
+                    ax[numplots-1].set_ylabel('Absolute temperature, $T$ [no unit]')
+                    ax[numplots-1].legend()
+                    
+        i = i+1
 
     # label axes
     ax[-1].set_xlabel('time, $t$ [s]')
 
     # show legend
     ax[0].legend()
-    
-    if statistics:
-        mag_x = round(np.mean(fields[:,0]),2)
-        mag_y = round(np.mean(fields[:,1]),2)
-        mag_z = round(np.mean(fields[:,2]),2)    
 
-        std_x = round(np.std(fields[:,0]),2)
-        std_y = round(np.std(fields[:,1]),2)
-        std_z = round(np.std(fields[:,2]),2)
+    if statistics:
+        mag_x = round(np.mean(fields[:, 0]), 2)
+        mag_y = round(np.mean(fields[:, 1]), 2)
+        mag_z = round(np.mean(fields[:, 2]), 2)
+
+        std_x = round(np.std(fields[:, 0]), 2)
+        std_y = round(np.std(fields[:, 1]), 2)
+        std_z = round(np.std(fields[:, 2]), 2)
+
+        mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2), 2)
+        theta = round(np.degrees(np.arccos(mag_z/mag)), 2)
+        phi = round(np.degrees(np.arctan2(mag_y, mag_x)), 2)
         
-        mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2),2)
-        theta = round(np.degrees(np.arccos(mag_z/mag)),2)
-        phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
-            
-        ax[0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
-                        .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
+        # delta_temp = np.amax(temp) - np.amin(temp)
+
+        ax[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$|B|$ = {mag} $mT$\n$B_{{y,avg}}$ = {mag_y} '
+                          f'$\pm$ {std_y} $mT$\t$\\theta$ = {theta}°\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$'
+                          f'\t$\\phi$ = {phi}°', fontsize=16)
 
         plt.tight_layout()
-    
+
     # save image
     if save_image:
         # set the directory name and current datetime if not passed as argument
@@ -203,11 +264,12 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
 
     if show_image:
         plt.show()
-    
+
     return fig, ax, times, fields, plot_components
 
-def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, end_idx=5, inset_x = 0.15, inset_y = 0.15,
-                          inset_ylim_factor = 0.25, manual_inset_ylim=None, color=None):
+
+def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, end_idx=5, inset_x=0.15, inset_y=0.15,
+                          inset_ylim_factor=0.25, manual_inset_ylim=None, color=None):
     """
     Add insets into angular plots, such that a line is resolved more precisely.
 
@@ -236,16 +298,16 @@ def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, e
     for certain subplots. Default is None, in which case insets are added for all subplots. 
     """
     if zoom_component == 'x':
-        color='C0'
+        color = 'C0'
     elif zoom_component == 'y':
-        color='C1'
+        color = 'C1'
     elif zoom_component == 'z':
-        color='C2'
+        color = 'C2'
 
     data_in_area = plot_data[begin_idx:end_idx+1]
-    
+
     x_area = x_vals[begin_idx:end_idx+1]
-    
+
     # compute mean and rms values
     mean = np.mean(data_in_area)
     stdd = np.std(data_in_area)
@@ -259,22 +321,21 @@ def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, e
 
     # define which sub-regions of original plot should be shown by setting the limits of inset axis
     x_range = x_area[-1] - x_area[0]
-    axins.set_xlim(x_area[0]-0.1*x_range, x_area[-1] + 0.1*x_range)        
+    axins.set_xlim(x_area[0]-0.1*x_range, x_area[-1] + 0.1*x_range)
 
     # unless manual limits for inset-y-axis are provided, choose them automatically
     y_range_inset = np.max(data_in_area) - np.min(data_in_area)
-    axins.set_ylim( np.min(data_in_area) - inset_ylim_factor*y_range_inset, 
-                    np.max(data_in_area) + inset_ylim_factor*y_range_inset)
-    
-    
+    axins.set_ylim(np.min(data_in_area) - inset_ylim_factor*y_range_inset,
+                   np.max(data_in_area) + inset_ylim_factor*y_range_inset)
+
     # add boxes to indicate which region of original plot is shown in the inset
     axs.indicate_inset_zoom(axins)
-    
-    return axs, round(mean,3), round(stdd,3)
+
+    return axs, round(mean, 3), round(stdd, 3)
 
 
 def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz',
-                      height_per_plot=2, save_image=False, save_dir=None, image_name_postfix='Power_Spectral_Density'):
+                     height_per_plot=2, save_image=False, save_dir=None, image_name_postfix='Power_Spectral_Density'):
     """
     Generate a plot of field components on the y-axis vs. time on the x-axis.
 
@@ -292,13 +353,13 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
     - fig (plt.Figure): figure instance of the plot 
     - axs (plt.Axes): axes instance of the plot
     """
-     # extract data and convert to ndarray
+    # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
-    
-    times = raw_data[:,0]
+
+    times = raw_data[:, 0]
     dt = times[1]
-    fs = 1 / dt # sampling frequency for FFT
-    fields = raw_data[:,1:4]
+    fs = 1 / dt  # sampling frequency for FFT
+    fields = raw_data[:, 1:4]
 
     # if an empty string is passed as plot_components, set it to 'x'
     if len(plot_components) == 0:
@@ -308,13 +369,13 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
     number_plots = len(plot_components)
     fig, axs = plt.subplots(number_plots, 2, sharex='col')
     fig.set_size_inches(10, number_plots * height_per_plot)
-    
+
     if number_plots == 1:
         axs = np.array([axs])
     #     axs[1] = np.array([axs[1]])
-        
+
     plot_data = []
-    ylabels = [[],[]]
+    ylabels = [[], []]
     # exp averaging parameter
     for flag in plot_components:
         # magnetic field in x-direction
@@ -322,36 +383,38 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
             ylabels[0].append('$B_x$ [mT]')
             # coeff = np.fft.fft(fields[:,0], n=1024)
             ylabels[1].append('x direction PSD')
-            plot_data.append(fields[:,0])
+            plot_data.append(fields[:, 0])
         # magnetic field in y-direction
         elif flag == 'y':
             ylabels[0].append('$B_y$ [mT]')
             ylabels[1].append('y direction PSD')
-            plot_data.append(fields[:,1])
+            plot_data.append(fields[:, 1])
         # magnetic field in z-direction
         elif flag == 'z':
             ylabels[0].append('$B_z$ [mT]')
             ylabels[1].append('z direction PSD')
-            plot_data.append(fields[:,2])
+            plot_data.append(fields[:, 2])
         else:
             raise ValueError(
                 '{} is not a valid flag, it should be in [\'x\', \'y\', \'z\']!'.format(flag))
-    
+
     # label axes
     # xticks = np.arange(times[0], times[-1], 25)
-    axs[-1,0].set_xlabel('Time [s]')
+    axs[-1, 0].set_xlabel('Time [s]')
     # axs[-1,0].set_xticks(xticks)
     # AutoMinorLocator()
-        
+
     for i in range(len(axs)):
-        axs[i,0].set_ylabel(ylabels[0][i])
-        axs[i,0].plot(times, plot_data[i])
-        a = axs[i,1].psd(plot_data[i], NFFT=512, Fs=fs, pad_to=len(times), c='g')
-        axs[i,1].set_ylabel(ylabels[1][i])
-        
+        axs[i, 0].set_ylabel(ylabels[0][i])
+        axs[i, 0].plot(times, plot_data[i])
+        a = axs[i, 1].psd(plot_data[i], NFFT=512, Fs=fs,
+                          pad_to=len(times), c='g')
+        axs[i, 1].set_ylabel(ylabels[1][i])
+
     # axs[0,0].set_title(r'Measured magnetic field component', fontsize=16)
-    axs[0,1].set_title(r'Power Spectral density (units: $dB_{10}/Hz$)', fontsize=16)
-    
+    axs[0, 1].set_title(
+        r'Power Spectral density (units: $dB_{10}/Hz$)', fontsize=16)
+
     # plt.show()
     # save image
     if save_image:
@@ -363,25 +426,56 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
         output_file_name = '{}_{}.png'.format(now, image_name_postfix)
         file_path = os.path.join(save_dir, output_file_name)
         fig.savefig(file_path, dpi=300)
-    
+
     return fig, axs, times, plot_data
 
 
 if __name__ == "__main__":
-    
-    data_directory = r'data_sets\time_measurements_12_11'
+    data_directory = r'data_sets\noise_measurements'
     # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # # for item in files:
-    filepath = os.path.join(data_directory, '20_11_12_15-11-40_time_resolved.csv')
-    # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
-    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
-                        separate=False, statistics=True)
+    filename = '20_11_24_13-13-27_zero_field_close_withoutECB.csv'
+    filepath = os.path.join(data_directory, filename)
+    # # if filterNoise and node.period == 0.01 and len(node.data_stack['Bx'] > 50):
+    # # digitally filter data measured before plotting
+    # raw_data = pd.read_csv(filepath).to_numpy()
+    # fields = raw_data[:, 1:4]
     
-    # fig, ax, times, plot_data = spectralAnalysis(r'data_sets\time_measurements_03_11\20_11_03_15-31-01_time_resolved.csv', 'z', 2.5)
-    
-    # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
-    #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
-    # ampl = np.amax(np.abs(plot_data))
+    # LPF = lowPass100Hz
+    # filtered_data = []
+    # # global lowPass100Hz
+    # for n in range(len(fields)):
+    #     avg_data_point = np.array([0, 0, 0])
+    #     if 0 <= n <= len(LPF) - 1:
+    #         for m in range(n):
+    #             avg_data_point = avg_data_point + fields[m, :] * LPF[n-m]
+    #     elif n > len(LPF) - 1:
+    #         index_start = n - len(LPF) + 1
+    #         for m in range(len(LPF)):
+    #             k = index_start + m
+    #             avg_data_point = avg_data_point + fields[k, :] * LPF[n-k]
+        
+    #     filtered_data.append(avg_data_point)
+
+    # fieldFiltered = np.array(filtered_data)    
+    # # print(fieldFiltered)
+    # df = pd.DataFrame({'time [s]': raw_data[:, 0], 
+    #                     'Bx [mT]':  fieldFiltered[:,0], 
+    #                     'By [mT]':  fieldFiltered[:,1], 
+    #                     'Bz [mT]':  fieldFiltered[:,2]
+    #                     })
+    # newfilename = filename.strip('.csv') + '_LPF.csv'
+    # newfilepath = os.path.join(data_directory, newfilename)
+    # df.to_csv(newfilepath, index=False, header=True)
+        
+    fig1, ax1, times1, fields1, plot_components1 = generateAndSavePlot(filepath=filepath, show_image=False, plot_components='xyz', save_image=False, save_dir=data_directory,
+                                                                        separate=False, statistics=False)
+
+    # fig, ax, times, fields = spectralAnalysis(filepath, 'xyz', 2.5)
+
+    # _, mean, std = add_insets_time_plots(ax1[0], times1, fields1[:,1:3], 'yz', begin_idx=1100, end_idx=2300, inset_x = 0.4, inset_y = 0.3,
+    #                       inset_ylim_factor = 0.05, manual_inset_ylim=None, color=None)
+    # # ampl = np.amax(np.abs(plot_data))
     # print(np.abs(plot_data))
     # ampl_list = []
     # for item in np.abs(plot_data[0]):
@@ -390,28 +484,35 @@ if __name__ == "__main__":
     # ampl = round(np.mean(np.array(ampl_list)),2)
     # std_ampl = round(np.std(np.array(ampl_list)),2)
     # std = round(np.std(plot_data),2)
-    
+
     # freq = 1/(times[1]-times[0])
-    
+
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
     # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
     
-    # mag_x = round(np.mean(fields[:,0]),2)
-    # mag_y = round(np.mean(fields[:,1]),2)
-    # mag_z = round(np.mean(fields[:,2]),2)    
+    p2p_x = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
+    p2p_y = np.amax(fields1[:, 1]) - np.amin(fields1[:, 1])
+    p2p_z = np.amax(fields1[:, 2]) - np.amin(fields1[:, 2])
 
-    # std_x = round(np.std(fields[:,0]),2)
-    # std_y = round(np.std(fields[:,1]),2)
-    # std_z = round(np.std(fields[:,2]),2)
-    
+    mag_x = round(np.mean(fields1[:, 0]),2)
+    mag_y = round(np.mean(fields1[:, 1]),2)
+    mag_z = round(np.mean(fields1[:, 2]),2)
+
+    std_x = round(np.std(fields1[:, 0]),2)
+    std_y = round(np.std(fields1[:, 1]),2)
+    std_z = round(np.std(fields1[:, 2]),2)
+
     # mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2),2)
     # theta = round(np.degrees(np.arccos(mag_z/mag)),2)
     # phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
-        
-    # ax[0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
-    #                 .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
 
-    # plt.tight_layout()
-    # # print(fields[1:6,0])
-    
-    # plt.show()
+    ax1[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$\Delta B_{{x,pp,max}}$ = {p2p_x:.2f} $mT$'
+                    f'\n$B_{{y,avg}}$ = {mag_y} $\pm$ {std_y} $mT$\t$\Delta B_{{y,pp,max}}$ = {p2p_y:.2f} $mT$'
+                    f'\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$\t$\Delta B_{{z,pp,max}}$ = {p2p_z:.2f} $mT$')
+
+    plt.tight_layout()
+    # print(fields[1:6,0])
+
+    # fig2,_,_,_,_ = generateAndSavePlot(filepath=newfilepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
+    #                     separate=False, statistics=False)
+    plt.show()
