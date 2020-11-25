@@ -215,7 +215,7 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
 
-    demagnetizeCoils()
+    demagnetizeCoils(current_direction)
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -306,7 +306,7 @@ def sweepHysteresis(config_list=None, datadir='hysteresis_tests', end_val=1, ste
             stdd_values[i + j*steps] = std_data
             expected_fields[i + j*steps] = B_expected
 
-    demagnetizeCoils()
+    demagnetizeCoils(current_direction)
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -492,7 +492,7 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
                 faden.join()
                 strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
 
-        demagnetizeCoils()
+        # demagnetizeCoils()
         disableCurrents()
     else:
         return
@@ -686,7 +686,7 @@ def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, fines
 
 
 if __name__ == "__main__":
-    params = {'block_size': 20, 'period': 0.05, 'duration': 120, 'averaging': 1}
+    params = {'block_size': 40, 'period': 0.01, 'duration': 40, 'averaging': 1}
     # block_size, period, duration, averaging = 30, 0.05, 20, 5
 
     # i = 0
@@ -694,30 +694,34 @@ if __name__ == "__main__":
     faden = myMeasThread(1, **params)
     faden.start()
     
-    magnitude = 100
-    theta = 90
-    phi = 30
-    B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-    print(B_vector)
-    I_vector = tr.computeCoilCurrents(B_vector)
-    ampl = np.amax(np.abs(I_vector))
-    print(I_vector)
+    # magnitude = 100
+    # theta = 120
+    # phi = 280
+    # B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+    # print(B_vector)
+    # I_vector = tr.computeCoilCurrents(B_vector)
+    # ampl = np.amax(np.abs(I_vector))
+    # print(I_vector)
     # returnDict = timeResolvedMeasurement(period=period, average=averaging,
     #                         block_size=block_size, duration=duration)
-    openConnection()
-    # sleep(0.2)
+    sleep(10)
+
+    # openConnection()
+    # enableCurrents()
+    sleep(10)
+    # demagnetizeCoils()
 
     # # print()
     # # functionGenerator([1,1,1], ampl=3000, function='sin', frequency=1, finesse=20, duration=4*np.pi, meas=False, measDur=1.2*4*np.pi)
-    runCurrents(I_vector, 30)
+    # runCurrents(np.array([0,1,0]), 30)
     # runCurrents([129.0,357.0,-402.0], t=60)
-    enableCurrents()
-    demagnetizeCoils(I_vector)
-    disableCurrents()
+    # disableCurrents()
+    # runCurrents(np.array([10,-10,40]), 20)
 
+    
     faden.join()
-    closeConnection()
+    # closeConnection()
     
     # print(returnDict)
 
-    strm(returnDict, r'data_sets\demagnetization_test', now=True)
+    strm(returnDict, r'data_sets\noise_measurements', 'zero_field_close_withoutECB', now=True)

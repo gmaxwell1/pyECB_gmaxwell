@@ -121,11 +121,11 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
 
-    meas_offset_y = 15.9
+    meas_offset_y = 14.8
     start_pos_y = CC_Y.read_cur_pos()
     total_distance_y = abs(meas_offset_y-start_pos_y)
 
-    meas_offset_x = 5.0
+    meas_offset_x = 5.2
     start_pos_x = CC_X.read_cur_pos()
     total_distance_x = abs(meas_offset_x-start_pos_x)
 
@@ -315,30 +315,30 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
 
 if __name__ == '__main__':
 
-    with MetrolabTHM1176Node() as node:
-        calibration(node, calibrate=False)
-        # initialize actuators
-    # CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    # CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    # CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
-    # CC_Z.wait_for_ready()
-    # CC_Y.wait_for_ready()
-    # CC_X.wait_for_ready()
+    # with MetrolabTHM1176Node() as node:
+    #     calibration(node, calibrate=False)
+    # initialize actuators
+    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
+    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
+    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
+    CC_Z.wait_for_ready()
+    CC_Y.wait_for_ready()
+    CC_X.wait_for_ready()
 
-    # cal_pos_z = 20
-    # start_pos_z = CC_Z.read_cur_pos()
+    # cal_pos_z = 21
+    start_pos_z = CC_Z.read_cur_pos()
     # total_distance_z = cal_pos_z-start_pos_z
 
     # cal_pos_y = 0
-    # start_pos_y = CC_Y.read_cur_pos()
+    start_pos_y = CC_Y.read_cur_pos()
     # total_distance_y = abs(cal_pos_y-start_pos_y)
 
-    # cal_pos_x = 20
-    # start_pos_x = CC_X.read_cur_pos()
+    # cal_pos_x = 21
+    start_pos_x = CC_X.read_cur_pos()
     # total_distance_x = abs(cal_pos_x-start_pos_x)
-
+    print(start_pos_x, ' ', start_pos_y, ' ', start_pos_z, ' ')
     # print('Moving to calibration position...')
-    # CC_Z.move_absolute(new_pos=cal_pos_z)
+    CC_Z.move_absolute(new_pos=0)
     # CC_Y.move_absolute(new_pos=cal_pos_y)
     # CC_X.move_absolute(new_pos=cal_pos_x)
 

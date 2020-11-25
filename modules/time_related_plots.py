@@ -20,6 +20,24 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator
 from datetime import datetime
 
 
+# low pass filter with cutoff at 1 Hz to cut out noise from 100 Hz measurements
+lowPass100Hz = np.array([-0.0000,  0.0012,  0.0013,  0.0020,  0.0030,  0.0041,  0.0055,  0.0072,  0.0091,  0.0113,
+                         0.0137,  0.0164,  0.0192,  0.0222, 0.0253,  0.0284,  0.0315,  0.0344,  0.0372,  0.0398,
+                         0.0420,  0.0439,  0.0453,  0.0463,  0.0468,  0.0468,  0.0463,  0.0453, 0.0439,  0.0420,  0.0398,
+                         0.0372,  0.0344,  0.0315,  0.0284,  0.0253,  0.0222,  0.0192,  0.0164,  0.0137,  0.0113,  0.0091,
+                         0.0072,  0.0055,  0.0041,  0.0030,  0.0020,  0.0013,  0.0012, -0.0000])
+
+lowPass100Hz_1 = np.array([0.0002, 0.0005, 0.0010, 0.0017, 0.0027, 0.0040, 0.0058, 0.0080, 0.0108, 0.0140, 0.0176, 0.0217,
+                           0.0260, 0.0305, 0.0351, 0.0395, 0.0436, 0.0473, 0.0503, 0.0526, 0.0540, 0.0544, 0.0540, 0.0526,
+                           0.0503, 0.0473, 0.0436, 0.0395, 0.0351, 0.0305, 0.0260, 0.0217, 0.0176, 0.0140, 0.0108, 0.0080,
+                           0.0058, 0.0040, 0.0027, 0.0017, 0.0010, 0.0005, 0.0002])
+
+
+lowPass20Hz = np.array([-0.0184, 0.0246, 0.1335, 0.2671, 0.3285, 0.2671, 0.1335, 0.0246, -0.0184])
+
+
+
+
 def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     """
     Extract and return time and field data from the provided file.
@@ -116,7 +134,8 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
 
     times = raw_data[:, 0]
     fields = raw_data[:, 1:4]
-    temp = raw_data[:, 4]
+    if len(raw_data[0]) == 5:
+        temp = raw_data[:, 4]
     numplots = 1
 
     if not separate:
@@ -126,10 +145,11 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
         fig, ax = plt.subplots(numplots, sharex=True)
         if numplots == 1:
             ax = np.array([ax])
+        fig.set_size_inches(8, 5)
     else:
         numplots = len(plot_components)
         fig, ax = plt.subplots(numplots, sharex=True)
-        fig.set_size_inches(6, numplots * 3)
+        fig.set_size_inches(8, numplots * 3)
 
     # plot the desired contents
     i = 0
@@ -224,11 +244,11 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
         theta = round(np.degrees(np.arccos(mag_z/mag)), 2)
         phi = round(np.degrees(np.arctan2(mag_y, mag_x)), 2)
         
-        delta_temp = np.amax(temp) - np.amin(temp)
+        # delta_temp = np.amax(temp) - np.amin(temp)
 
         ax[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$|B|$ = {mag} $mT$\n$B_{{y,avg}}$ = {mag_y} '
                           f'$\pm$ {std_y} $mT$\t$\\theta$ = {theta}°\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$'
-                          f'\t$\\phi$ = {phi}°\n\t$\Delta T$ = {delta_temp}', fontsize=16)
+                          f'\t$\\phi$ = {phi}°', fontsize=16)
 
         plt.tight_layout()
 
@@ -411,30 +431,51 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 
 if __name__ == "__main__":
-
-    data_directory = r'data_sets\demagnetization_test'
+    data_directory = r'data_sets\noise_measurements'
     # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # # for item in files:
-    filepath = os.path.join(
-        data_directory, '20_11_20_16-04-58_time_resolved.csv')
+    filename = '20_11_24_13-13-27_zero_field_close_withoutECB.csv'
+    filepath = os.path.join(data_directory, filename)
+    # # if filterNoise and node.period == 0.01 and len(node.data_stack['Bx'] > 50):
+    # # digitally filter data measured before plotting
     # raw_data = pd.read_csv(filepath).to_numpy()
-    # reduced_data = raw_data[1:36001,:]
-    # df = pd.DataFrame({ 'time [s]': reduced_data[:, 0], 
-    #                     'Bx [mT]':  reduced_data[:, 1], 
-    #                     'By [mT]':  reduced_data[:, 2], 
-    #                     'Bz [mT]':  reduced_data[:, 3],
-    #                     'Temperature':  reduced_data[:, 4]})
-    # newPath = os.path.join(data_directory, '20_11_20_00-00-33_partial.csv')
-    # df.to_csv(newPath, index=False, header=True)
-    # img_name = filepath.strip(data_directory).strip('_time_resolved.csv').strip('\\') + 'sinusoidal_3A'
-    generateAndSavePlot(filepath=filepath, show_image=True, plot_components='xyzt', save_image=False, save_dir=data_directory,
-                        separate=False, statistics=True)
+    # fields = raw_data[:, 1:4]
+    
+    # LPF = lowPass100Hz
+    # filtered_data = []
+    # # global lowPass100Hz
+    # for n in range(len(fields)):
+    #     avg_data_point = np.array([0, 0, 0])
+    #     if 0 <= n <= len(LPF) - 1:
+    #         for m in range(n):
+    #             avg_data_point = avg_data_point + fields[m, :] * LPF[n-m]
+    #     elif n > len(LPF) - 1:
+    #         index_start = n - len(LPF) + 1
+    #         for m in range(len(LPF)):
+    #             k = index_start + m
+    #             avg_data_point = avg_data_point + fields[k, :] * LPF[n-k]
+        
+    #     filtered_data.append(avg_data_point)
 
-    # fig, ax, times, fields = spectralAnalysis(newPath, 'xyz', 2.5)
+    # fieldFiltered = np.array(filtered_data)    
+    # # print(fieldFiltered)
+    # df = pd.DataFrame({'time [s]': raw_data[:, 0], 
+    #                     'Bx [mT]':  fieldFiltered[:,0], 
+    #                     'By [mT]':  fieldFiltered[:,1], 
+    #                     'Bz [mT]':  fieldFiltered[:,2]
+    #                     })
+    # newfilename = filename.strip('.csv') + '_LPF.csv'
+    # newfilepath = os.path.join(data_directory, newfilename)
+    # df.to_csv(newfilepath, index=False, header=True)
+        
+    fig1, ax1, times1, fields1, plot_components1 = generateAndSavePlot(filepath=filepath, show_image=False, plot_components='xyz', save_image=False, save_dir=data_directory,
+                                                                        separate=False, statistics=False)
 
-    # _, mean, std = add_insets_time_plots(ax[0], times, fields[:,2], 'z', begin_idx=1000, end_idx=1900, inset_x = 0.4, inset_y = 0.3,
-    #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
-    # ampl = np.amax(np.abs(plot_data))
+    # fig, ax, times, fields = spectralAnalysis(filepath, 'xyz', 2.5)
+
+    # _, mean, std = add_insets_time_plots(ax1[0], times1, fields1[:,1:3], 'yz', begin_idx=1100, end_idx=2300, inset_x = 0.4, inset_y = 0.3,
+    #                       inset_ylim_factor = 0.05, manual_inset_ylim=None, color=None)
+    # # ampl = np.amax(np.abs(plot_data))
     # print(np.abs(plot_data))
     # ampl_list = []
     # for item in np.abs(plot_data[0]):
@@ -448,23 +489,30 @@ if __name__ == "__main__":
 
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
     # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    
+    p2p_x = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
+    p2p_y = np.amax(fields1[:, 1]) - np.amin(fields1[:, 1])
+    p2p_z = np.amax(fields1[:, 2]) - np.amin(fields1[:, 2])
 
-    # mag_x = round(np.mean(fields[0]),2)
-    # mag_y = round(np.mean(fields[1]),2)
-    # mag_z = round(np.mean(fields[2]),2)
+    mag_x = round(np.mean(fields1[:, 0]),2)
+    mag_y = round(np.mean(fields1[:, 1]),2)
+    mag_z = round(np.mean(fields1[:, 2]),2)
 
-    # std_x = round(np.std(fields[0]),2)
-    # std_y = round(np.std(fields[1]),2)
-    # std_z = round(np.std(fields[2]),2)
+    std_x = round(np.std(fields1[:, 0]),2)
+    std_y = round(np.std(fields1[:, 1]),2)
+    std_z = round(np.std(fields1[:, 2]),2)
 
     # mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2),2)
     # theta = round(np.degrees(np.arccos(mag_z/mag)),2)
     # phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
 
-    # ax[0,0].set_title('$B_{{x,avg}}$ = {0} $\pm$ {1} $mT$\t$|B|$ = {2} $mT$\n$B_{{y,avg}}$ = {3} $\pm$ {4} $mT$\t$\\theta$ = {5}°\n$B_{{z,avg}}$ = {6} $\pm$ {7} $mT$\t$\\phi$ = {8}°'
-    #                 .format(mag_x, std_x, mag, mag_y, std_y, theta, mag_z, std_z, phi), fontsize=16)
+    ax1[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$\Delta B_{{x,pp,max}}$ = {p2p_x:.2f} $mT$'
+                    f'\n$B_{{y,avg}}$ = {mag_y} $\pm$ {std_y} $mT$\t$\Delta B_{{y,pp,max}}$ = {p2p_y:.2f} $mT$'
+                    f'\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$\t$\Delta B_{{z,pp,max}}$ = {p2p_z:.2f} $mT$')
 
-    # plt.tight_layout()
-    # # print(fields[1:6,0])
+    plt.tight_layout()
+    # print(fields[1:6,0])
 
-    # plt.show()
+    # fig2,_,_,_,_ = generateAndSavePlot(filepath=newfilepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
+    #                     separate=False, statistics=False)
+    plt.show()

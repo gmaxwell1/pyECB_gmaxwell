@@ -131,6 +131,7 @@ def enableCurrents():
     global ECB_CURRENTS_ENABLED
 
     ECB_ERR = enableECBCurrents()
+    setDesCurrents([0, 0, 0, 0, 0, 0, 0, 0], b'0')
 
     if ECB_ERR != 0:
         _chk(ECB_ERR)
@@ -338,7 +339,7 @@ def demagnetizeCoils(current_config=np.array([1000,1000,1000])):
 if __name__ == '__main__':
     print(initECBapi(ECB_ADDRESS, ECB_PORT))
     print(enableECBCurrents())
-    setCurrents(desCurrents=[5000, 5000, 0, 0, 0, 0, 0, 0], direct=b'0')
+    setCurrents(desCurrents=[1, 0, 0, 0, 0, 0, 0, 0], direct=b'0')
     sleep(20)
     # print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
     # for i in range(15):
@@ -347,7 +348,7 @@ if __name__ == '__main__':
     #     sleep(1 - time() % 1)
     disableECBCurrents()
     
-    enableECBCurrents()
-    demagnetizeCoils()
-    disableECBCurrents()
+    # enableECBCurrents()
+    # demagnetizeCoils()
+    # disableECBCurrents()
     exitECBapi()
