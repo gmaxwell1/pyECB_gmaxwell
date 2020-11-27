@@ -370,7 +370,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
                         height_per_plot = 2, save_image = True, distance = 3.0, xlim = None, 
                         ylim_field_abs = None, ylim_field_single = None, ylim_theta = None, ylim_phi = None,
                         show_labels = True, remove_half = 0, ygrid = False, cut_phi_at_0 = False,
-                        show_image = True):
+                        show_image = True, show_expected_data=True):
     """
     Generate plots of B vs I containing errorbars with mean values and standard deviations. 
 
@@ -416,6 +416,7 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
     - ygrid (bool): flag for switching on/off grid lines for y-axis
     - cut_phi_at_0 (bool): if True, the values of phi are in [0,360], else in [-180, +180]
     - show_image (bool): if True, plt.show() is added at the end
+    - show_expected_data (bool): if True, the expected data are plotted as dashed orange line. 
 
     Return: fig, axs, x_vals, plot_mean_data, plot_std_data, plot_expected_data
 
@@ -553,7 +554,8 @@ def generate_plots(I, mean_values, std_values, expected_values, flag_xaxis = 'I1
             axs[i].errorbar(x_vals, plot_mean_data[i], yerr=plot_std_data[i],
                                     linestyle='', marker='.', capsize = 2, 
                                     label = 'measured @ {:.1f} mm'.format(distance))
-            axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
+            if show_expected_data:
+                axs[i].plot(x_vals, plot_expected_data[i], linestyle='--', 
                                     label = 'linear model @ 3mm')
     if show_labels:
         axs[0].legend()
@@ -1560,3 +1562,99 @@ def rotation_on_basis_vectors(alpha, beta, gamma, convention = 'xzx', verbose=Tr
     return rotated, delta_phi, delta_theta
 
 
+def get_remanent_B(H_falling, H_rising, B_falling, B_rising):
+    # find zero values of H
+    i_fall = np.argmin(np.abs(H_falling))
+    i_rise = np.argmin(np.abs(H_rising))
+    # return y-axis offsets
+    return B_falling[i_fall], B_rising[i_rise]
+
+def linearly_fit_root(a, b):
+    return -a[1]*(b[0]-a[0])/(b[1]-a[1]) + a[0]
+
+def get_coercivity(H_falling, H_rising, B_falling, B_rising):
+    # falling branch
+    if np.min(np.abs(B_falling)) == 0:
+        # check for zero B values, although it is rather unlikely that an experiments produces exactly zero field 
+        i_fall = np.argmin(np.abs(B_falling))
+        H_coer_fall = H_falling[i_fall]
+    else:
+        # take two entries with lowest absolut values, draw line through them and estimate shift of origin
+        i1, i2 = np.argsort(np.abs(B_falling))[:2]
+        H_coer_fall = linearly_fit_root([H_falling[i1], B_falling[i1]], [H_falling[i2], B_falling[i2]])
+
+    # rising branch
+    if np.min(np.abs(B_rising)) == 0:
+        # check for zero B values, although it is rather unlikely that an experiments produces exactly zero field 
+        i_rise = np.argmin(np.abs(B_rising))
+        H_coer_rise = H_rising[i_rise]
+    else:
+        # take two entries with lowest absolut values, draw line through them and estimate shift of origin
+        i1, i2 = np.argsort(np.abs(B_falling))[:2]
+        H_coer_rise = linearly_fit_root([H_rising[i1], B_rising[i1]], [H_rising[i2], B_rising[i2]])
+
+    return H_coer_fall, H_coer_rise
+
+def get_direction_vector(vecs):
+    """
+    Estimate the overall normalized direction vector within the xy-plane for a set of vectors, 
+    pointing from (about) along the curve defined by the vectors and projected onto the xy-plane.
+
+    Args:
+    - vecs (ndarray of shape (N,3) or (N,2)): Input data vectors (for example of measured 
+    magnetic field vectors). The third dimension is ignored entirely. 
+
+    Returns: direction (1d-ndarray of length 2): normalized direction vector
+    """
+    # first check that x-data are not too close to 0, take 5 mT as boundary
+    if not np.all(np.abs(vecs[:,0]) < 5 ):
+        # fit data projected onto xy-plane with linear function plus an offset
+        lin_fct = lambda x, a, b: a*x +b
+        p, _ = curve_fit(lin_fct, vecs[:,0], vecs[:,1], p0 = [1,0])
+        
+        # take the x-value with largest magnitude to correctly set positive direction along provided data
+        x = vecs[np.argmax(np.abs(vecs[:,0])), 0]
+        direction = np.array([x, lin_fct(x,*p)-lin_fct(0,*p)])
+
+    # else do the same thing as before, but exchange x and y when fitting:
+    else:
+        lin_fct = lambda x, a, b: a*x +b
+        p, _ = curve_fit(lin_fct, vecs[:,1], vecs[:,0], p0 = [1,0])
+        
+        # take the y-value with largest magnitude to correctly set positive direction along provided data
+        y = vecs[np.argmax(np.abs(vecs[:,1])), 1]
+        direction = np.array([lin_fct(y,*p)-lin_fct(0,*p), y])
+
+    # normalize direction before returning
+    return direction / np.linalg.norm(direction)
+
+def get_relative_inplane_angles(fields, verbose=False):
+    """
+    Estimate the two angles between the directions of first + second entry along first dimension 
+    and between directions of first and third entry along first dimension, each projected onto the xy-plane. 
+    This function is supposed to be used with data that originate from ramping the current in 
+    the three coils individually, while the remaining coils are switched off.  
+
+    Args:
+    - fields (ndarray of shape (3, N, 3)): estimated fields with the three field directions on last axis
+    and the data originating from ramping the coils individually along first dimension.
+    - verbose (bool): If True, print the resulting three directions
+
+    Return angles (1d-ndarray of length 2), containing the angles between virgin hysteresis curves of
+    first and second coil, first and third coil, and second and third coil. 
+    """
+    # get normalized direction vectors first
+    directions = np.zeros((3,2))
+    for i in range(3):
+        directions[i] = get_direction_vector(fields[i])
+    
+    if verbose:
+        [print('direction for coil {}: {}'.format(i+1, directions[i])) for i in range(3)]
+
+    # estimate angles using dot product
+    angles = np.arccos(np.array([np.dot(directions[0], directions[1]),
+                                np.dot(directions[0], directions[2]),
+                                np.dot(directions[1], directions[2]) ]))
+
+    # convert to degrees before returning
+    return np.degrees(angles)

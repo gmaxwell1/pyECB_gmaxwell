@@ -8,6 +8,7 @@ analysis.py
 update_old_data_files.py
 analysis_time_dependence.py
 analyze_2d_scan.py
+analyze_extended_2d_scans.py
 test.py
 get_configuration.py
 fit_fields.py
@@ -19,6 +20,12 @@ extract_linear_slopes.py
 test_interpolation.py
 spherical_plot_triangulation.py
 lookup_table_interpolation.py
+<<<<<<< HEAD
+=======
+hysteresis_analysis.py
+plot_measurement_set_3d.py
+test_new_calibration.py
+>>>>>>> ada0a5a1b84f7f1c4d4f5584529418c5243ecc8a
 oscilloscope.py
 
 # Byte-compiled / optimized / DLL files

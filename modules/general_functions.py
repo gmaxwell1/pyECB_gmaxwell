@@ -89,7 +89,7 @@ def transform_between_sensor_stage_coordinates(data):
     """
     Transform from magnet coordinates to Metrolab sensor coordinates, using the following transformation:
 
-    x -> -y
+    x -> -y, 
     y -> -x
 
     Arg: data (ndarray) can be 1d or multidimensional array, where the last dimension must be of length 3 and contain 
