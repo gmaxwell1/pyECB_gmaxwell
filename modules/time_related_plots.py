@@ -432,9 +432,9 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 if __name__ == "__main__":
     data_directory = r'data_sets\noise_measurements'
-    # # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
-    # # for item in files:
-    filename = '20_11_24_13-13-27_zero_field_close_withoutECB.csv'
+    # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
+    # for item in files:
+    filename = '20_11_26_11-40-43_DC_source_on_off_10mA.csv'
     filepath = os.path.join(data_directory, filename)
     # # if filterNoise and node.period == 0.01 and len(node.data_stack['Bx'] > 50):
     # # digitally filter data measured before plotting
@@ -454,11 +454,13 @@ if __name__ == "__main__":
     #         for m in range(len(LPF)):
     #             k = index_start + m
     #             avg_data_point = avg_data_point + fields[k, :] * LPF[n-k]
+    #     elif n == 0:
+    #         avg_data_point = fields[0, :]
         
     #     filtered_data.append(avg_data_point)
 
-    # fieldFiltered = np.array(filtered_data)    
-    # # print(fieldFiltered)
+    # fieldFiltered = np.array(filtered_data)
+    # print(fieldFiltered)
     # df = pd.DataFrame({'time [s]': raw_data[:, 0], 
     #                     'Bx [mT]':  fieldFiltered[:,0], 
     #                     'By [mT]':  fieldFiltered[:,1], 
@@ -469,12 +471,12 @@ if __name__ == "__main__":
     # df.to_csv(newfilepath, index=False, header=True)
         
     fig1, ax1, times1, fields1, plot_components1 = generateAndSavePlot(filepath=filepath, show_image=False, plot_components='xyz', save_image=False, save_dir=data_directory,
-                                                                        separate=False, statistics=False)
+                                                                        separate=True, show_dev_from_mean=True, statistics=False)
 
     # fig, ax, times, fields = spectralAnalysis(filepath, 'xyz', 2.5)
 
-    # _, mean, std = add_insets_time_plots(ax1[0], times1, fields1[:,1:3], 'yz', begin_idx=1100, end_idx=2300, inset_x = 0.4, inset_y = 0.3,
-    #                       inset_ylim_factor = 0.05, manual_inset_ylim=None, color=None)
+    # _, mean, std = add_insets_time_plots(ax1[0], times1, fields1[:,0]-np.mean(fields1[:,0]), 'x', begin_idx=470, end_idx=1270, inset_x = 0.5, inset_y = 0.6,
+    #                       inset_ylim_factor = 0.1, manual_inset_ylim=None, color=None)
     # # ampl = np.amax(np.abs(plot_data))
     # print(np.abs(plot_data))
     # ampl_list = []
@@ -489,30 +491,53 @@ if __name__ == "__main__":
 
     # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
     # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
+    # bot,top = plt.ylim()
+    # plt.ylim((bot,top+0.3))
     
-    p2p_x = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
-    p2p_y = np.amax(fields1[:, 1]) - np.amin(fields1[:, 1])
-    p2p_z = np.amax(fields1[:, 2]) - np.amin(fields1[:, 2])
+    # p2p_x_rise = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
+    # p2p_y_rise = np.amax(fields1[:, 1]) - np.amin(fields1[:, 1])
+    # p2p_z_rise = np.amax(fields1[:, 2]) - np.amin(fields1[:, 2])
+    field_dev = fields1[525:1221,:] - np.mean(fields1[525:1221,:],axis=0)
+    
+    p2p_x_prerise = np.amax(field_dev[:,0]) - np.amin(field_dev[:,0])
+    p2p_y_prerise = np.amax(field_dev[:,1]) - np.amin(field_dev[:,1])
+    p2p_z_prerise = np.amax(field_dev[:,2]) - np.amin(field_dev[:,2])
 
-    mag_x = round(np.mean(fields1[:, 0]),2)
-    mag_y = round(np.mean(fields1[:, 1]),2)
-    mag_z = round(np.mean(fields1[:, 2]),2)
+    # p2p_x_postrise = np.amax(fields1[1223:, 0]) - np.amin(fields1[1223:, 0])
+    # p2p_y_postrise = np.amax(fields1[1223:, 1]) - np.amin(fields1[1223:, 1])
+    # p2p_z_postrise = np.amax(fields1[1223:, 2]) - np.amin(fields1[1223:, 2])
+    
+    # p2p_x = np.mean([p2p_x_prerise,p2p_x_postrise])
+    # p2p_y = np.mean([p2p_y_prerise,p2p_y_postrise])
+    # p2p_z = np.mean([p2p_z_prerise,p2p_z_postrise])
+    
+    # mag_x = round(np.mean(fields1[:, 0]),2)
+    # mag_y = round(np.mean(fields1[:, 1]),2)
+    # mag_z = round(np.mean(fields1[:, 2]),2)
 
-    std_x = round(np.std(fields1[:, 0]),2)
-    std_y = round(np.std(fields1[:, 1]),2)
-    std_z = round(np.std(fields1[:, 2]),2)
+    std_x = np.sqrt(np.mean(field_dev[:,0]**2))
+    std_y = np.sqrt(np.mean(field_dev[:,1]**2))
+    std_z = np.sqrt(np.mean(field_dev[:,2]**2))
+    
+    std_x_0 = np.std(fields1[1270:,0]-np.mean(fields1[1270:,0]))
+    std_y_0 = np.std(fields1[1270:,1]-np.mean(fields1[1270:,1]))
+    std_z_0 = np.std(fields1[1270:,2]-np.mean(fields1[1270:,2]))
+    
+    # print(std_x,', ',std_y,', ',std_z)
 
     # mag = round(np.sqrt(mag_x ** 2 + mag_y ** 2 + mag_z ** 2),2)
     # theta = round(np.degrees(np.arccos(mag_z/mag)),2)
     # phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
 
-    ax1[0].set_title(f'$B_{{x,avg}}$ = {mag_x} $\pm$ {std_x} $mT$\t$\Delta B_{{x,pp,max}}$ = {p2p_x:.2f} $mT$'
-                    f'\n$B_{{y,avg}}$ = {mag_y} $\pm$ {std_y} $mT$\t$\Delta B_{{y,pp,max}}$ = {p2p_y:.2f} $mT$'
-                    f'\n$B_{{z,avg}}$ = {mag_z} $\pm$ {std_z} $mT$\t$\Delta B_{{z,pp,max}}$ = {p2p_z:.2f} $mT$')
+    ax1[0].set_title(f'max. noise amplitude (step):            RMS of noise (when current is on/off):'
+                    f'\n$\Delta B_{{x,pp,max}}$ = {p2p_x_prerise:.2f} $mT$\t$\Delta B_{{x1,RMS}}$ = {std_x:.2f} $mT$  $\Delta B_{{x0,RMS}}$ = {std_x_0:.2f} $mT$'
+                    f'\n$\Delta B_{{y,pp,max}}$ = {p2p_y_prerise:.2f} $mT$\t$\Delta B_{{y1,RMS}}$ = {std_y:.2f} $mT$  $\Delta B_{{y0,RMS}}$ = {std_y_0:.2f} $mT$'
+                    f'\n$\Delta B_{{z,pp,max}}$ = {p2p_z_prerise:.2f} $mT$\t$\Delta B_{{z1,RMS}}$ = {std_z:.2f} $mT$  $\Delta B_{{z0,RMS}}$ = {std_z_0:.2f} $mT$')
 
-    plt.tight_layout()
     # print(fields[1:6,0])
 
     # fig2,_,_,_,_ = generateAndSavePlot(filepath=newfilepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
-    #                     separate=False, statistics=False)
+    #                     separate=False, statistics=True)
+    plt.tight_layout()
+
     plt.show()

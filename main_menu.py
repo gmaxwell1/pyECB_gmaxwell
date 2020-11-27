@@ -355,11 +355,11 @@ def callRunCurrents():
 
     if inp4 == '':
         subdir = input('Which subdirectory should measurements be saved to? ')
-        with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
-            # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
-            char = input('Calibrate Metrolab sensor? (y/n): ')
-            if char == 'y':
-                calibration(node, calibrate=True)
+        # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
+        #     # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
+        #     char = input('Calibrate Metrolab sensor? (y/n): ')
+        #     if char == 'y':
+        #         calibration(node, calibrate=True)
 
         runCurrents(np.array([coil1, coil2, coil3]),
                     t=0, direct=b'1', subdir=subdir)
