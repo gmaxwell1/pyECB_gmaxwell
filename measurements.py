@@ -325,22 +325,22 @@ if __name__ == '__main__':
     CC_Y.wait_for_ready()
     CC_X.wait_for_ready()
 
-    # cal_pos_z = 21
-    start_pos_z = CC_Z.read_cur_pos()
+    # cal_pos_z = 8.3
+    # start_pos_z = CC_Z.read_cur_pos()
     # total_distance_z = cal_pos_z-start_pos_z
 
     # cal_pos_y = 0
-    start_pos_y = CC_Y.read_cur_pos()
+    # start_pos_y = CC_Y.read_cur_pos()
     # total_distance_y = abs(cal_pos_y-start_pos_y)
 
-    # cal_pos_x = 21
-    start_pos_x = CC_X.read_cur_pos()
+    # cal_pos_x = 5
+    # start_pos_x = CC_X.read_cur_pos()
     # total_distance_x = abs(cal_pos_x-start_pos_x)
-    print(start_pos_x, ' ', start_pos_y, ' ', start_pos_z, ' ')
+    # print(start_pos_x, ' ', start_pos_y, ' ', start_pos_z, ' ')
     # print('Moving to calibration position...')
-    CC_Z.move_absolute(new_pos=0)
-    # CC_Y.move_absolute(new_pos=cal_pos_y)
-    # CC_X.move_absolute(new_pos=cal_pos_x)
+    CC_Z.move_absolute(new_pos=8.3)
+    CC_Y.move_absolute(new_pos=0)
+    CC_X.move_absolute(new_pos=5)
 
     # if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
     #     progressBar(CC_Y, start_pos_y, total_distance_y)

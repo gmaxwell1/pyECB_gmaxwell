@@ -365,7 +365,7 @@ def callRunCurrents():
                     t=0, direct=b'1', subdir=subdir)
     else:
         try:
-            timer = int(inp4)
+            timer = float(inp4)
             c1 = input(
                 'Automatic Termination after timer? (x for yes): ')
         except:

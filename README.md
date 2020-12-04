@@ -20,3 +20,5 @@ After cloning this repository follow these steps (this is for Windows, but it sh
 
 ## Notes:
 If you are using an IDE, make sure to choose the `python.exe` file in your virtual environment as an interpreter!
+
+This code was used for the ECB-820. A new power supply will probably be used, so this may become obsolete.
