@@ -1,12 +1,12 @@
-""" 
+"""
 filename: time_related_plots.py
 
-This file contains functions that are used for plotting data extracted from the Metrolab THM1176-MF Sensor. 
+This file contains functions that are used for plotting data extracted from the Metrolab THM1176-MF Sensor.
 Mainly for plots of the magnetic field vs. time or Fourier analysis.
 
 Author: Maxwell Guerne-Kieferndorf (Qzabre)
         gmaxwell@student.ethz.ch
-        
+
 Date: 27.10.2020
 """
 
@@ -33,25 +33,24 @@ lowPass100Hz_1 = np.array([0.0002, 0.0005, 0.0010, 0.0017, 0.0027, 0.0040, 0.005
                            0.0058, 0.0040, 0.0027, 0.0017, 0.0010, 0.0005, 0.0002])
 
 
-lowPass20Hz = np.array([-0.0184, 0.0246, 0.1335, 0.2671, 0.3285, 0.2671, 0.1335, 0.0246, -0.0184])
-
-
+lowPass20Hz = np.array([-0.0184, 0.0246, 0.1335, 0.2671,
+                       0.3285, 0.2671, 0.1335, 0.0246, -0.0184])
 
 
 def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
     """
     Extract and return time and field data from the provided file.
 
-    Args: 
+    Args:
     - filepath (string): valid path of the data file
-    - sensorIsMetrolab (bool): if True, the data originate from Metrolab THM1176 sensor, 
+    - sensorIsMetrolab (bool): if True, the data originate from Metrolab THM1176 sensor,
     else from Calibration Cube
     - omit_64 (bool): flag to omit sensor 64 if True (only reasonable if sensorIsMetrolab=False)
 
     Return:
     - times (1d-ndarray of length measure_runs): containing the time estimates of measurements.
     If sensorIsMetrolab=False, times is an ndarray of shape (number_sensors, measure_runs)
-    - B_fields (ndarray of shape (measure_runs, 3)): contains measured x,y,z-components of magnetic field. 
+    - B_fields (ndarray of shape (measure_runs, 3)): contains measured x,y,z-components of magnetic field.
     If , B_fields is an ndarray of shape (number_sensors, measure_runs, 3)
     """
     # import the measurement data from csv file
@@ -99,6 +98,123 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
             B_fields[i, :, :] = sensor_i_data[:, 2:5]
 
     return times, B_fields
+
+
+def generateAndSaveTempPlot(times, temps, plot_components='123', separate=False, show_image=True, save_image=False,
+                            output_file_name='Temp_vs_t', save_dir=None, show_dev_from_mean=False, statistics=False):
+    """
+    Generate a plot of field components on the y-axis vs. time on the x-axis.
+
+    Args:
+    - times: np.array with N entries (timeline)
+    - temps: np.ndarray with 3xN entries for each sensor
+    - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm' and 'p'
+    The number of letters may vary, but at least one valid letter should be contained. For each flag,
+    the according quantity is added to the plot. Each quantity is plotted at most once.
+        - 't1', 't2', 't3': temperature sensor 1,2 or 3 data
+    - show_image (bool): If True, plt.show() is executed at the end
+    - output_file_name(str): what to call the output file
+    - savedir (str): where to save the output file
+    - show_dev_from_mean (bool): If False, the values of the desired components are plotted.
+    If True, the deviation from their mean values is plotted.
+    - statistics (bool): show mean and standard deviation of each component, angles and magnitude.
+
+    Return:
+    - fig (plt.Figure): figure instance of the plot
+    - axs (plt.Axes): axes instance of the plot
+    - times: array with timestamps
+    - temps: temperature data from each sensor
+    - plot_components: string with plot flags
+    """
+    
+    numplots = 1
+    if not separate:
+        # generate Figure and Axis instances
+        fig, ax = plt.subplots(numplots, sharex=True)
+        if numplots == 1:
+            ax = np.array([ax])
+        fig.set_size_inches(8, 5)
+    else:
+        numplots = len(plot_components)
+        fig, ax = plt.subplots(numplots, sharex=True)
+        fig.set_size_inches(8, numplots * 3)
+
+    # plot the desired contents
+    i = 0
+    for c in plot_components:
+        if show_dev_from_mean:
+            if c == '1':
+                if separate:
+                    ax[0].plot(times, temps[:, 0] - np.mean(temps[:, 0]),
+                                 label='$\Delta$ $T_1$', color='C0')
+                    ax[0].set_ylabel('$\Delta$ $T_1$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 0] - np.mean(temps[:, 0]),
+                                 label='$\Delta$ $T_1$', color='C0')
+                    ax[0].set_ylabel('Temperature Deviation $\Delta$ $T$ [°C]')
+            elif c == '2':
+                if separate:
+                    ax[i].plot(times, temps[:, 1] - np.mean(temps[:, 1]),
+                                 label='$\Delta$ $T_2$', color='C1')
+                    ax[i].set_ylabel('$\Delta$ $T_2$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 1] - np.mean(temps[:, 1]),
+                                 label='$\Delta$ $T_2$$', color='C1')
+                    ax[0].set_ylabel('Temperature Deviation $\Delta$ $T$ [°C]')
+            elif c == '3':
+                if separate:
+                    ax[i].plot(times, temps[:, 2] - np.mean(temps[:, 2]),
+                                 label='$\Delta$ $T_3$', color='C2')
+                    ax[i].set_ylabel('$\Delta$ $T_3$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 2] - np.mean(temps[:, 2]),
+                                 label='$\Delta$ $T_3$', color='C2')
+                    ax[0].set_ylabel('Temperature Deviation $\Delta$ $T$ [°C]')
+        else:
+            if c == '1':
+                if separate:
+                    ax[0].plot(times, temps[:, 0], label='$T_1$', color='C0')
+                    ax[0].set_ylabel('$T_1$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 0], label='$T_1$', color='C0')
+                    ax[0].set_ylabel('Temperature Deviation $T$ [°C]')
+            elif c == '2':
+                if separate:
+                    ax[i].plot(times, temps[:, 1], label='$T_2$', color='C1')
+                    ax[i].set_ylabel('$T_2$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 1], label='$T_2$', color='C1')
+                    ax[0].set_ylabel('Temperature Deviation $T$ [°C]')
+            elif c == '3':
+                if separate:
+                    ax[i].plot(times, temps[:, 2], label='$T_3$', color='C2')
+                    ax[i].set_ylabel('$T_3$ [°C]')
+                else:
+                    ax[0].plot(times, temps[:, 2], label='$T_3$', color='C2')
+                    ax[0].set_ylabel('Temperature Deviation $T$ [°C]')
+                    
+        i = i+1
+
+    # label axes
+    ax[-1].set_xlabel('time, $t$ [s]')
+    # show legend
+    if not separate:
+        ax[0].legend()
+
+    # save image
+    if save_image:
+        # set the directory name and current datetime if not passed as argument
+        if save_dir is None:
+            save_dir = os.getcwd()
+        # now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+
+        img_path = os.path.join(save_dir, output_file_name)
+        fig.savefig(img_path, dpi=300)
+
+    if show_image:
+        plt.show()
+
+    return fig, ax, times, temps, plot_components
 
 
 def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz', separate=False,
@@ -229,7 +345,8 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
     ax[-1].set_xlabel('time, $t$ [s]')
 
     # show legend
-    ax[0].legend()
+    if not separate:
+        ax[0].legend()
 
     if statistics:
         mag_x = round(np.mean(fields[:, 0]), 2)
@@ -266,6 +383,7 @@ def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_
         plt.show()
 
     return fig, ax, times, fields, plot_components
+
 
 
 def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, end_idx=5, inset_x=0.15, inset_y=0.15,
@@ -431,17 +549,28 @@ def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-
 
 
 if __name__ == "__main__":
-    data_directory = r'data_sets\noise_measurements'
+    data_directory = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\2_Misc_Code\Temperature Sensors\ADT7410_temperature_measurements\Measurement_over_time'
     # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # for item in files:
-    filename = '20_11_26_11-40-43_DC_source_on_off_10mA.csv'
-    filepath = os.path.join(data_directory, filename)
-    # # if filterNoise and node.period == 0.01 and len(node.data_stack['Bx'] > 50):
-    # # digitally filter data measured before plotting
-    # raw_data = pd.read_csv(filepath).to_numpy()
-    # fields = raw_data[:, 1:4]
+    filename = '20_12_09_20-33-18_official_measurement.csv'
     
-    # LPF = lowPass100Hz
+    filepath = os.path.join(data_directory, filename)
+    raw_data = pd.read_csv(filepath).to_numpy()
+    # in case columns are swapped for some reason
+    # times = raw_data[:, 3]
+    # times = (times * 128) / 1000
+    # raw_data[:, 0] = (raw_data[:, 0] * 1000) / 128
+    times = raw_data[:, 0]
+    
+    dt = times[5] - times[4]
+    N = len(times)
+    times_new = np.arange(0, N * dt, dt)
+    temps = raw_data[:, 1:4]
+    # temps = np.array([raw_data[:, 0],raw_data[:, 1],raw_data[:, 2]])
+    # temps = np.swapaxes(temps, 0, 1)
+        
+    # # digitally filter data measured before plotting
+    # LPF = lowPass100Hz_1
     # filtered_data = []
     # # global lowPass100Hz
     # for n in range(len(fields)):
@@ -459,19 +588,9 @@ if __name__ == "__main__":
         
     #     filtered_data.append(avg_data_point)
 
-    # fieldFiltered = np.array(filtered_data)
-    # print(fieldFiltered)
-    # df = pd.DataFrame({'time [s]': raw_data[:, 0], 
-    #                     'Bx [mT]':  fieldFiltered[:,0], 
-    #                     'By [mT]':  fieldFiltered[:,1], 
-    #                     'Bz [mT]':  fieldFiltered[:,2]
-    #                     })
-    # newfilename = filename.strip('.csv') + '_LPF.csv'
-    # newfilepath = os.path.join(data_directory, newfilename)
-    # df.to_csv(newfilepath, index=False, header=True)
         
-    fig1, ax1, times1, fields1, plot_components1 = generateAndSavePlot(filepath=filepath, show_image=False, plot_components='xyz', save_image=False, save_dir=data_directory,
-                                                                        separate=True, show_dev_from_mean=True, statistics=False)
+    fig1, ax1, times1, fields1, plot_components1 = generateAndSaveTempPlot(times_new, temps, show_image=False, plot_components='123', save_image=True, save_dir=data_directory,
+                                                                        separate=False, show_dev_from_mean=False, statistics=False)
 
     # fig, ax, times, fields = spectralAnalysis(filepath, 'xyz', 2.5)
 
@@ -489,23 +608,25 @@ if __name__ == "__main__":
 
     # freq = 1/(times[1]-times[0])
 
-    # ax[0,0].set_title('Sine frequency: 0.11  $Hz$, measured at 100 $Hz$\nAmplitude: {} $\pm$ {} $mT$ \nRMS: {} $mT_{{rms}}$'.format(ampl, std_ampl, std), fontsize=16)
-    # ax[0,0].set_title('Sine frequency: 1 $Hz$, measured at {} $Hz$\nAmplitude: {} $\pm$ {} $mT$'.format(freq, ampl, std_ampl, std), fontsize=16)
-    # bot,top = plt.ylim()
-    # plt.ylim((bot,top+0.3))
+    # ax1[0].plot(times1[40:],fieldFiltered[40:,0]-np.mean(fieldFiltered[40:,0],axis=0),'C3',label='moving avg.')
+    # ax1[1].plot(times1[40:],fieldFiltered[40:,1]-np.mean(fieldFiltered[40:,1],axis=0),'C3',label='moving avg.')
+    # ax1[2].plot(times1[40:],fieldFiltered[40:,2]-np.mean(fieldFiltered[40:,2],axis=0),'C3',label='moving avg.')
     
+    ax1[0].legend()
+    # ax1[1].legend()
+    # ax1[2].legend()
     # p2p_x_rise = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
     # p2p_y_rise = np.amax(fields1[:, 1]) - np.amin(fields1[:, 1])
     # p2p_z_rise = np.amax(fields1[:, 2]) - np.amin(fields1[:, 2])
-    field_dev = fields1[525:1221,:] - np.mean(fields1[525:1221,:],axis=0)
+    # field_dev1 = fields1 - np.mean(fields1,axis=0)
     
-    p2p_x_prerise = np.amax(field_dev[:,0]) - np.amin(field_dev[:,0])
-    p2p_y_prerise = np.amax(field_dev[:,1]) - np.amin(field_dev[:,1])
-    p2p_z_prerise = np.amax(field_dev[:,2]) - np.amin(field_dev[:,2])
+    # p2p_x_prerise = np.amax(fields1[:,0]) - np.amin(fields1[:,0])
+    # p2p_y_prerise = np.amax(fields1[:,1]) - np.amin(fields1[:,1])
+    # p2p_z_prerise = np.amax(fields1[:,2]) - np.amin(fields1[:,2])
 
-    # p2p_x_postrise = np.amax(fields1[1223:, 0]) - np.amin(fields1[1223:, 0])
-    # p2p_y_postrise = np.amax(fields1[1223:, 1]) - np.amin(fields1[1223:, 1])
-    # p2p_z_postrise = np.amax(fields1[1223:, 2]) - np.amin(fields1[1223:, 2])
+    # p2p_x_postrise = np.amax(fields1[745:1820, 0]) - np.amin(fields1[745:1820, 0])
+    # p2p_y_postrise = np.amax(fields1[745:1820, 1]) - np.amin(fields1[745:1820, 1])
+    # p2p_z_postrise = np.amax(fields1[745:1820, 2]) - np.amin(fields1[745:1820, 2])
     
     # p2p_x = np.mean([p2p_x_prerise,p2p_x_postrise])
     # p2p_y = np.mean([p2p_y_prerise,p2p_y_postrise])
@@ -515,13 +636,13 @@ if __name__ == "__main__":
     # mag_y = round(np.mean(fields1[:, 1]),2)
     # mag_z = round(np.mean(fields1[:, 2]),2)
 
-    std_x = np.sqrt(np.mean(field_dev[:,0]**2))
-    std_y = np.sqrt(np.mean(field_dev[:,1]**2))
-    std_z = np.sqrt(np.mean(field_dev[:,2]**2))
+    # std_x = np.std(fields1[:,0])
+    # std_y = np.std(fields1[:,1])
+    # std_z = np.std(fields1[:,2])
     
-    std_x_0 = np.std(fields1[1270:,0]-np.mean(fields1[1270:,0]))
-    std_y_0 = np.std(fields1[1270:,1]-np.mean(fields1[1270:,1]))
-    std_z_0 = np.std(fields1[1270:,2]-np.mean(fields1[1270:,2]))
+    # std_x_0 = np.std(fields1[745:1820,0])
+    # std_y_0 = np.std(fields1[745:1820,1])
+    # std_z_0 = np.std(fields1[745:1820,2])
     
     # print(std_x,', ',std_y,', ',std_z)
 
@@ -529,15 +650,12 @@ if __name__ == "__main__":
     # theta = round(np.degrees(np.arccos(mag_z/mag)),2)
     # phi = round(np.degrees(np.arctan2(mag_y, mag_x)),2)
 
-    ax1[0].set_title(f'max. noise amplitude (step):            RMS of noise (when current is on/off):'
-                    f'\n$\Delta B_{{x,pp,max}}$ = {p2p_x_prerise:.2f} $mT$\t$\Delta B_{{x1,RMS}}$ = {std_x:.2f} $mT$  $\Delta B_{{x0,RMS}}$ = {std_x_0:.2f} $mT$'
-                    f'\n$\Delta B_{{y,pp,max}}$ = {p2p_y_prerise:.2f} $mT$\t$\Delta B_{{y1,RMS}}$ = {std_y:.2f} $mT$  $\Delta B_{{y0,RMS}}$ = {std_y_0:.2f} $mT$'
-                    f'\n$\Delta B_{{z,pp,max}}$ = {p2p_z_prerise:.2f} $mT$\t$\Delta B_{{z1,RMS}}$ = {std_z:.2f} $mT$  $\Delta B_{{z0,RMS}}$ = {std_z_0:.2f} $mT$')
+    # ax1[0].set_title(f'\n$\Delta B_{{x,pp,max}}$ = {p2p_x_prerise:.2f} $mT$\t$\Delta B_{{x1,RMS}}$ = {std_x:.2f} $mT$'
+    #                  f'\n$\Delta B_{{y,pp,max}}$ = {p2p_y_prerise:.2f} $mT$\t$\Delta B_{{y1,RMS}}$ = {std_y:.2f} $mT$'
+    #                  f'\n$\Delta B_{{z,pp,max}}$ = {p2p_z_prerise:.2f} $mT$\t$\Delta B_{{z1,RMS}}$ = {std_z:.2f} $mT$')
 
-    # print(fields[1:6,0])
-
-    # fig2,_,_,_,_ = generateAndSavePlot(filepath=newfilepath, show_image=True, plot_components='xyz', save_image=False, save_dir=data_directory,
-    #                     separate=False, statistics=True)
+    ax1[0].set_title('Temperature measured on coil1 with 1A set (from DC current source)\n sensor moved  to top at some point')
+    
     plt.tight_layout()
 
     plt.show()
