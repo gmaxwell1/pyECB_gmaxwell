@@ -552,8 +552,8 @@ if __name__ == "__main__":
     data_directory = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\2_Misc_Code\Temperature Sensors\ADT7410_temperature_measurements\Measurement_over_time'
     # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # for item in files:
-    filename = '20_12_09_20-33-18_official_measurement.csv'
-    
+    filename = '20_12_10_14-48-04_3A_1coil_2base_3pole.csv'
+
     filepath = os.path.join(data_directory, filename)
     raw_data = pd.read_csv(filepath).to_numpy()
     # in case columns are swapped for some reason
@@ -654,7 +654,7 @@ if __name__ == "__main__":
     #                  f'\n$\Delta B_{{y,pp,max}}$ = {p2p_y_prerise:.2f} $mT$\t$\Delta B_{{y1,RMS}}$ = {std_y:.2f} $mT$'
     #                  f'\n$\Delta B_{{z,pp,max}}$ = {p2p_z_prerise:.2f} $mT$\t$\Delta B_{{z1,RMS}}$ = {std_z:.2f} $mT$')
 
-    ax1[0].set_title('Temperature measured on coil1 with 1A set (from DC current source)\n sensor moved  to top at some point')
+    ax1[0].set_title('Temperature measured on coil1 ($T_1$), base($T_2$) and pole ($T_3$)\nwith 3A set (from DC current source)')
     
     plt.tight_layout()
 

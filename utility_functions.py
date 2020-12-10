@@ -682,7 +682,7 @@ def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, fines
 
     disableCurrents()
 
-    strm(returnDict, r'.\data_sets\time_measurements_12_11', now=True)
+    # strm(returnDict, r'.\data_sets\time_measurements_12_11', now=True)
 
 
 if __name__ == "__main__":
