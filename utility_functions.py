@@ -498,7 +498,7 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
         return
 
 
-def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_for_LUT'):
+def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_for_LUT', demagnetize=False):
 
     global currDirectParam
     global desCurrents
@@ -602,8 +602,9 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
 
             faden.join()
             strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
-
-    demagnetizeCoils()
+    if demagnetize:
+        demagnetizeCoils()
+        
     disableCurrents()
 
 
@@ -681,8 +682,6 @@ def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, fines
         faden.join()
 
     disableCurrents()
-
-    # strm(returnDict, r'.\data_sets\time_measurements_12_11', now=True)
 
 
 if __name__ == "__main__":

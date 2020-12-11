@@ -552,7 +552,7 @@ if __name__ == "__main__":
     data_directory = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\2_Misc_Code\Temperature Sensors\ADT7410_temperature_measurements\Measurement_over_time'
     # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # for item in files:
-    filename = '20_12_10_14-48-04_3A_1coil_2base_3pole.csv'
+    filename = '20_12_11_10-40-04_3A_1coil_2base_3pole.csv'
 
     filepath = os.path.join(data_directory, filename)
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -565,9 +565,9 @@ if __name__ == "__main__":
     dt = times[5] - times[4]
     N = len(times)
     times_new = np.arange(0, N * dt, dt)
-    temps = raw_data[:, 1:4]
-    # temps = np.array([raw_data[:, 0],raw_data[:, 1],raw_data[:, 2]])
-    # temps = np.swapaxes(temps, 0, 1)
+    # temps = raw_data[:, 1:4]
+    temps = np.array([raw_data[:, 0],raw_data[:, 1],raw_data[:, 2]])
+    temps = np.swapaxes(temps, 0, 1)
         
     # # digitally filter data measured before plotting
     # LPF = lowPass100Hz_1
