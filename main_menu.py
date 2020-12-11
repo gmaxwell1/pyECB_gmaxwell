@@ -49,10 +49,7 @@ def MainMenu(initialized):
             print('[3]: set currents manually on 3 channels (in mA)')
             print(
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
-            print(
-                '[5]: Generate a time varying field (sin and sqr waves are possible currently)')
-            print(
-                '[6]: Use feedback control for vector magnet to determine currents for a certain B-field direction')
+
             print('[h] do a hysteresis test.\n')
 
             c1 = input()
@@ -82,13 +79,13 @@ def MainMenu(initialized):
                 c1 = input('Automatic exit after finish? (x for yes): ')
                 callGenerateVectorField()
 
-            elif c1 == '5':
-                c1 = input('Automatic exit after finish? (x for yes): ')
-                callFunctionGen()
+            # elif c1 == '5':
+            #     c1 = input('Automatic exit after finish? (x for yes): ')
+            #     callFunctionGen()
 
-            elif c1 == '6':
-                c1 = input('Automatic exit after finish? (x for yes): ')
-                feedbackMode()
+            # elif c1 == '6':
+            #     c1 = input('Automatic exit after finish? (x for yes): ')
+            #     feedbackMode()
 
             elif c1 == 'h':
                 c1 = input('Automatic exit after finish? (x for yes): ')
@@ -333,27 +330,34 @@ def callRunCurrents():
     """
     Setup function to call the utility function 'runCurrents', see 'utility_functions.py'. Manages necessary inputs.
     """
-    inp1 = input('Channel 1: ')
-    inp2 = input('Channel 2: ')
-    inp3 = input('Channel 3: ')
-    inp4 = input('timer (leave empty -> manual termination) = ')
-    try:
-        coil1 = int(inp1)
-    except:
-        print('expected numerical value, defaulting to 0')
-        coil1 = 0
-    try:
-        coil2 = int(inp2)
-    except:
-        print('expected numerical value, defaulting to 0')
-        coil2 = 0
-    try:
-        coil3 = int(inp3)
-    except:
-        print('expected numerical value, defaulting to 0')
-        coil3 = 0
+    inp0 = input('timed mode? (y/n) ')
+    configs = []
+    timers = []
+    char = ''
+    while char != 'x':
+        inp1 = input('configuration 1\nChannel 1: ')
+        inp2 = input('Channel 2: ')
+        inp3 = input('Channel 3: ')
+        inp4 = input('timer duration: ')
+        try:
+            a1 = float(inp1)
+            b1 = float(inp2)
+            c1 = float(inp3)
+            configs.append(np.array([a1, b1, c1]))
+            timers.append(float(inp4))
+        except:
+            print('expected numerical value, defaulting to (0,0,1)')
+            configs.append(np.array([0, 0, 1]))
+            timers.append(0)
 
-    if inp4 == '':
+        if inp0 == 'y':
+            char = input('another config (enter x to end)')
+        else:
+            char = 'x'
+            
+    inp5 = input('demagnetize afterwards? (y/n) ')
+    
+    if inp0 == '':
         subdir = input('Which subdirectory should measurements be saved to? ')
         # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
         #     # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
@@ -361,18 +365,9 @@ def callRunCurrents():
         #     if char == 'y':
         #         calibration(node, calibrate=True)
 
-        runCurrents(np.array([coil1, coil2, coil3]),
-                    t=0, direct=b'1', subdir=subdir)
-    else:
-        try:
-            timer = float(inp4)
-            c1 = input(
-                'Automatic Termination after timer? (x for yes): ')
-        except:
-            print('expected numerical value, defaulting to 0')
-            timer = 0
-        runCurrents(
-            np.array([coil1, coil2, coil3]), timer, direct=b'1')
+        runCurrents(configs, direct=b'1', subdir=subdir, demagnetize=(inp5=='y'))
+
+    runCurrents(configs, timers, direct=b'1', demagnetize=(inp5=='y'))
 
 
 def callGenerateVectorField():

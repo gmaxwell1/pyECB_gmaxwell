@@ -390,7 +390,8 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
         prefac = 1
         if not np.sign(a) > 0:
             prefac = -1
-
+        
+        # set initial current 'point'
         initialOffset = prefac * numSteps * currentStep
         desCurrents[0:3] = configCurrents.tolist()
         desCurrents[0:3] = [int(desCurrents[0] + initialOffset * currentRefs[i, 0]),
@@ -416,9 +417,11 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
                 f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f},'
                 f'{newBMeasurement[2]:.2f})', sep='', end='', flush=True)
             fieldVectors.insert(0, newBMeasurement)
-            differenceQuotients.insert(
-                0, (newBMeasurement - fieldVectors[1]) / currentStep)
-            fieldVectors.pop()
+            if len(fieldVectors) > 2:
+                differenceQuotients.insert(0, (1.5 * newBMeasurement - 2 * fieldVectors[1] + 0.5 * fieldVectors[2]) / currentStep)
+            else:
+                differenceQuotients.insert(0, (newBMeasurement - 2 * fieldVectors[1] + 0.5 * fieldVectors[2]) / currentStep)
+
 
         print('')
         # save the latest row of the 'derivatives' in the matrix
