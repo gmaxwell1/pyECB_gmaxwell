@@ -126,6 +126,29 @@ class inputThread(threading.Thread):
         c = input("Hit Enter to quit.\n")
         flags.insert(0, c)
         print('exiting...')
+        
+class timerThread(threading.Thread):
+    def __init__(self, threadID, duration):
+        """
+        start a new thread with an ID, name and member variable. Counts down time.
+
+        Args:
+            threadID (int): An identifier number assigned to the newly created thread.
+            duration (float)
+        """
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.startTime = time()
+        self.countdownDuration = duration
+
+    def run(self):
+        timeDiff = time() - self.startTime
+        while timeDiff < self.countdownDuration:
+            print(f'\rtime remaining: {int((self.countdownDuration - timeDiff))//3600} hours, {int((self.countdownDuration - timeDiff))//60 % 60} '
+                  f'minutes and {(self.countdownDuration - timeDiff)%60:.0f} seconds', end='', sep='', flush=False)
+            
+            timeDiff = time() - self.startTime
+            sleep(0.096)
 
 
 def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5, today=True):
@@ -314,7 +337,7 @@ def sweepHysteresis(config_list=None, datadir='hysteresis_tests', end_val=1, ste
                    stdd_values, expected_fields, filePath, fileprefix)
 
 
-def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, finish_mag=30, rotate=None, steps=10):
+def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, finish_mag=30, rotate=None, steps=10, demagnetize=False):
     """
     Ramps magnetic field from start_magn to finish_magn in a specified number of steps and over a specified duration (sort of analogous to sweepCurrent)
     or rotates (i.e. 360°) the field vector (start_mag, theta, phi) around the axis given by rotate[0] and rotate[1] (angles in degrees) in that number of steps.
@@ -386,7 +409,8 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
 
-    demagnetizeCoils()
+    if demagnetize:
+        demagnetizeCoils()
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -394,7 +418,7 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
                    stdd_values, expected_fields, filePath, fileprefix)
 
 
-def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT'):
+def runCurrents(config_list, t=[], direct=b'1', subdir='serious_measurements_for_LUT', demagnetize=False):
     """
     run arbitrary currents (less than maximum current) on each channel
     when running without a timer, the current can be changed in a menu and the magnetic field can
@@ -402,8 +426,9 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
 
 
     Args:
-        channels (np.array(list(int)), length 3): current values in [mA]. Make sure not to give more than 3!
-        t (int, optional): time for which the magnetic field should be activated. 
+        config_list (np.array(list(int)), length 3): current values in [mA]. Make sure not to give more than 3!
+        t (int, optional): timer duration list. multiple timers -> different currents will be set for different 
+                           amounts of time.
             If zero, user can decide whether to change the current or deactivate it. Defaults to 0.
         direct (bytes, optional): current direct parameter (can usually be left alone). Defaults to b'1'.
         subdir (str): if in non-timed mode, the subdirectory in which to save potential measurements
@@ -414,33 +439,22 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
     currDirectParam = direct
     # copy the computed current values (mA) into the desCurrents list (first 3 positions)
     # cast to int
-    for i in range(len(channels)):
-        desCurrents[i] = int(channels[i])
 
     # user specified time
-    if t > 0:
-        enableCurrents()
-        setCurrents(desCurrents, currDirectParam)
-        # prevent the connection with the ECB from timing out for long measurements.
-        if t < 500:
-            sleep(t)
-        else:
-            starttime = time()
-            while time() - starttime < t:
-                sleep(500)
-                getCurrents()
-
-        disableCurrents()
+    enableCurrents()
 
     # on until interrupted by user
-    elif t == 0:
-        enableCurrents()
+    if len(t) == 0 or t[0] == 0:
+        channels = config_list[0]
+        for i in range(len(channels)):
+            desCurrents[i] = int(channels[i])
+            
         setCurrents(desCurrents, currDirectParam)
         # wait until user presses enter
         c1 = '0'
         while c1 != 'q':
             c1 = input(
-                '[q] to disable currents\n[c]: get currents\n[r]: Set new currents\n[s]: monitor magnetic field\n[f]: get magnetic field measurement\n')
+                '[q] to disable currents\n[c]: get currents\n[r]: Set new currents\n[s]: monitor magnetic field (does not work)\n[f]: get magnetic field measurement (does not work)\n')
             if c1 == 'c':
                 getCurrents()
             elif c1 == 'r':
@@ -458,47 +472,69 @@ def runCurrents(channels, t=0, direct=b'1', subdir='serious_measurements_for_LUT
 
                 setCurrents(desCurrents, currDirectParam)
 
-            elif c1 == 's':
-                with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
-                    test_thread = inputThread(1)
-                    test_thread.start()
-                    while flags[0]:
-                        newBMeasurement = sensor_to_magnet_coordinates(
-                            np.array(node.measureFieldmT()))
-                        B_magnitude = np.linalg.norm(newBMeasurement)
-                        theta = np.degrees(
-                            np.arccos(newBMeasurement[2]/B_magnitude))
-                        phi = np.degrees(np.arctan2(
-                            newBMeasurement[1], newBMeasurement[0]))
-                        if flags[0]:
-                            print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
-                                  f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
-                                  f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
+            # elif c1 == 's':
+            #     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
+            #         test_thread = inputThread(1)
+            #         test_thread.start()
+            #         while flags[0]:
+            #             newBMeasurement = sensor_to_magnet_coordinates(
+            #                 np.array(node.measureFieldmT()))
+            #             B_magnitude = np.linalg.norm(newBMeasurement)
+            #             theta = np.degrees(
+            #                 np.arccos(newBMeasurement[2]/B_magnitude))
+            #             phi = np.degrees(np.arctan2(
+            #                 newBMeasurement[1], newBMeasurement[0]))
+            #             if flags[0]:
+            #                 print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
+            #                       f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
+            #                       f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
 
-                    flags.insert(0, 1)
+            #         flags.insert(0, 1)
 
-            elif c1 == 'f':
-                try:
-                    duration = int(
-                        input('Duration of measurement (default is 10s): '))
-                except:
-                    duration = 10
-                params = {'block_size': 20, 'period': 1e-2,
-                          'duration': duration, 'averaging': 5}
+            # elif c1 == 'f':
+            #     try:
+            #         duration = int(
+            #             input('Duration of measurement (default is 10s): '))
+            #     except:
+            #         duration = 10
+            #     params = {'block_size': 20, 'period': 1e-2,
+            #               'duration': duration, 'averaging': 5}
 
-                faden = myMeasThread(1, **params)
-                faden.start()
+            #     faden = myMeasThread(1, **params)
+            #     faden.start()
 
-                faden.join()
-                strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
-
-        # demagnetizeCoils()
-        disableCurrents()
+            #     faden.join()
+            #     strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
     else:
-        return
+        for index, timer in enumerate(t):
+            channels = config_list[index]
+            for i in range(len(channels)):
+                desCurrents[i] = int(channels[i])
+            
+            setCurrents(desCurrents, currDirectParam)
+            # prevent the connection with the ECB from timing out for long measurements.
+            if timer < 500:
+                countdown = timerThread(0,timer)
+                countdown.start()
+                sleep(timer)
+                countdown.join()
+            else:
+                countdown = timerThread(0,timer)
+                countdown.start()
+                starttime = time()
+                while time() - starttime < timer:
+                    pause = min(500, timer - (time() - starttime))
+                    sleep(pause)
+                    getCurrents()
+                countdown.join()
+      
+    if demagnetize:
+        demagnetizeCoils()
+        
+    disableCurrents()
+        
 
-
-def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_for_LUT'):
+def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_for_LUT', demagnetize=False):
 
     global currDirectParam
     global desCurrents
@@ -521,7 +557,7 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
     c1 = '0'
     while c1 != 'q':
         c1 = input('[q] to disable currents\n[c]: Set new currents\n[r]: Set new mag field\n'
-                   '[s]: measure magnetic field and show measurement\n[f]: get magnetic field time-resolved measurement series\n')
+                   '[s]: monitor magnetic field (does not work)\n[f]: get magnetic field time-resolved measurement series (does not work)\n')
         if c1 == 'c':
             channels = [0, 0, 0]
             channels[0] = input('Channel 1 current: ')
@@ -570,40 +606,42 @@ def generateMagneticField(magnitude, theta, phi, subdir='serious_measurements_fo
                 f'Currents on each channel: ({desCurrents[0]}, {desCurrents[1]}, {desCurrents[2]})')
             setCurrents(desCurrents, currDirectParam)
 
-        elif c1 == 's':
-            with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
-                test_thread = inputThread(1)
-                test_thread.start()
-                while flags[0]:
-                    newBMeasurement = sensor_to_magnet_coordinates(
-                        np.array(node.measureFieldmT()))
-                    B_magnitude = np.linalg.norm(newBMeasurement)
-                    theta = np.degrees(
-                        np.arccos(newBMeasurement[2]/B_magnitude))
-                    phi = np.degrees(np.arctan2(
-                        newBMeasurement[1], newBMeasurement[0]))
-                    if flags[0]:
-                        print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
-                              f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
-                              f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
-                flags.insert(0, 1)
+        # elif c1 == 's':
+        #     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
+        #         test_thread = inputThread(1)
+        #         test_thread.start()
+        #         while flags[0]:
+        #             newBMeasurement = sensor_to_magnet_coordinates(
+        #                 np.array(node.measureFieldmT()))
+        #             B_magnitude = np.linalg.norm(newBMeasurement)
+        #             theta = np.degrees(
+        #                 np.arccos(newBMeasurement[2]/B_magnitude))
+        #             phi = np.degrees(np.arctan2(
+        #                 newBMeasurement[1], newBMeasurement[0]))
+        #             if flags[0]:
+        #                 print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
+        #                       f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
+        #                       f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
+        #         flags.insert(0, 1)
 
-        elif c1 == 'f':
-            try:
-                duration = int(
-                    input('Duration of measurement (default is 10s): '))
-            except:
-                duration = 10
-            params = {'block_size': 20, 'period': 1e-2,
-                      'duration': duration, 'averaging': 5}
+        # elif c1 == 'f':
+        #     try:
+        #         duration = int(
+        #             input('Duration of measurement (default is 10s): '))
+        #     except:
+        #         duration = 10
+        #     params = {'block_size': 20, 'period': 1e-2,
+        #               'duration': duration, 'averaging': 5}
 
-            faden = myMeasThread(1, **params)
-            faden.start()
+        #     faden = myMeasThread(1, **params)
+        #     faden.start()
 
-            faden.join()
-            strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
-
-    demagnetizeCoils()
+        #     faden.join()
+        #     strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
+            
+    if demagnetize:
+        demagnetizeCoils()
+        
     disableCurrents()
 
 
@@ -682,46 +720,47 @@ def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, fines
 
     disableCurrents()
 
-    # strm(returnDict, r'.\data_sets\time_measurements_12_11', now=True)
-
 
 if __name__ == "__main__":
-    params = {'block_size': 40, 'period': 0.01, 'duration': 40, 'averaging': 1}
-    # block_size, period, duration, averaging = 30, 0.05, 20, 5
+    # params = {'block_size': 40, 'period': 0.01, 'duration': 40, 'averaging': 1}
+    # # block_size, period, duration, averaging = 30, 0.05, 20, 5
 
-    # i = 0
-    # while i < 10:
-    faden = myMeasThread(1, **params)
-    faden.start()
+    # # i = 0
+    # # while i < 10:
+    # faden = myMeasThread(1, **params)
+    # faden.start()
+    countdown = timerThread(0, 7200)
+    countdown.start()
+    countdown.join()
     
-    # magnitude = 100
-    # theta = 120
-    # phi = 280
-    # B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-    # print(B_vector)
-    # I_vector = tr.computeCoilCurrents(B_vector)
-    # ampl = np.amax(np.abs(I_vector))
-    # print(I_vector)
-    # returnDict = timeResolvedMeasurement(period=period, average=averaging,
-    #                         block_size=block_size, duration=duration)
-    sleep(10)
+    # # magnitude = 100
+    # # theta = 120
+    # # phi = 280
+    # # B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
+    # # print(B_vector)
+    # # I_vector = tr.computeCoilCurrents(B_vector)
+    # # ampl = np.amax(np.abs(I_vector))
+    # # print(I_vector)
+    # # returnDict = timeResolvedMeasurement(period=period, average=averaging,
+    # #                         block_size=block_size, duration=duration)
+    # sleep(10)
 
-    # openConnection()
-    # enableCurrents()
-    sleep(10)
-    # demagnetizeCoils()
+    # # openConnection()
+    # # enableCurrents()
+    # sleep(10)
+    # # demagnetizeCoils()
 
-    # # print()
-    # # functionGenerator([1,1,1], ampl=3000, function='sin', frequency=1, finesse=20, duration=4*np.pi, meas=False, measDur=1.2*4*np.pi)
-    # runCurrents(np.array([0,1,0]), 30)
-    # runCurrents([129.0,357.0,-402.0], t=60)
-    # disableCurrents()
-    # runCurrents(np.array([10,-10,40]), 20)
+    # # # print()
+    # # # functionGenerator([1,1,1], ampl=3000, function='sin', frequency=1, finesse=20, duration=4*np.pi, meas=False, measDur=1.2*4*np.pi)
+    # # runCurrents(np.array([0,1,0]), 30)
+    # # runCurrents([129.0,357.0,-402.0], t=60)
+    # # disableCurrents()
+    # # runCurrents(np.array([10,-10,40]), 20)
 
     
-    faden.join()
-    # closeConnection()
+    # faden.join()
+    # # closeConnection()
     
-    # print(returnDict)
+    # # print(returnDict)
 
-    strm(returnDict, r'data_sets\noise_measurements', 'zero_field_close_withoutECB', now=True)
+    # strm(returnDict, r'data_sets\noise_measurements', 'zero_field_close_withoutECB', now=True)

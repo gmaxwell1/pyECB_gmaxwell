@@ -206,8 +206,8 @@ def generateAndSaveTempPlot(times, temps, plot_components='123', separate=False,
         # set the directory name and current datetime if not passed as argument
         if save_dir is None:
             save_dir = os.getcwd()
-        # now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
-
+        now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+        output_file_name = now + output_file_name
         img_path = os.path.join(save_dir, output_file_name)
         fig.savefig(img_path, dpi=300)
 
@@ -552,7 +552,7 @@ if __name__ == "__main__":
     data_directory = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\2_Misc_Code\Temperature Sensors\ADT7410_temperature_measurements\Measurement_over_time'
     # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # for item in files:
-    filename = '20_12_10_14-48-04_3A_1coil_2base_3pole.csv'
+    filename = '20_12_11_18-02-41_different_values_1coil_2base_3pole.csv'
 
     filepath = os.path.join(data_directory, filename)
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -568,29 +568,40 @@ if __name__ == "__main__":
     temps = raw_data[:, 1:4]
     # temps = np.array([raw_data[:, 0],raw_data[:, 1],raw_data[:, 2]])
     # temps = np.swapaxes(temps, 0, 1)
-        
+
     # # digitally filter data measured before plotting
     # LPF = lowPass100Hz_1
     # filtered_data = []
     # # global lowPass100Hz
-    # for n in range(len(fields)):
+    # for n in range(len(temps)):
+    #     # remove clearly wrong spikes:
+    #     if n > 10 and abs(temps[n, 0] - filtered_data[n-1][0]) > 30:
+    #         temps[n, 0] = filtered_data[n-1][0]
+    #     if n > 10 and abs(temps[n, 1] - filtered_data[n-1][1]) > 30:
+    #         temps[n, 1] = filtered_data[n-1][1]
+    #     if n > 10 and abs(temps[n, 2] - filtered_data[n-1][2]) > 30:
+    #         temps[n, 2] = filtered_data[n-1][2]
+            
     #     avg_data_point = np.array([0, 0, 0])
-    #     if 0 <= n <= len(LPF) - 1:
-    #         for m in range(n):
-    #             avg_data_point = avg_data_point + fields[m, :] * LPF[n-m]
-    #     elif n > len(LPF) - 1:
+    #     # if 0 < n <= len(LPF) - 1:
+    #     #     for m in range(n):
+    #     #         avg_data_point = avg_data_point + temps[m, :] * LPF[n-m]
+    #     if n > len(LPF) - 1:
     #         index_start = n - len(LPF) + 1
     #         for m in range(len(LPF)):
     #             k = index_start + m
-    #             avg_data_point = avg_data_point + fields[k, :] * LPF[n-k]
-    #     elif n == 0:
-    #         avg_data_point = fields[0, :]
+    #             avg_data_point = avg_data_point + temps[k, :] * LPF[n-k]
+    #     else:
+    #         avg_data_point = temps[n, :]
         
     #     filtered_data.append(avg_data_point)
+        
+    # fieldFiltered = np.array(filtered_data)
 
         
-    fig1, ax1, times1, fields1, plot_components1 = generateAndSaveTempPlot(times_new, temps, show_image=False, plot_components='123', save_image=True, save_dir=data_directory,
-                                                                        separate=False, show_dev_from_mean=False, statistics=False)
+    fig1, ax1, times1, fields1, plot_components1 = generateAndSaveTempPlot(times_new, temps, show_image=False, plot_components='123', save_image=True,
+                                                                           save_dir=data_directory, output_file_name='Temp_vs_t', separate=True, show_dev_from_mean=False,
+                                                                           statistics=False)
 
     # fig, ax, times, fields = spectralAnalysis(filepath, 'xyz', 2.5)
 
@@ -608,11 +619,11 @@ if __name__ == "__main__":
 
     # freq = 1/(times[1]-times[0])
 
-    # ax1[0].plot(times1[40:],fieldFiltered[40:,0]-np.mean(fieldFiltered[40:,0],axis=0),'C3',label='moving avg.')
-    # ax1[1].plot(times1[40:],fieldFiltered[40:,1]-np.mean(fieldFiltered[40:,1],axis=0),'C3',label='moving avg.')
-    # ax1[2].plot(times1[40:],fieldFiltered[40:,2]-np.mean(fieldFiltered[40:,2],axis=0),'C3',label='moving avg.')
+    # ax1[0].plot(times1[40:],fieldFiltered[40:,0],'C3',label='moving avg.')
+    # ax1[1].plot(times1[40:],fieldFiltered[40:,1],'C3',label='moving avg.')
+    # ax1[2].plot(times1[40:],fieldFiltered[40:,2],'C3',label='moving avg.')
     
-    ax1[0].legend()
+    # ax1[0].legend()
     # ax1[1].legend()
     # ax1[2].legend()
     # p2p_x_rise = np.amax(fields1[:, 0]) - np.amin(fields1[:, 0])
@@ -654,7 +665,12 @@ if __name__ == "__main__":
     #                  f'\n$\Delta B_{{y,pp,max}}$ = {p2p_y_prerise:.2f} $mT$\t$\Delta B_{{y1,RMS}}$ = {std_y:.2f} $mT$'
     #                  f'\n$\Delta B_{{z,pp,max}}$ = {p2p_z_prerise:.2f} $mT$\t$\Delta B_{{z1,RMS}}$ = {std_z:.2f} $mT$')
 
-    ax1[0].set_title('Temperature measured on coil1 ($T_1$), base($T_2$) and pole ($T_3$)\nwith 3A set (from DC current source)')
+    # ax1[0].set_xticks([500,1500,2500,3500,4500,5500,6500,7500,8500],minor=True)
+    # ax1[0].set_xticks([1000,2000,3000,4000,5000,6000,7000,8000,9000])
+    ax1[0].grid()
+    ax1[1].grid()
+    ax1[2].grid()
+    ax1[0].set_title('Temperature measured on coil1 ($T_1$), base($T_2$) and pole ($T_3$)')#\nwith ECB current 5A in all coils, (0.8,8,8)A and (1,1,8)A')
     
     plt.tight_layout()
 
