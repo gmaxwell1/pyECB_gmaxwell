@@ -44,14 +44,13 @@ class inputThread(threading.Thread):
 
 
 # debugging function to test 'inputThread'
-def print_time(thread: inputThread, delay):
-    while flags[0]:
-        sleep(delay)
-        now = datetime.now()
-        if flags[0]:
-            print(
-                f"\rTime on thread {thread.threadID}: {now: %H:%M:%S}", end='', flush=True)
-
+# def print_time(thread: inputThread, delay):
+#     while flags[0]:
+#         sleep(delay)
+#         now = datetime.now()
+#         if flags[0]:
+#             print(
+#                 f"\rTime on thread {thread.threadID}: {now: %H:%M:%S}", end='', flush=True)
 
 # global variable
 flags = [1]
@@ -409,7 +408,7 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
                                 int(desCurrents[2] + currentStep * currentRefs[i, 2])]
             setCurrents(desCurrents=desCurrents)
 
-            sleep(0.2)
+            sleep(0.5)
 
             newBMeasurement = gen.sensor_to_magnet_coordinates(
                 np.array(node.measureFieldmT()))
@@ -420,7 +419,7 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
             if len(fieldVectors) > 2:
                 differenceQuotients.insert(0, (1.5 * newBMeasurement - 2 * fieldVectors[1] + 0.5 * fieldVectors[2]) / currentStep)
             else:
-                differenceQuotients.insert(0, (newBMeasurement - 2 * fieldVectors[1] + 0.5 * fieldVectors[2]) / currentStep)
+                differenceQuotients.insert(0, (newBMeasurement - fieldVectors[1]) / currentStep)
 
 
         print('')

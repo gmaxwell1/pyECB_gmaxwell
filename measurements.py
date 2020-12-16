@@ -22,6 +22,7 @@ import threading
 
 ########## local imports ##########
 from conexcc.conexcc_class import *
+import transformations as tr
 # from modules.calibrate_cube import get_new_mean_data_set, find_center_axis, angle_calib
 # from modules.plot_hall_cube import plot_many_sets, plot_stage_positions, plot_set, plot_sensor_positions
 from modules.general_functions import ensure_dir_exists, sensor_to_magnet_coordinates
@@ -66,15 +67,15 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
+def gotoPosition(meas_height=1.5):
     """
-    move the stage into position to calibrate the sensor. After successful calibration, the sensor is moved to the desired measuring position.
+    move the stage into position to measure with the sensor.
+    Note: Be sure that the position parameters here correspond to the actual setup
+    before measuring for the first time!
 
     Args:
-        node (MetrolabTHM1176Node): instance of the sensor
-        calibrate (boolean): If true, calibrate in zero-field chamber. If false, only move stage to measuring position.
+        meas_height (float): height of sensor above the electromagnet's pole pieces
     """
-
     # initialize actuators
     CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4,
                    set_axis='z', verbose=False)
@@ -86,38 +87,7 @@ def calibration(node: MetrolabTHM1176Node, meas_height=1.5, calibrate=False):
     CC_Y.wait_for_ready()
     CC_X.wait_for_ready()
 
-    if calibrate:
-        cal_pos_z = 20
-        start_pos_z = CC_Z.read_cur_pos()
-        total_distance_z = cal_pos_z-start_pos_z
-
-        cal_pos_y = 0
-        start_pos_y = CC_Y.read_cur_pos()
-        total_distance_y = abs(cal_pos_y-start_pos_y)
-
-        cal_pos_x = 20
-        start_pos_x = CC_X.read_cur_pos()
-        total_distance_x = abs(cal_pos_x-start_pos_x)
-
-        print('Moving to calibration position...')
-        CC_Z.move_absolute(new_pos=cal_pos_z)
-        CC_Y.move_absolute(new_pos=cal_pos_y)
-        CC_X.move_absolute(new_pos=cal_pos_x)
-
-        if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
-            progressBar(CC_Y, start_pos_y, total_distance_y)
-        elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
-            progressBar(CC_X, start_pos_x, total_distance_x)
-        else:
-            progressBar(CC_Z, start_pos_z, total_distance_z)
-
-        char = input(
-            'Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
-        if char == '':
-            node.calibrate()
-        input('Press enter to continue measuring')
-
-    meas_offset_z = 8.3
+    meas_offset_z = 6.8 + meas_height
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
 
@@ -224,7 +194,7 @@ def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10):
         are dimensionless values between 0 and 64k)
     """
     with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT') as node:
-        # calibration(node, meas_height=1.5)
+        # gotoPosition(node, meas_height=1.5)
     # node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT')
         thread = threading.Thread(target=node.start_acquisition)
         thread.start()
@@ -308,47 +278,49 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
                            'expected Bz [mT]': expected_fields[:, 2]})
 
     now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
-    output_file_name = '{}_{}.csv'.format(now, data_filename_postfix)
+    output_file_name = f'{now}_{data_filename_postfix}.csv'
     file_path = os.path.join(directory, output_file_name)
     df.to_csv(file_path, index=False, header=True)
 
 
 if __name__ == '__main__':
 
-    # with MetrolabTHM1176Node() as node:
-    #     calibration(node, calibrate=False)
-    # initialize actuators
-    CC_Z = ConexCC(com_port=z_COM_port, velocity=0.4, set_axis='z', verbose=False)
-    CC_Y = ConexCC(com_port=y_COM_port, velocity=0.4, set_axis='y', verbose=False)
-    CC_X = ConexCC(com_port=x_COM_port, velocity=0.4, set_axis='x', verbose=False)
-    CC_Z.wait_for_ready()
-    CC_Y.wait_for_ready()
-    CC_X.wait_for_ready()
+    gotoPosition()
+    
+    params = {'block_size': 10, 'period': 0.05, 'range': '0.3T',
+                'average': 1, 'unit': 'MT', 'n_digits': 5}
 
-    # cal_pos_z = 8.3
-    # start_pos_z = CC_Z.read_cur_pos()
-    # total_distance_z = cal_pos_z-start_pos_z
-
-    # cal_pos_y = 0
-    # start_pos_y = CC_Y.read_cur_pos()
-    # total_distance_y = abs(cal_pos_y-start_pos_y)
-
-    # cal_pos_x = 5
-    # start_pos_x = CC_X.read_cur_pos()
-    # total_distance_x = abs(cal_pos_x-start_pos_x)
-    # print(start_pos_x, ' ', start_pos_y, ' ', start_pos_z, ' ')
-    # print('Moving to calibration position...')
-    CC_Z.move_absolute(new_pos=8.3)
-    CC_Y.move_absolute(new_pos=0)
-    CC_X.move_absolute(new_pos=5)
-
-    # if (total_distance_y > total_distance_z) and (total_distance_y > total_distance_x):
-    #     progressBar(CC_Y, start_pos_y, total_distance_y)
-    # elif (total_distance_x > total_distance_z) and (total_distance_x > total_distance_y):
-    #     progressBar(CC_X, start_pos_x, total_distance_x)
-    # else:
-    #     progressBar(CC_Z, start_pos_z, total_distance_z)
-    # with MetrolabTHM1176Node() as node:
-    #     char = input('Press enter to start (zero-gauss chamber!) calibration (any other key to skip): ')
-    #     if char == '':
-    #         node.calibrate()
+    current_values = []
+    mean_values = []
+    stdd_values = []
+    expected_fields = []
+    
+    # user controlled measurement series:
+    coil = input('Which coil is being ramped? ')
+    if coil == '1':
+        current_config = np.array([1,0,0])
+    elif coil == '2':
+        current_config = np.array([0,1,0])
+    elif coil == '3':
+        current_config = np.array([0,0,1])
+        
+    with node as MetrolabTHM1176Node(params):
+        while n < 50:
+            try:
+                current = input('Current intensity (mA): ')
+                current = float(current)
+            except ValueError as e:
+                print(e, '\nAssuming 0 current')
+                current = 0
+            current_values.append(current * current_config)
+            expected_B_field = tr.computeMagField(current * current_config)
+            expected_fields.append(expected_B_field)
+            meanBField, stdBField = measure(node, average=True)
+            mean_values.append(meanBField)
+            stdd_values.append(stdd_values)
+            
+            input('Next Measurement: Enter / Abort: type q and Enter\t')
+            
+            
+    saveDataPoints(np.array(current_values), np.array(mean_values), np.array(stdd_values), np.array(expected_fields),
+                   directory=r'.\data_sets\Hysteresis_DC_source', data_filename_postfix='hyst_meas')

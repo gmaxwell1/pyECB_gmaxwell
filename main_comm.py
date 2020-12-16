@@ -21,7 +21,6 @@ from pathlib import Path
 import csv
 
 ########## local imports ##########
-# this is ok, since all the function names are pretty much unique and known.
 from ECB import *
 
 

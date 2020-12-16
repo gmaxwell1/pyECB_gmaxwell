@@ -164,7 +164,6 @@ class MetrolabTHM1176Node(object):
             res = np.linspace(time_offset, val, self.block_size)
         elif kind == 'Temperature':
             res = int(input_str) * np.ones(self.block_size)
-
         else:
             res = np.fromstring(input_str.replace(self.unit, ''), sep=',')
 
