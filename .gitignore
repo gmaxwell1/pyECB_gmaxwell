@@ -24,6 +24,7 @@ hysteresis_analysis.py
 plot_measurement_set_3d.py
 test_new_calibration.py
 oscilloscope.py
+estimate_derivatives.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

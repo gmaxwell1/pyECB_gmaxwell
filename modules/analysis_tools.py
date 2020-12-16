@@ -24,6 +24,7 @@ from scipy.optimize import curve_fit
 from scipy.spatial.transform import Rotation as R
 
 from modules.general_functions import angle_wrt_z, inplane_angle_wrt_x
+from modules.interpolation_tools import find_start_of_saturation
 
 
 # %%
@@ -1658,3 +1659,116 @@ def get_relative_inplane_angles(fields, verbose=False):
 
     # convert to degrees before returning
     return np.degrees(angles)
+
+def estimate_RMS_error(x, y):
+    """
+    Estimate and return root mean square error between x and y.
+
+    Args: x,y (1d ndarrays): contain measured and predicted data
+    """
+    # print(x-y)
+    # print(np.mean(x-y))
+    return  np.sqrt(np.mean((x-y)**2))
+
+def evaluate_performance(measured, fitted):
+    """
+    Evaluate the performance of the fit by estimating different measured of 
+    deviation between fitted and measured parameters. 
+    Estimated parameters are RMS error, and the angular accuracy in terms of 
+    RMS angular error as well as mean, std, min, max and median angular error.
+
+    Args:
+    - measured, fitted (ndarrays of shape (N,3)): Estimated and fitted values. 
+    """
+    # estimate RMS errors 
+    RMSE = estimate_RMS_error(measured.flatten(), fitted.flatten())
+
+    # evaluate angular accuracy
+    dot = np.array([np.dot(measured[i], fitted[i]) for i in range(len(measured))])
+    norms_measured = np.linalg.norm(measured, axis=1)
+    norms_fits = np.linalg.norm(fitted, axis=1)
+    alphas = np.degrees(np.arccos(dot / (norms_measured * norms_fits)))
+
+    # print all measures
+    print(f'RMS error fit: {RMSE:.5f} mT')
+    print('RMS angular error: {:.2f}°'.format(estimate_RMS_error(alphas, np.zeros_like(alphas))))
+    print('mean angular error: {:.2f}°, std: {:.2f}°'.format(np.mean(alphas), np.std(alphas)))
+    print('min / max angular error: {:.2f}° / {:.2f}°'.format(np.min(alphas), np.max(alphas)))
+    print('median angular error: {:.2f}°'.format(np.median(alphas)))
+
+def collectAndExtract(directory, B_min, remove_saturation = True,
+                        verbose=False, fraction_cutoff = 0.02,
+                        affine_fct = lambda x, a, b: a*x + b):
+    """
+    Extract data from a measurement series, where all measurement runs are stored in 
+    various files in a directory. All data below the threshold B_min are ignored.
+    If desired, data above saturation are ignored, too.
+
+    Args:
+    - directory (str): valid path of directory that contains the data
+    - B_min (float): threshold value that sets the minimum considered magnetic field magnitude 
+    - remove_saturation (bool): if True, data above saturation are removed as well. 
+    For estimating the boundaries of the linear regime and where saturation starts the function
+    find_start_of_saturation is used, which takes the remaining optional arguments fraction_cutoff
+    and affine_fct. This algorithm is not perfect and requires some fine-tuning, but it seems 
+    to work qualitatively well, so the estimated boundaries are not far from what one would 
+    pick as start of saturation. 
+    - fraction_cutoff (float): paramter passed to find_start_of_saturation 
+    - affine_fct (function): paramter passed to find_start_of_saturation 
+
+    Return:
+    - currents, B_measured, B_expected (ndarrays of shape (N, 3)): All currents, measured and expected
+    fields extracted from the directory that are above the threshold magnitude (and below saturation
+    if desired). 
+    """
+    # collect all csv-files in this directory
+    filenames = []
+    [filenames.append(file) for file in os.listdir(directory) if file.endswith(".csv")]
+    
+    # if in list, remove the linear_fits file from previous fits
+    try:
+        filenames.remove('linear_fits.csv')
+    except ValueError:
+        pass
+    print(f'files considered: {len(filenames)}')
+
+    # loop through all csv files in a dictionary and fit the data
+    for i in range(len(filenames)):
+        if verbose:
+            print(filenames[i])
+
+        # read in raw measurment data
+        data_filepath = os.path.join(directory, filenames[i])
+        I, mean_data, std_data, expected_fields = extract_raw_data_from_file(data_filepath)
+
+        # -> this could be used to exclude data above saturation, but could be left out
+        # estimate minimum and maximum indices of region within which the linear relation between current and field holds  
+        # even though find_start_of_saturation offers the possibility to specify the considered component, 
+        # keep the default stting, which detects the field component that has the greatest absolute field values. 
+        # This should work fine for situations, where one component is dominating. 
+        i_min, i_max = find_start_of_saturation(I, mean_data, std_data, fraction_cutoff=fraction_cutoff,
+                                fitting_fct = affine_fct)
+
+        # estimate field magnitudes
+        magnitudes = np.linalg.norm(mean_data, axis=1)
+
+        # set up mask to only keep data with magnitudes larger than B_min
+        mask_keep = magnitudes >= B_min
+
+        # optionally: also remove potentially saturated part
+        if remove_saturation:
+            mask_keep[:i_min+1] = False
+            mask_keep[i_max:] = False
+
+        # collect all relevant data
+        if i == 0:
+            B_measured = mean_data[mask_keep]
+            B_expected = expected_fields[mask_keep]
+            currents = I[mask_keep]
+        else:
+            B_measured = np.append(B_measured, mean_data[mask_keep], axis=0)
+            B_expected = np.append(B_expected, expected_fields[mask_keep], axis=0)
+            currents = np.append(currents, I[mask_keep], axis=0)
+
+    print(f'final shape of considered array: {B_measured.shape}')
+    return currents, B_measured, B_expected
