@@ -37,16 +37,20 @@ finally:
 
 #%%
 # retrieve data from previous scans
-directory = '../test_data/2d_scans_different_fields/set1'
+directory = '../test_data/2d_scans_different_fields/set3'
 
 # filenames = ['20_11_23_18-32-01_2d_scan_(1_0_0).csv',   # (100)   
 #             '20_11_23_18-43-38_2d_scan_(0_1_0).csv',    # (010) 
 #             '20_11_24_08-35-21_2d_scan_(0_0_1).csv',    # (001)   
 #             '20_11_24_08-47-10_2d_scan_(1_1_1).csv']    # (111)  
-filenames = ['20_11_23_17-10-07_2d_scan_(1_0_0).csv',   # (100)   
-            '20_11_23_17-37-25_2d_scan_(0_1_0).csv',    # (010) 
-            '20_11_23_17-56-46_2d_scan_(0_0_1).csv',    # (001)   
-            '20_11_23_18-16-10_2d_scan_(1_1_1).csv']    # (111)  
+# filenames = ['20_11_23_17-10-07_2d_scan_(1_0_0).csv',   # (100)   
+#             '20_11_23_17-37-25_2d_scan_(0_1_0).csv',    # (010) 
+#             '20_11_23_17-56-46_2d_scan_(0_0_1).csv',    # (001)   
+#             '20_11_23_18-16-10_2d_scan_(1_1_1).csv']    # (111)  
+filenames = ['20_12_18_13-34-56_2d_scan_(1_0_0).csv',   # (100)   
+            '20_12_18_13-51-29_2d_scan_(0_1_0).csv',    # (010) 
+            '20_12_18_14-10-41_2d_scan_(0_0_1).csv',    # (001)   
+            '20_12_18_13-23-17_2d_scan_(1_1_1).csv']    # (111)  
 
 coils = []
 positions_all = []
@@ -115,7 +119,7 @@ plt.show()
 # plot measured fields
 
 # choose which component should be plotted
-plot_component = 'z'
+plot_component = 'xy'
 
 # set the center_position to None or [x,y] in stage coordinate system
 # center_position = [5.0, 15.9]
