@@ -25,6 +25,7 @@ except ModuleNotFoundError:
 finally:
     from modules.analysis_tools import *
     from modules.interpolation_tools import find_start_of_saturation
+    from modules.general_functions import estimate_RMS_error
 
 
 

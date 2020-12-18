@@ -245,3 +245,12 @@ def save_time_resolved_measurement(results_dict, directory, label='time_resolved
         
     df.to_csv(data_filepath, index=False, header=True)
     
+def estimate_RMS_error(x, y):
+    """
+    Estimate and return root mean square error between x and y.
+
+    Args: x,y (1d ndarrays): contain measured and predicted data
+    """
+    # print(x-y)
+    # print(np.mean(x-y))
+    return  np.sqrt(np.mean((x-y)**2))

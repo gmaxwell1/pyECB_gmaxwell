@@ -20,6 +20,7 @@ Date: 27.10.2020
 """
 
 #%%
+# standard library imports
 import numpy as np
 import os
 import pandas as pd
@@ -27,6 +28,7 @@ from itertools import product, permutations
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+# local imports
 try:
     import transformations as tr
 except ModuleNotFoundError:
@@ -344,3 +346,82 @@ if __name__ == '__main__':
         print('{} runs: {} h {} min {} s'.format(r, int(duration // 3600), 
                                                     int( (duration % 3600)//60), 
                                                     int(duration % 60)))
+
+
+#%%
+def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
+    """
+    Generate 3d rectangular grid with points_per_dim vertices per dimension, which 
+    are equally spaced in [-max_value, +max_value]. The order of the returned array
+    is such that neighboring vertices in the array are also neighbors in real space.
+
+    Notes:
+    - The origin is included if points_per_dim is odd and excluded if 
+    points_per_dim is even.
+    - max_value specifies the maximum value for each dimension. This means that
+    the points at the corners have a magnitude of sqrt(3)*max_value! 
+    - Depending on the valueof threshold_magnitude, the returned grid points
+    may represent a cube or the intersection of a cube with a ball. 
+
+    Args:
+    - max_value (float): maximum value along each dimension
+    - points_per_dim (int): Number of vertices along each dimension
+    - threshold_magnitude (float): Maximum magnitude that is allowed. Default is np.inf, 
+    meaning that the entire rectangular grid is returned. If a value is provided, 
+    only vectors with magnitudes below the threshold are added to the final array.
+
+    Returns: 
+    - grid_pts (ndarray of shape (points_per_dim**3, 3))
+    """
+    x = np.linspace(-max_value, max_value, points_per_dim)
+
+    xx, yy, zz = np.meshgrid(x,x,x)
+
+    below_thresh = np.sqrt(xx**2 + yy**2 + zz**2) <= threshold_magnitude
+
+    # initialize grid movement
+    grid_pts = []
+
+    for k in range(points_per_dim): # z-axis
+        if k % 2 == 0:
+            y_range = np.arange(points_per_dim)
+        else: 
+            y_range = np.flip(np.arange(points_per_dim))
+
+        for j in y_range: # y-axis
+
+            if (-1)**(k+j) == 1:
+                x_range = np.arange(points_per_dim)
+            else: 
+                x_range = np.flip(np.arange(points_per_dim))
+
+            for i in x_range: # x-axis
+
+                # only add a grid point if its magnitude is below the threshold
+                if below_thresh[i,j,k]:
+                    grid_pts.append([xx[i,j,k], yy[i,j,k], zz[i,j,k]])
+
+    grid_pts = np.array(grid_pts)
+    
+    return grid_pts
+
+# %%
+if __name__ == '__main__':
+    
+    # generate grid points
+    max_value = 2
+    points_per_dim = 51
+    grid_pts = generate_grid(max_value, points_per_dim, threshold_magnitude=np.inf)
+
+    directory = './config_files/grid/'
+    output_file_name = f'walk_on_grid_max{max_value}_PointsPerDim{points_per_dim}.csv'     
+    ensure_dir_exists(directory)
+    data_filepath = os.path.join(directory, output_file_name)
+    
+    df = pd.DataFrame({ 'x': grid_pts[:, 0], 
+                        'y': grid_pts[:, 1], 
+                        'z': grid_pts[:, 2]})
+        
+    df.to_csv(data_filepath, index=False, header=True)
+
+
