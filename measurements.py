@@ -67,7 +67,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def gotoPosition(meas_height=1.5):
+def gotoPosition(meas_height=8.35, meas_y=2.5, meas_x=4.8):
     """
     move the stage into position to measure with the sensor.
     Note: Be sure that the position parameters here correspond to the actual setup
@@ -87,15 +87,15 @@ def gotoPosition(meas_height=1.5):
     CC_Y.wait_for_ready()
     CC_X.wait_for_ready()
 
-    meas_offset_z = 6.8 + meas_height
+    meas_offset_z = meas_height
     start_pos_z = CC_Z.read_cur_pos()
     total_distance_z = abs(meas_offset_z-start_pos_z)
 
-    meas_offset_y = 14.8
+    meas_offset_y = meas_y
     start_pos_y = CC_Y.read_cur_pos()
     total_distance_y = abs(meas_offset_y-start_pos_y)
 
-    meas_offset_x = 5.2
+    meas_offset_x = meas_x
     start_pos_x = CC_X.read_cur_pos()
     total_distance_x = abs(meas_offset_x-start_pos_x)
 
@@ -245,7 +245,7 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
     - data_filename_postfix: The image is saved as '%y_%m_%d_%H-%M-%S_'+ data_filename_postfix +'.png'
 
     """
-
+    print('saving file...')
     if directory is not None:
         ensure_dir_exists(directory, verbose=False)
 
@@ -264,6 +264,7 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
                                'expected Bx [mT]': expected_fields[:, 0],
                                'expected By [mT]': expected_fields[:, 1],
                                'expected Bz [mT]': expected_fields[:, 2]})
+            print('success!')
 
     except:
         df = pd.DataFrame({'I (all Channels) [A]': I,
@@ -276,6 +277,7 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
                            'expected Bx [mT]': expected_fields[:, 0],
                            'expected By [mT]': expected_fields[:, 1],
                            'expected Bz [mT]': expected_fields[:, 2]})
+        print('the current vector is 1D')
 
     now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
     output_file_name = f'{now}_{data_filename_postfix}.csv'
@@ -286,41 +288,48 @@ def saveDataPoints(I, mean_data, std_data, expected_fields, directory='.\\data_s
 if __name__ == '__main__':
 
     gotoPosition()
-    
-    params = {'block_size': 10, 'period': 0.05, 'range': '0.3T',
-                'average': 1, 'unit': 'MT', 'n_digits': 5}
+  
+    # params = {'block_size': 10, 'period': 0.05, 'range': '0.3T',
+    #             'average': 1, 'unit': 'MT', 'n_digits': 5}
 
-    current_values = []
-    mean_values = []
-    stdd_values = []
-    expected_fields = []
+    # current_values = []
+    # mean_values = []
+    # stdd_values = []
+    # expected_fields = []
     
-    # user controlled measurement series:
-    coil = input('Which coil is being ramped? ')
-    if coil == '1':
-        current_config = np.array([1,0,0])
-    elif coil == '2':
-        current_config = np.array([0,1,0])
-    elif coil == '3':
-        current_config = np.array([0,0,1])
+    # # user controlled measurement series:
+    # coil = input('Which coil is being ramped? ')
+    # if coil == '1':
+    #     current_config = np.array([1,0,0])
+    # elif coil == '2':
+    #     current_config = np.array([0,1,0])
+    # elif coil == '3':
+    #     current_config = np.array([0,0,1])
         
-    with node as MetrolabTHM1176Node(params):
-        while n < 50:
-            try:
-                current = input('Current intensity (mA): ')
-                current = float(current)
-            except ValueError as e:
-                print(e, '\nAssuming 0 current')
-                current = 0
-            current_values.append(current * current_config)
-            expected_B_field = tr.computeMagField(current * current_config)
-            expected_fields.append(expected_B_field)
-            meanBField, stdBField = measure(node, average=True)
-            mean_values.append(meanBField)
-            stdd_values.append(stdd_values)
+    # node = MetrolabTHM1176Node(**params)# as node:
+    # char = 0
+    
+    # while char != 'q':
+    #     try:
+    #         current = input('Current intensity (mA): ')
+    #         current = float(current)
+    #     except ValueError as e:
+    #         print(e, '\nAssuming 0 current')
+    #         current = 0
+    #     current_values.append(current * current_config)
+    #     expected_B_field = tr.computeMagField(current * current_config)
+    #     expected_fields.append(expected_B_field)
+    #     meanBField, stdBField = measure(node, average=True)
+    #     mean_values.append(meanBField)
+    #     stdd_values.append(stdBField)
+        
+    #     char = input('Next Measurement: Enter / Abort: type q and Enter\t')
             
-            input('Next Measurement: Enter / Abort: type q and Enter\t')
-            
-            
-    saveDataPoints(np.array(current_values), np.array(mean_values), np.array(stdd_values), np.array(expected_fields),
-                   directory=r'.\data_sets\Hysteresis_DC_source', data_filename_postfix='hyst_meas')
+    # I = np.array(current_values)
+    # mean_data = np.array(mean_values)
+    # std_data = np.array(stdd_values)
+    # expected_data = np.array(expected_fields)
+
+    # saveDataPoints(I,mean_data,std_data,expected_data, directory=r'.\data_sets\Hysteresis_DC_source', data_filename_postfix='hyst_meas')
+    
+    

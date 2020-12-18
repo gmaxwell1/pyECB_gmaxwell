@@ -22,7 +22,7 @@ from scipy import stats
 ########## local imports ##########
 from utility_functions import *
 from main_comm import *
-from measurements import calibration
+from measurements import gotoPosition
 import feedback as fb
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 
@@ -128,19 +128,21 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             print('expected numerical value, defaulting to 200')
             steps = 200
 
-        with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
-            char = input('Calibrate Metrolab sensor? (y/n): ')
-            if char == 'y':
-                calibration(node, calibrate=True)
-
+        node = MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=1)# as node:
+        gotoPosition()
+        inp = input('Do grid sweep function? (y/n) ')
+        if inp == 'y':
+            gridSweep(node, inpFile, datadir=datadir, current_val=start_val, demagnetize=True, today=False)
+        else:
             with open(inpFile, 'r') as f:
                 contents = csv.reader(f)
                 next(contents)
                 for row in contents:
                     config = np.array(
                         [float(row[0]), float(row[1]), float(row[2])])
+                        
                     sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
-                                  end_val=end_val, steps=steps, node=node)
+                                    end_val=end_val, steps=steps, node=node, today=False)
 
     elif mode == 'm':
         inp1 = input('Configuration:\nChannel 1: ')
@@ -176,9 +178,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             steps = 1
 
         with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
-            char = input('Calibrate Metrolab sensor? (y/n): ')
-            if char == 'y':
-                calibration(node, calibrate=True)
+            gotoPosition()
 
             sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
                           end_val=end_val, steps=steps, node=node, today=False)
@@ -315,9 +315,7 @@ def callSweepVectorField():
 
     with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
         # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
-        char = input('Calibrate Metrolab sensor? (y/n): ')
-        if char == 'y':
-            calibration(node, calibrate=True)
+        gotoPosition()
 
         if rot == 'y':
             rampVectorField(node, theta, phi, start_mag,

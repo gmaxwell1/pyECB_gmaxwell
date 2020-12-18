@@ -1,7 +1,8 @@
 """
 filename: time_related_plots.py
 
-This file contains functions that are used for plotting data extracted from the Metrolab THM1176-MF Sensor.
+This file contains functions that are used for plotting data extracted from various sensors
+(Metrolab, ADT temp sensors).
 Mainly for plots of the magnetic field vs. time or Fourier analysis.
 
 Author: Maxwell Guerne-Kieferndorf (Qzabre)
@@ -20,24 +21,24 @@ from matplotlib.ticker import AutoMinorLocator, MultipleLocator, MaxNLocator
 from datetime import datetime
 
 
-# low pass filter with cutoff at 1 Hz to cut out noise from 100 Hz measurements
+# low pass filter with cutoff at 1 Hz to cut out noise from 100 Hz sampling rate measurements
 lowPass100Hz = np.array([-0.0000,  0.0012,  0.0013,  0.0020,  0.0030,  0.0041,  0.0055,  0.0072,  0.0091,  0.0113,
                          0.0137,  0.0164,  0.0192,  0.0222, 0.0253,  0.0284,  0.0315,  0.0344,  0.0372,  0.0398,
                          0.0420,  0.0439,  0.0453,  0.0463,  0.0468,  0.0468,  0.0463,  0.0453, 0.0439,  0.0420,  0.0398,
                          0.0372,  0.0344,  0.0315,  0.0284,  0.0253,  0.0222,  0.0192,  0.0164,  0.0137,  0.0113,  0.0091,
                          0.0072,  0.0055,  0.0041,  0.0030,  0.0020,  0.0013,  0.0012, -0.0000])
-
+# low pass filter with cutoff at 1 Hz to cut out noise from 100 Hz sampling rate measurements
 lowPass100Hz_1 = np.array([0.0002, 0.0005, 0.0010, 0.0017, 0.0027, 0.0040, 0.0058, 0.0080, 0.0108, 0.0140, 0.0176, 0.0217,
                            0.0260, 0.0305, 0.0351, 0.0395, 0.0436, 0.0473, 0.0503, 0.0526, 0.0540, 0.0544, 0.0540, 0.0526,
                            0.0503, 0.0473, 0.0436, 0.0395, 0.0351, 0.0305, 0.0260, 0.0217, 0.0176, 0.0140, 0.0108, 0.0080,
                            0.0058, 0.0040, 0.0027, 0.0017, 0.0010, 0.0005, 0.0002])
 
-
+# low pass filter with cutoff at 1 Hz to cut out noise from 20 Hz sampling rate measurements
 lowPass20Hz = np.array([-0.0184, 0.0246, 0.1335, 0.2671,
                        0.3285, 0.2671, 0.1335, 0.0246, -0.0184])
 
 
-def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
+def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False):
     """
     Extract and return time and field data from the provided file.
 
@@ -103,18 +104,19 @@ def extract_time_dependence(filepath, sensorIsMetrolab=True, omit_64=False, ):
 def generateAndSaveTempPlot(times, temps, plot_components='123', separate=False, show_image=True, save_image=False,
                             output_file_name='Temp_vs_t', save_dir=None, show_dev_from_mean=False, statistics=False):
     """
-    Generate a plot of field components on the y-axis vs. time on the x-axis.
+    Generate a plot of temperature measurements on the y-axis vs. time on the x-axis.
 
     Args:
     - times: np.array with N entries (timeline)
     - temps: np.ndarray with 3xN entries for each sensor
-    - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm' and 'p'
+    - plot_component (string): contains letters as flags, where valid flags are '1','2','3'
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     the according quantity is added to the plot. Each quantity is plotted at most once.
-        - 't1', 't2', 't3': temperature sensor 1,2 or 3 data
+        - '1', '2', '3': temperature sensor 1,2 or 3 data
+    - separate (bool): plot each sensor's data separately
     - show_image (bool): If True, plt.show() is executed at the end
     - output_file_name(str): what to call the output file
-    - savedir (str): where to save the output file
+    - save_dir (str): where to save the output file
     - show_dev_from_mean (bool): If False, the values of the desired components are plotted.
     If True, the deviation from their mean values is plotted.
     - statistics (bool): show mean and standard deviation of each component, angles and magnitude.
@@ -218,25 +220,25 @@ def generateAndSaveTempPlot(times, temps, plot_components='123', separate=False,
 
 
 def generateAndSavePlot(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz', separate=False,
-                        show_image=True, save_image=False, output_file_name='B_vs_t', save_dir=None, show_dev_from_mean=False, statistics=False):
+                        show_image=True, save_image=False, save_dir=None, output_file_name='B_vs_t', show_dev_from_mean=False, statistics=False):
     """
     Generate a plot of field components on the y-axis vs. time on the x-axis.
 
     Args: 
-    - times (1d ndarray of floats): contains the time values [s]
-    - fields (ndarray of shape (len(time), 3)): contains the Bx, By and Bz components of the measured magnetic field
+    - filepath: path of csv file to be read/plotted
     - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm' and 'p'
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     the according quantity is added to the plot. Each quantity is plotted at most once.  
         - 'x', 'y', 'z': single component of magnetic field, p.e. B_z
         - 'm': magnitude of magnetic field
         - 'p': in-plane magnitude |B_xy| of magnetic field in xy-plane
+    - separate (bool): plot each field component separately
+    - save_image (bool): if true, save image in save_dir, a directory path
     - show_image (bool): If True, plt.show() is executed at the end
     - output_file_name(str): what to call the output file
-    - savedir (str): where to save the output file
     - show_dev_from_mean (bool): If False, the values of the desired components are plotted.
     If True, the deviation from their mean values is plotted. 
-    - statistics (bool): show mean and standard deviation of each component, angles and magnitude.
+    - statistics (bool): show mean and standard deviation of each separate component, angles and magnitude.
 
     Return:
     - fig (plt.Figure): figure instance of the plot 
@@ -455,21 +457,24 @@ def add_insets_time_plots(axs, x_vals, plot_data, zoom_component, begin_idx=0, e
 def spectralAnalysis(filepath=r'.\data_sets\time_measurements_23_10\20_10_23_15-31-57_time_resolved.csv', plot_components='xyz',
                      height_per_plot=2, save_image=False, save_dir=None, image_name_postfix='Power_Spectral_Density'):
     """
-    Generate a plot of field components on the y-axis vs. time on the x-axis.
+    Generate a plot of the Power spectral density of field measurements on the y-axis vs. frequency on the x-axis.
+    Includes corresponding time domain plots as well.
 
     Args: 
-    - times (1d ndarray of floats): contains the time values [s]
-    - fields (ndarray of shape (len(time), 3)): contains the Bx, By and Bz components of the measured magnetic field
-    - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm' and 'p'
+    - filepath: path of file containing data to be plotted (must be csv file)
+    - plot_component (string): contains letters as flags, where valid flags are 'x','y', 'z', 'm'
     The number of letters may vary, but at least one valid letter should be contained. For each flag,
     the according quantity is added to the plot. Each quantity is plotted at most once.  
         - 'x', 'y', 'z': single component of magnetic field, p.e. B_z
         - 'm': magnitude of magnetic field
-    - show_image (bool): If True, plt.show() is executed at the end
-
+    - height_per_plot: the height of each plot in inches
+    - save_image (bool): If True, image is saved in save_dir, a directory path
+    - image_name_postfix: this name is added to the end of the file.
+    
     Return:
     - fig (plt.Figure): figure instance of the plot 
     - axs (plt.Axes): axes instance of the plot
+    - times, plot_data: time stamps, data to be plotted
     """
     # extract data and convert to ndarray
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -552,7 +557,7 @@ if __name__ == "__main__":
     data_directory = r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\2_Misc_Code\Temperature Sensors\ADT7410_temperature_measurements\Measurement_over_time'
     # files = [ fi for fi in os.listdir(data_directory) if fi.endswith(".csv") ]
     # for item in files:
-    filename = '20_12_11_18-02-41_different_values_1coil_2base_3pole.csv'
+    filename = '20_12_15_13-03-56_Siglent_3A_1coil_2base_3pole.csv'
 
     filepath = os.path.join(data_directory, filename)
     raw_data = pd.read_csv(filepath).to_numpy()
@@ -565,6 +570,7 @@ if __name__ == "__main__":
     dt = times[5] - times[4]
     N = len(times)
     times_new = np.arange(0, N * dt, dt)
+    # times_new = times
     temps = raw_data[:, 1:4]
     # temps = np.array([raw_data[:, 0],raw_data[:, 1],raw_data[:, 2]])
     # temps = np.swapaxes(temps, 0, 1)
@@ -599,7 +605,7 @@ if __name__ == "__main__":
     # fieldFiltered = np.array(filtered_data)
 
         
-    fig1, ax1, times1, fields1, plot_components1 = generateAndSaveTempPlot(times_new, temps, show_image=False, plot_components='123', save_image=True,
+    fig1, ax1, times1, fields1, plot_components1 = generateAndSaveTempPlot(times_new, temps, show_image=False, plot_components='123', save_image=False,
                                                                            save_dir=data_directory, output_file_name='Temp_vs_t', separate=True, show_dev_from_mean=False,
                                                                            statistics=False)
 
@@ -670,7 +676,7 @@ if __name__ == "__main__":
     ax1[0].grid()
     ax1[1].grid()
     ax1[2].grid()
-    ax1[0].set_title('Temperature measured on coil1 ($T_1$), base($T_2$) and pole ($T_3$)')#\nwith ECB current 5A in all coils, (0.8,8,8)A and (1,1,8)A')
+    ax1[0].set_title('Temperature measured on coil1 ($T_1$), base ($T_2$) and pole ($T_3$)')#\nwith ECB current 5A in all coils, (0.8,8,8)A and (1,1,8)A')
     
     plt.tight_layout()
 

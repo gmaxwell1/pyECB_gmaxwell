@@ -30,7 +30,7 @@ finally:
 
 
 #%%
-directory = '../test_data/config_tests_20_11_10'
+directory = r'data_sets\config_tests_20_11_10'
 threshold = 10
 currents, B_measured, B_expected = collectAndExtract(directory, threshold, remove_saturation=True)
 
