@@ -100,7 +100,7 @@ def computeCoilCurrents(B_fieldVector, windings=508, resistance=0.5):
         
         # actMatrix = actMatrix * windings
 
-        # These values are still just estimates in the current config. But based on measurements. (29.10.) ~2.4mm above poles
+        # These values are still just estimates in the current config. But based on measurements. (06.11.) ~1.5mm above poles
         # dB_x/dI_{1,2,3}
         actMatrix[0, 0] = 44
         actMatrix[0, 1] = -14
