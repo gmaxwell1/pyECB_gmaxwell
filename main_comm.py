@@ -338,16 +338,16 @@ def demagnetizeCoils(current_config=np.array([1000,1000,1000])):
 if __name__ == '__main__':
     print(initECBapi(ECB_ADDRESS, ECB_PORT))
     print(enableECBCurrents())
-    setCurrents(desCurrents=[1, 0, 0, 0, 0, 0, 0, 0], direct=b'0')
-    sleep(20)
+    # setCurrents(desCurrents=[1, 0, 0, 0, 0, 0, 0, 0], direct=b'0')
+    # sleep(20)
     # print("Channel: \t 1 \t 2 \t 3 \t 4 \t 5 \t 6 \t 7 \t 8")
     # for i in range(15):
     #     (result, hall_list, currents_list, coil_status) = getTemps()
     #     print(f"\rTemperature [°C]: {result[0]} \t {result[1]} \t {result[2]} \t {result[3]} \t {result[4]} \t {result[5]} \t {result[6]} \t {result[7]}",end='',flush=True)
     #     sleep(1 - time() % 1)
-    disableECBCurrents()
+    # disableECBCurrents()
     
     # enableECBCurrents()
-    # demagnetizeCoils()
-    # disableECBCurrents()
+    demagnetizeCoils()
+    disableECBCurrents()
     exitECBapi()

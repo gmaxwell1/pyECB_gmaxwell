@@ -35,7 +35,7 @@ finally:
 # set measurement parameters and folder name
 sampling_size = 15 # number of measurements per sensor for averaging
 
-directory = './data_sets/2d_scans_different_fields'
+directory = './data_sets/2d_scans_different_fields/set3'
 
 # number of grid points per dimension
 grid_number = 20
@@ -57,8 +57,8 @@ CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
 # %%
 # set the bounds for x and y that are used for the scan
-limits_x = [4.4, 6.4]
-limits_y = [14.0, 16.0]
+limits_x = [3.5, 6.1]
+limits_y = [1.2, 3.8]
 
 # set the bounds for x and y that are used for the scan, relative to mid position
 # mid = [7.8866, 0.0166]
@@ -80,8 +80,8 @@ setCurrents(desCurrents, b'1')
 
 #%%
 # perform actual 2d scan
-# with MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1) as node:
-node = MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1)
+with MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1) as node:
+# node = MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1)
     # CC_Y.move_absolute(0.0)
     # CC_Z.move_absolute(21.0)
     # state = False
@@ -99,8 +99,8 @@ node = MetrolabTHM1176Node(block_size=30, period=0.01, range='0.3 T', average=1)
     # state = False
     # while not state:
     #     state = CC_Z.is_ready() and CC_Y.is_ready()
-filename_suffix = f'2d_scan_({currentConfig[0]}_{currentConfig[1]}_{currentConfig[2]})'
-positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, 8.3, xlim=limits_x, ylim=limits_y, grid_number=grid_number,
+    filename_suffix = f'2d_scan_({currentConfig[0]}_{currentConfig[1]}_{currentConfig[2]})'
+    positions_corrected, B_field, filepath = grid_2D(CC_X, CC_Y, node, 8.3, xlim=limits_x, ylim=limits_y, grid_number=grid_number,
                                                      sampling_size=sampling_size, save_data=True,suffix=filename_suffix, directory=directory)
 disableCurrents()
 

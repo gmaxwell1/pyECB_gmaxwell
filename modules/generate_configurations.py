@@ -43,7 +43,7 @@ finally:
 #%%
 # Part 1 --------------------------------------------------------
 # function definitions
-def generate_unique_combinations(num_vals):
+def generate_unique_combinations(num_vals, remove_negative=False):
     """
     Generate all possible cominations of current ratios (r1, r2, r3) between the three coils.
     The set of combinations fulfills fulfills following properties:
@@ -66,7 +66,7 @@ def generate_unique_combinations(num_vals):
     better do not use it for large values of num_vals.
     """
     # generate all configurations in raw numbers
-    generator_combinations = product([1], 
+    generator_combinations = product(np.linspace(-1,1, num=num_vals), 
                                     np.linspace(-1,1, num=num_vals), 
                                     np.linspace(-1,1, num=num_vals))
     raw_ratios = np.array(list(generator_combinations))
@@ -85,7 +85,8 @@ def generate_unique_combinations(num_vals):
             if np.all(unique_combinations[i] == -1*unique_combinations[j]):
                 # print('{},{}: {}, {}'.format(i,j, unique_combinations[i], unique_combinations[j]))
                 indices_equivalent_pairs.append(i)
-    unique_combinations = np.delete(unique_combinations, indices_equivalent_pairs, axis=0)
+    if remove_negative:
+        unique_combinations = np.delete(unique_combinations, indices_equivalent_pairs, axis=0)
 
     # reverse order for convenience to have 111 at the beginning 
     unique_combinations = np.flip(unique_combinations, axis=0)
@@ -212,6 +213,59 @@ def generate_test_points_whole_sphere(n_sectors, magnitude):
     # combine both hemispheres and return vectors
     return np.append(vectors_upper, vectors_lower, axis=0)
 
+
+
+def rng_test_points_whole_sphere(N=10, magnitude_range=[0,50], theta_range=[0,np.pi], phi_range=[0,2*np.pi], seed=None):
+    """
+    Generate magnetic field vectors in in random directions and with random magnitudes. The angles
+    theta and phi follow a uniform distribution between 0 and pi or 0 and 2pi respectively (ranges can
+    be customized). The magnitudes follow a power distribution on a customizable interval.
+    The seed can be set to generate new but reproducible combinations of vectors.
+
+    Args:
+    - N (int >= 1): number of directions generated
+    - magnitude_range (list): magnitude of vectors that are generated are between the two specified numbers.
+    they are randomly distributed according to the 2nd order power distribution. P(x) = 3*x^2, for 0<x<=1
+    default: [0,50]
+    - theta_range (list): polar angle of vectors that are generated are between the two specified numbers.
+    they are randomly distributed according to the uniform distribution.
+    default: [0,np.pi]
+    - phi_range (list): azimuthal angle of vectors that are generated are between the two specified numbers.
+    they are randomly distributed according to the uniform distribution.
+    default: [0,2*np.pi]
+    - seed (int): A seed to initialize the `BitGenerator`. If None, then fresh, unpredictable entropy will 
+    be pulled from the OS. If an `int` or `array_like[ints]` is passed, then it will be passed to `SeedSequence`
+    to derive the initial `BitGenerator` state.
+    
+    Return: 
+    - vectors (ndarray of shape(N,3)): Array containing the Cartesian coordinates
+    of all considered vectors, posing a simple way for plotting of the latter
+    - B_magnitudes (ndarray of length N): Array containing the magnitudes of all considered
+    vectors, posing a simple way for plotting the latter
+    - thetas (ndarray of length N): Contains latitude angles theta of all vectors in radians
+    - phis (ndarray of length N): Contains longitude angles phi of all vectors in radians
+    """
+    #initialize random generator
+    rng = np.random.default_rng(seed)
+    
+    # prepare list to collect field vectors
+    vectors = []
+    # randomly generated vectors
+    B_magnitudes = magnitude_range[0] + rng.power(2, N) * (magnitude_range[1] - magnitude_range[0])
+    thetas = theta_range[0] + rng.random((N,)) * (theta_range[1] - theta_range[0])
+    phis = phi_range[0] + rng.random((N,)) * (phi_range[1] - phi_range[0])
+    
+    for i in range(N):
+        # estimate vector in Cartesian coordinates from angles
+        B_vector = B_magnitudes[i] * np.array([np.sin(thetas[i]) * np.cos(phis[i]),
+                                        np.sin(thetas[i]) * np.sin(phis[i]),
+                                        np.cos(thetas[i])])
+        
+        vectors.append(B_vector)
+
+    return np.array(vectors), np.array(B_magnitudes), np.array(thetas), np.array(phis)
+
+
 def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulation = False):
     """
     Generate and show 3d plot of sphere and the provided vectors.
@@ -242,14 +296,13 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
     ax.text(0, 0, 1.6*magnitude, 'z')
 
     # create a sphere
-    u, v = np.mgrid[0:2*np.pi:16j, 0:np.pi:40j]
-    x = magnitude * np.cos(u)*np.sin(v)
-    y = magnitude * np.sin(u)*np.sin(v)
-    z = magnitude * np.cos(v)
-    ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
-                        alpha=0.05, antialiased=False, vmax=2)  
+    # u, v = np.mgrid[0:2*np.pi:16j, 0:np.pi:40j]
+    # x = magnitude * np.cos(u)*np.sin(v)
+    # y = magnitude * np.sin(u)*np.sin(v)
+    # z = magnitude * np.cos(v)
+    # ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
+    #                     alpha=0.05, antialiased=False, vmax=2)  
     
-    centers = []
     # plot all vectors as red dots
     ax.scatter(vectors[:,0], vectors[:,1], vectors[:,2], color='r')
     
@@ -279,73 +332,119 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
         return fig, ax
 
 
+def plot_vectors_simple(vectors, magnitudes = 1):
+    """
+    Generate and show 3d plot of sphere and the provided vectors.
+
+    Args:
+    - vectors (ndarray of shape(N, 3)): Contains normal vectors that should be plotted.
+    - magnitude (float/ndarray of shape(N,)): magnitude of each vector that is plotted.
+    """
+    # plot the generated vectors
+    # generate figure with 3d-axis
+    fig = plt.figure(figsize = 1.5*plt.figaspect(1.))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # plot arrows for x, y, z axis
+    length_axes = 50
+    ax.quiver(length_axes/2, 0, 0, length_axes, 0, 0, color='k',
+            arrow_length_ratio=0.1, pivot='tip', linewidth=1.)
+    ax.quiver(0, length_axes/2, 0, 0, length_axes, 0, color='k',
+            arrow_length_ratio=0.1, pivot='tip', linewidth=1.5)
+    ax.quiver(0, 0, length_axes/2, 0, 0, length_axes, color='k',
+            arrow_length_ratio=0.1, pivot='tip', linewidth=1.5)
+    ax.text(40, 0, 0, 'x')
+    ax.text(0, 40, 0, 'y')
+    ax.text(0, 0, 40, 'z')
+    
+    # plot all vectors as arrows
+    for index in range(len(vectors)):
+        ax.quiver(0, 0, 0, vectors[index, 0], vectors[index, 1], vectors[index, 2], length=magnitudes[index], color='C2',
+            arrow_length_ratio=0.1, pivot='tail', linewidth=0.9)
+    
+    
+ 
+    ax.set_xlabel('$B_x$ [mT]')
+    ax.set_ylabel('$B_y$ [mT]')
+    ax.set_zlabel('$B_z$ [mT]')
+    # ax.set_axis_off()
+    
+    ax.view_init(30, 45)
+
+    return fig, ax
+
+
 
 #%%
 # Part 2 -----------------------------------------------------------
 # generate configurations based on equidistant current ratios 
 
-if __name__ == '__main__':
-    # set the number of values between (incl) -1 and 1 that should be considered 
-    num_vals = 2
+# if __name__ == '__main__':
+#     # set the number of values between (incl) -1 and 1 that should be considered 
+#     num_vals = 3
 
-    for num_vals in range(2,10):
-        # generate the set
-        unique_combinations = generate_unique_combinations(num_vals)
+#     # for num_vals in range(2,10):
+#         # generate the set
+#     unique_combinations = generate_unique_combinations(num_vals, remove_negative=False)
 
-        # save the combinations to csv file
-        directory = '../config_files'
+#         # save the combinations to csv file
+#     directory = r'.\config_files'
+    
+
+
+#     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
+#                         'ratio coil 2': unique_combinations[:,1], 
+#                         'ratio coil 3': unique_combinations[:,2]})
+
+#     output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
+
+# # %%
+# # Part 3 -----------------------------------------------------------
+# # generate configurations based on (approximately) equidistant 
+# # magnetic fields in upper half plane
+
+# if __name__ == '__main__':
+#     # generate configurations
+#     n_vectors = 150
+#     magnitude_range = [0,50]
+#     seed = 1234
+#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
+
+#     # plot all considered vectors on a sphere 
+#     plot_vectors(vectors,50)
+    
+#     plt.show()
+
+    # thetas_deg = thetas * 180/np.pi
+    # phis_deg = phis * 180/np.pi
+    # # save the combinations to csv file
+    # directory = 'config_files'
         
+    # df = pd.DataFrame({ 'B_x': vectors[:,0], 
+    #                     'B_y': vectors[:,1], 
+    #                     'B_z': vectors[:,2],
+    #                     'B_mag': magnitudes,
+    #                     'theta (deg)': thetas_deg,
+    #                     'phi (deg)': phis_deg})
 
-
-        df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
-                            'ratio coil 2': unique_combinations[:,1], 
-                            'ratio coil 3': unique_combinations[:,2]})
-
-        output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
-        data_filepath = os.path.join(directory, output_file_name)
-        df.to_csv(data_filepath, index=False, header=True)
-
-# %%
-# Part 3 -----------------------------------------------------------
-# generate configurations based on (approximately) equidistant 
-# magnetic fields in upper half plane
-
-if __name__ == '__main__':
-    # generate configurations
-    n_sectors = 16
-    elevation_factor_equator = 0.1
-    magnitude = 1
-    ratios, vectors,_,_ = generate_configs_half_sphere(n_sectors, magnitude=magnitude,
-                                        elevation_factor_equator = elevation_factor_equator)
-
-    # plot all considered vectors on a sphere 
-    plot_vectors(vectors, magnitude=magnitude)
-
-    print(len(vectors))
-
-    # save the combinations to csv file
-    # directory = '../config_files'
-        
-    # df = pd.DataFrame({ 'ratio coil 1': ratios[:,0], 
-    #                     'ratio coil 2': ratios[:,1], 
-    #                     'ratio coil 3': ratios[:,2]})
-
-    # output_file_name = 'configs_upperHemisphere_size{}.csv'.format(len(ratios))
+    # output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
     # data_filepath = os.path.join(directory, output_file_name)
     # df.to_csv(data_filepath, index=False, header=True)
 
 
-# %%
-if __name__ == '__main__':
-    # estimate approximate duration
-    duration_per_run = (3600 * 2 + 60* 18 + 40) / 88
+# # %%
+# if __name__ == '__main__':
+#     # estimate approximate duration
+#     duration_per_run = (3600 * 2 + 60* 18 + 40) / 88
 
-    runs = [162, 252, 306, 365, 649]
-    for r in runs:
-        duration = r * duration_per_run
-        print('{} runs: {} h {} min {} s'.format(r, int(duration // 3600), 
-                                                    int( (duration % 3600)//60), 
-                                                    int(duration % 60)))
+#     runs = [162, 252, 306, 365, 649]
+#     for r in runs:
+#         duration = r * duration_per_run
+#         print('{} runs: {} h {} min {} s'.format(r, int(duration // 3600), 
+#                                                     int( (duration % 3600)//60), 
+#                                                     int(duration % 60)))
 
 
 #%%

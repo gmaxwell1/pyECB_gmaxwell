@@ -188,10 +188,10 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
     # some possible configurations
     current_direction = np.ndarray(3)
     if config_list is not None:
-        max_val = np.amax(abs(config_list))
-        current_direction[0] = config_list[0] / max_val
-        current_direction[1] = config_list[1] / max_val
-        current_direction[2] = config_list[2] / max_val
+        # max_val = np.amax(abs(config_list))
+        current_direction[0] = config_list[0]
+        current_direction[1] = config_list[1]
+        current_direction[2] = config_list[2]
     elif config == 'z':
         current_direction[0] = 1
         current_direction[1] = 1
@@ -236,11 +236,11 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
 
         setCurrents(desCurrents, currDirectParam)
         # Let the field stabilize
-        sleep(0.1)
+        sleep(0.5)
         # collect measured and expected magnetic field (of the specified sensor in measurements)
         print('measurement nr. ', i+1)
         # see measurements.py for more details
-        mean_data, std_data = measure(node, N=5, average=True)
+        mean_data, std_data = measure(node, N=7, average=True)
         mean_values[i] = mean_data
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
@@ -251,6 +251,79 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
     # saving data section (prepared for plotting)
     saveDataPoints((all_curr_vals / 1000), mean_values,
                    stdd_values, expected_fields, filePath, fileprefix)
+    
+
+def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2_length4.csv', datadir='config_tests',
+              current_val=0, demagnetize=False, today=True):
+    """
+    sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
+    and stores the measured values in various arrays
+
+    Args:
+        config_list (numpy array of size 3, optional): current configuration entered by user, Defaults to np.array([0,0,1])
+        config (str, optional): Choose from multiple possible 'configurations' (coil1, coil2, coil3) of currents. Possible values:
+            - 'r': randomly generated configuration.
+            - 'z': (1,1,1)
+            - 'y': (0,1,0)
+        Defaults to 'z'.
+        datadir (str): directory to save measurements in
+        start_val (int, optional): start ramp at. Defaults to 0.
+        end_val (int, optional): end ramp at. Defaults to 1.
+        steps (int, optional): number of steps. Defaults to 5.
+    """
+    global currDirectParam
+    global desCurrents
+    
+    # initialization of all arrays
+    # all_curr_steps = np.linspace(start_val, end_val, steps)
+    mean_values = []
+    stdd_values = []
+    expected_fields = []
+    all_curr_vals = []
+    
+    enableCurrents()
+
+    with open(inpFile, 'r') as f:
+        contents = csv.reader(f)
+        next(contents)
+        for i, row in enumerate(contents):
+            config = np.array(
+                [float(row[0]), float(row[1]), float(row[2])])
+            
+            for k in range(3):
+                desCurrents[k] = config[k]*current_val
+            all_curr_vals.append(config*current_val)
+            
+            #  tentative estimation of resulting B field
+            B_expected = tr.computeMagField(config*current_val, windings)
+            setCurrents(desCurrents, currDirectParam)
+            # Let the field stabilize
+            sleep(0.5)
+            # collect measured and expected magnetic field (of the specified sensor in measurements)
+            print('measurement nr. ', i+1)
+            # see measurements.py for more details
+            mean_data, std_data = measure(node, N=7, average=True)
+            mean_values.append(mean_data)
+            stdd_values.append(std_data)
+            expected_fields.append(B_expected)
+ 
+    # create subdirectory to save measurements
+    fileprefix = 'field_meas'
+    # folder,
+    if today:
+        now = datetime.now().strftime('%y_%m_%d')
+        filePath = f'data_sets\{datadir}_{now}'
+    else:
+        filePath = f'data_sets\{datadir}'
+
+
+    if demagnetize:
+        demagnetizeCoils()
+    # end of measurements
+    disableCurrents()
+    # saving data section (prepared for plotting)
+    saveDataPoints((np.array(all_curr_vals) / 1000), np.array(mean_values),
+                   np.array(stdd_values), np.array(expected_fields), filePath, fileprefix)
 
 
 def sweepHysteresis(config_list=None, datadir='hysteresis_tests', end_val=1, steps=5, today=False):
@@ -579,17 +652,6 @@ def generateMagneticField(vectors, t=[], subdir='serious_measurements_for_LUT', 
     """
     global currDirectParam
     global desCurrents
-
-    magnitude, theta, phi = 
-    print(B_vector)
-    I_vector = tr.computeCoilCurrents(B_vector)
-
-    # copy the computed current values (mA) into the desCurrents list (first 3 positions)
-    # cast to int
-    for i in range(len(I_vector)):
-        B_vector = tr.computeMagneticFieldVector(magnitude, theta, phi)
-
-        desCurrents[i] = int(I_vector[i])
 
     enableCurrents()
     if len(t) == 0 or t[0] == 0:

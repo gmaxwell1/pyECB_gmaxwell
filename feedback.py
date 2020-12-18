@@ -18,7 +18,6 @@ import os
 import threading
 
 from main_comm import *
-from measurements import calibration
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 import transformations as tr
 import modules.general_functions as gen
@@ -416,14 +415,15 @@ def localLinearization(node: MetrolabTHM1176Node, configCurrents=np.array([1000,
                 f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f},'
                 f'{newBMeasurement[2]:.2f})', sep='', end='', flush=True)
             fieldVectors.insert(0, newBMeasurement)
-            if len(fieldVectors) > 2:
-                differenceQuotients.insert(0, (1.5 * newBMeasurement - 2 * fieldVectors[1] + 0.5 * fieldVectors[2]) / currentStep)
-            else:
-                differenceQuotients.insert(0, (newBMeasurement - fieldVectors[1]) / currentStep)
+            if len(fieldVectors) > 4:
+                # use central difference formula with 4th order accuracy, consider current step to be j+2, in total a range of 5
+                # measurements is used
+                differenceQuotients.insert(0, (-1.0/12.0 * fieldVectors[0] + 2.0/3.0 * fieldVectors[1] - 2.0/3.0 * fieldVectors[3] + 1.0/12.0 * fieldVectors[4]) / currentStep)
 
 
         print('')
         # save the latest row of the 'derivatives' in the matrix
+        # 
         derivatives[:, i] = np.mean(np.array(differenceQuotients), 0)
         differenceQuotients.clear()
 
