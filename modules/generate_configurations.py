@@ -37,8 +37,8 @@ except ModuleNotFoundError:
     import transformations as tr
 finally:
     from modules.general_functions import ensure_dir_exists
-    from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
     from modules.analysis_tools import get_phi, get_theta
+    from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
 
 #%%
 # Part 1 --------------------------------------------------------
@@ -522,5 +522,4 @@ if __name__ == '__main__':
                         'z': grid_pts[:, 2]})
         
     df.to_csv(data_filepath, index=False, header=True)
-
 

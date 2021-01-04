@@ -1200,7 +1200,7 @@ def plot_rotation_plane(I, mean_values, std_values, expected_values, distance = 
 
     Return: fig, axs
     """
-    # create a simple plot with as many axes as letters in plots_yaxis
+    # create figure
     fig, ax = plt.subplots()
     fig.set_size_inches(4, 4)
     
@@ -1737,8 +1737,8 @@ def collectAndExtract(directory, B_min, remove_saturation = True,
         # even though find_start_of_saturation offers the possibility to specify the considered component, 
         # keep the default stting, which detects the field component that has the greatest absolute field values. 
         # This should work fine for situations, where one component is dominating. 
-        # i_min, i_max = find_start_of_saturation(I, mean_data, std_data, fraction_cutoff=fraction_cutoff,
-        #                         fitting_fct = affine_fct)
+        i_min, i_max = find_start_of_saturation(I, mean_data, std_data, fraction_cutoff=fraction_cutoff,
+                                fitting_fct = affine_fct)
 
         # estimate field magnitudes
         magnitudes = np.linalg.norm(mean_data, axis=1)

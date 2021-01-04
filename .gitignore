@@ -24,6 +24,11 @@ plot_measurement_set_3d.py
 test_new_calibration.py
 oscilloscope.py
 estimate_derivatives.py
+demagnetization_effect_on_rotation.py
+repeatability_evaluation.py
+fitting_parameters/
+predictions_on_test_set/
+temperature_drift.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
