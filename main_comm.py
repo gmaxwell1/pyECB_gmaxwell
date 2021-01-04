@@ -62,6 +62,7 @@ def _chk(msg):
             print(" ECB revision value error")
         if msg == 20:
             print("ECB set current communication error")
+            raise TimeoutError
         if msg == 21:
             print("ECB get current communication error")
         if msg == 22:

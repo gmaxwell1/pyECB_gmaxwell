@@ -51,6 +51,7 @@ def MainMenu(initialized):
                 '[4]: generate magnetic field (specify polar and azimuthal angles, magnitude)')
 
             print('[h] do a hysteresis test.\n')
+            print('[t]: measure temperature and field for constant, nonzero currents in first half and zero currents in second half\n')
 
             c1 = input()
 
@@ -90,6 +91,10 @@ def MainMenu(initialized):
             elif c1 == 'h':
                 c1 = input('Automatic exit after finish? (x for yes): ')
                 callHysteresisSweep()
+                
+            elif c1 == 't':
+                c1 = input('Automatic exit after finish? (x for yes): ')
+                callTempFieldMeasurement()
 
     else:
         print('not connected')
@@ -109,6 +114,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
         # must be a .csv file!
         inpFile = input('Enter a valid configuration file path: ')
         inp1 = input('starting current in mA = ')
+        # if doing gridSweep: this is the value that will be used
         inp2 = input('ending current in mA = ')
         inp3 = input('# of steps: ')
         # the values for each measurement run should be the same for consistent results
@@ -131,6 +137,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
         node = MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=1)# as node:
         gotoPosition()
         inp = input('Do grid sweep function? (y/n) ')
+        # doing gridSweep
         if inp == 'y':
             gridSweep(node, inpFile, datadir=datadir, current_val=start_val, demagnetize=True, today=False)
         else:
@@ -142,7 +149,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
                         [float(row[0]), float(row[1]), float(row[2])])
                         
                     sweepCurrents(config_list=config, start_val=start_val, datadir=datadir,
-                                    end_val=end_val, steps=steps, node=node, today=False)
+                                    end_val=end_val, steps=steps, node=node, today=True)
 
     elif mode == 'm':
         inp1 = input('Configuration:\nChannel 1: ')
@@ -541,6 +548,6 @@ if __name__ == '__main__':
     ecbInit = openConnection()
     while ecbInit != 0:
         ecbInit = openConnection()
-
+    
     MainMenu(ecbInit)
     closeConnection()

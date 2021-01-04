@@ -28,6 +28,7 @@ from measurements import *
 # from modules.analysis_tools import generate_plots
 from MetrolabTHM1176.thm1176 import MetrolabTHM1176Node
 from modules.general_functions import save_time_resolved_measurement as strm, ensure_dir_exists, sensor_to_magnet_coordinates
+from modules.arduinoPythonInterface import ArduinoUno, saveTempData
 
 
 ##########  Current parameters ##########
@@ -287,6 +288,8 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
         contents = csv.reader(f)
         next(contents)
         for i, row in enumerate(contents):
+            demagnetizeCoils(current_config = 5000*np.ones(3))
+            
             config = np.array(
                 [float(row[0]), float(row[1]), float(row[2])])
             
@@ -444,10 +447,11 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
         magnitude = start_mag
         BStartVector = tr.computeMagneticFieldVector(magnitude, theta, phi)
 
-    mean_values = np.zeros((steps, 3))
-    stdd_values = np.zeros((steps, 3))
-    expected_fields = np.zeros((steps, 3))
-    all_curr_vals = np.zeros((steps, 3))
+    rounds = 80
+    mean_values = np.zeros((rounds*steps, 3))
+    stdd_values = np.zeros((rounds*steps, 3))
+    expected_fields = np.zeros((rounds*steps, 3))
+    all_curr_vals = np.zeros((rounds*steps, 3))
 
     # create filename under which to save measurements
     if rotate is None:
@@ -461,33 +465,38 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
     enableCurrents()
     # with MetrolabTHM1176Node(range="0.3 T", period=0.01) as node:
     # iterate through all possible steps
-    for i in range(steps):
-        # tentative estimation of resulting B field
-        if rotate is None:
-            B_expected = tr.computeMagneticFieldVector(
-                magnitudes[i], theta, phi)
-        else:
-            B_expected = tr.rotationMatrix(
-                BStartVector, psi=psi, theta=gamma, alpha=angles[i])
+    for r in range(rounds):
+        for i in range(steps):
+            demagnetizeCoils(current_config = 5000*np.ones(3))
+            
+            # tentative estimation of resulting B field
+            if rotate is None:
+                B_expected = tr.computeMagneticFieldVector(
+                    magnitudes[i], theta, phi)
+            else:
+                B_expected = tr.rotationMatrix(
+                    BStartVector, psi=psi, theta=gamma, alpha=angles[i])
 
-        current_direction = tr.computeCoilCurrents(
-            B_expected, windings, resistance)
+            current_direction = tr.computeCoilCurrents(
+                B_expected, windings, resistance)
 
-        # set the current on each channel
-        for k in range(3):
-            desCurrents[k] = current_direction[k]
-        all_curr_vals[i] = current_direction
+            # set the current on each channel
+            for k in range(3):
+                desCurrents[k] = current_direction[k]
+            all_curr_vals[i] = current_direction
 
-        setCurrents(desCurrents, currDirectParam)
-        # Let the field stabilize
-        sleep(0.1)
-        # collect measured and expected magnetic field (of the specified sensor in measurements)
-        print('measurement nr. ', i+1)
-        # see measurements.py for more details
-        mean_data, std_data = measure(node, N=5, average=True)
-        mean_values[i] = mean_data
-        stdd_values[i] = std_data
-        expected_fields[i] = B_expected
+            setCurrents(desCurrents, currDirectParam)
+            # Let the field stabilize
+            sleep(0.1)
+            # collect measured and expected magnetic field (of the specified sensor in measurements)
+            print('measurement nr. ', i+1, r)
+            # see measurements.py for more details
+            mean_data, std_data = measure(node, N=5, average=True)
+            mean_values[i+r*steps] = mean_data
+            stdd_values[i+r*steps] = std_data
+            expected_fields[i+r*steps] = B_expected
+            
+            
 
     if demagnetize:
         demagnetizeCoils()
@@ -786,7 +795,179 @@ def generateMagneticField(vectors, t=[], subdir='serious_measurements_for_LUT', 
         
     disableCurrents()
 
+def callTempFieldMeasurement(demagnetize=True, today=False, demagnet_current=1000):
+    """
+    Set currents to constant value for a defined duration, afterwards to zero for the same duration. 
+    Measure magnetic field and temperature simultaneously.
+    """
+    global currDirectParam
+    global desCurrents
+    
+    datadir = input(
+        'Enter a valid directory name to save measurement data in: ')
+    
+    if datadir == '':
+        datadir='test_measurements'
+    
+    inp1 = input('constant currents in mA = ')
+    try:
+        start_val = int(inp1)
+    except:
+        print('expected numerical value, defaulting to 1000 mA')
+        start_val = 1000
+    
+    inp2 = input('duration [s] of constant currents (half the total duration) = ')
+    try:
+        duration = int(inp2)
+    except:
+        print('expected numerical value, defaulting to 100 s')
+        duration = 100
+    
+    # initialize Matrolab sensor and ensure that it is at the correct position
+    node = MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=1)# as node:
+    gotoPosition()
+    
+    # initialize temperature sensor and measurement routine and start measuring
+    arduino = ArduinoUno('COM7')
+    measure_temp = threading.Thread(target=arduino.getTemperatureMeasurements)
+    measure_temp.start()
+    t_start_measurement = time()
+    
+    # initialization of all arrays
+    mean_values = []
+    stdd_values = []
+    all_curr_vals = []
+    time_values = []
+    
+    # enable currents at ECB
+    enableCurrents()
 
+    # start with demagnetizing, wait a second afterwards
+    print('demagnetize')
+    demagnetizeCoils(current_config = demagnet_current*np.ones(3))
+    sleep(1)
+    
+    # first half with constant, nonzero currents
+    print('start first half')
+    t_start = time()
+    config = start_val * np.ones(3)
+    
+    # set currents before starting first half 
+    for k in range(3):
+        desCurrents[k] = config[k]
+    setCurrents(desCurrents, currDirectParam)
+    sleep(0.2)
+    
+    while time() - t_start < duration:
+        
+        # save currents
+        all_curr_vals.append(config)
+        
+        # print progress
+        ratio = (time() - t_start) / duration
+        left = int(ratio * 30)
+        right = 30-left
+        print('\rprogress: [' + '#' * left + ' ' * right + ']',
+              f' {ratio * 100:.0f}%', sep='', end='', flush=True)
+        
+        # see measurements.py for more details
+        mean_data, std_data = measure(node, N=7, average=True)
+        time_values.append(time() - t_start_measurement)
+        mean_values.append(mean_data)
+        stdd_values.append(std_data)
+    
+    # disable and enable currents, thereby trying to avoid communication timeout with ECB
+    disableCurrents()
+    enableCurrents()
+        
+    # try demagnetizing in between both halfs
+    print('\ndemagnetize')
+    try:
+        demagnetizeCoils(current_config = demagnet_current*np.ones(3))
+    except TimeoutError:
+        # if there is a communication error with ECB, skip demagnetizing and continue measuring second half 
+        print('skip demagnetizing')
+        
+    finally:
+        # disable currents again 
+        disableCurrents()
+        
+        # new config: zero currents
+        config = np.zeros(3)
+        
+        # second half with zero currents
+        print('\nstart second half')
+        t_start = time()
+        while time() - t_start < duration:
+            
+            # save current configuration
+            all_curr_vals.append(config)
+        
+            # print progress
+            ratio = (time() - t_start) / duration
+            left = int(ratio * 30)
+            right = 30-left
+            print('\rprogress: [' + '#' * left + ' ' * right + ']',
+                f' {ratio * 100:.0f}%', sep='', end='', flush=True)
+            
+            # see measurements.py for more details
+            mean_data, std_data = measure(node, N=7, average=True)
+            time_values.append(time() - t_start_measurement)
+            mean_values.append(mean_data)
+            stdd_values.append(std_data)
+        
+        # enable currents at ECB  for final demagnetization
+        enableCurrents()
+        # try demagnetizing 
+        print('\ndemagnetize')
+        try:
+            demagnetizeCoils(current_config = demagnet_current*np.ones(3))
+        except TimeoutError:
+            # if a communication error with ECB occures, simply skip demagnetizing
+            print('skip demagnetizing')
+            
+        finally:
+            # in any case, collect data and save them!
+            
+            # end of measurements
+            disableCurrents()
+        
+            # saving data section (prepared for plotting)
+            directory = '.\\data_sets\\temperature_drift'
+            data_filename_postfix = 'measured_field_at_const_currents'
+            ensure_dir_exists(directory, verbose=False)
+            
+            # after field measurements are over, also stop temperature measurement
+            arduino.stop = True
+            measure_temp.join()
+            temp_file_name = 'measured_temp_at_const_currents'
+            saveTempData(arduino.data_stack, directory = directory, filename_suffix = temp_file_name)
+            
+            # save measured fields and corresponding currents
+            I = np.array(all_curr_vals) / 1000
+            mean_data = np.array(mean_values)
+            std_data = np.array(stdd_values)
+            time_data = np.array(time_values)
+        
+            df = pd.DataFrame({'time [s]': time_data,
+                                'channel 1 [A]': I[:, 0],
+                                'channel 2 [A]': I[:, 1],
+                                'channel 3 [A]': I[:, 2],
+                                'mean Bx [mT]': mean_data[:, 0],
+                                'mean By [mT]': mean_data[:, 1],
+                                'mean Bz [mT]': mean_data[:, 2],
+                                'std Bx [mT]': std_data[:, 0],
+                                'std By [mT]': std_data[:, 1],
+                                'std Bz [mT]': std_data[:, 2]})
+            print('success!')
+
+            now = datetime.now().strftime('%y_%m_%d_%H-%M-%S')
+            output_file_name = f'{now}_{data_filename_postfix}.csv'
+            file_path = os.path.join(directory, output_file_name)
+            df.to_csv(file_path, index=False, header=True)
+    
+    
+    
 # def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
     # """
     # Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.

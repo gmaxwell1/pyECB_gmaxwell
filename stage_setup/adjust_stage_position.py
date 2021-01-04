@@ -42,22 +42,22 @@ sampling_size = 25  # number of measurements per sensor for averaging
 
 # %%
 # initialize actuators
-init_pos = np.array([5.0, 15.9, 8.25])
-COM_ports = ['COM7', 'COM6', 'COM5']
+init_pos = np.array([4.28, 1.46, 8.3])
+COM_ports = ['COM4', 'COM5', 'COM6']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
 
 #%%
 # optionally only initialize actuator of z-axis
-CC_Z = ConexCC(com_port='COM5',
-                velocity=0.4, set_axis='z', verbose=False)
-CC_Z.wait_for_ready()
-CC_Z.move_absolute(8.0)
+# CC_Z = ConexCC(com_port='COM5',
+#                 velocity=0.4, set_axis='z', verbose=False)
+# CC_Z.wait_for_ready()
+# CC_Z.move_absolute(8.3)
 
 # %%
 # manually adjust stage position
-z_offset = 7.6
-new_pos = [5.0, 15.9, z_offset]
-_ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
+z_offset = 20
+new_pos = [4.28, 1.46, z_offset]
+# _ = reset_to(new_pos, CC_X, CC2=CC_Y, CC3=CC_Z)
 
 # %%
 # set the bounds for x and y that are used during the calibration process
@@ -79,28 +79,28 @@ update_factor = 3
 extended = False
 
 # %%
-with MetrolabTHM1176Node() as node:
+# with MetrolabTHM1176Node() as node:
 
-    # find center axis
-    center_pos, fx = find_center_axis(CC_X, CC_Y, node, extended=extended, 
-                                      limits_x=limits_x, limits_y=limits_y, grid_number=grid_number,
-                                      min_step_size=min_step_size, update_factor=update_factor)
+#     # find center axis
+#     center_pos, fx = find_center_axis(CC_X, CC_Y, node, extended=extended, 
+#                                       limits_x=limits_x, limits_y=limits_y, grid_number=grid_number,
+#                                       min_step_size=min_step_size, update_factor=update_factor)
 
-    print('\nEstimated center position: ({:.4f}, {:.4f})'.format(center_pos[0], center_pos[1]))
-    start = np.append(center_pos, z_offset)
-    reset_to(start, CC_X, CC2=CC_Y, CC3=CC_Z)
+#     print('\nEstimated center position: ({:.4f}, {:.4f})'.format(center_pos[0], center_pos[1]))
+#     start = np.append(center_pos, z_offset)
+#     reset_to(start, CC_X, CC2=CC_Y, CC3=CC_Z)
 
-    field = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
-    print('final field: {} mT'.format(np.round(field, 3)))
-    print('in-plane field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
+#     field = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
+#     print('final field: {} mT'.format(np.round(field, 3)))
+#     print('in-plane field: {:.3f} mT'.format(np.sqrt(field[0]**2 + field[1]**2)))
 
 
 #%%
 # plot the current angles theta and phi in a spherical plot
-with MetrolabTHM1176Node() as node:
-    for _ in range(10):
-        B = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
-        plot_angle_spherical(B)
+# with MetrolabTHM1176Node() as node:
+#     for _ in range(10):
+#         B = get_mean_dataset_MetrolabSensor(node, sampling_size)[0]
+#         plot_angle_spherical(B)
 
 
 
