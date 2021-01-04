@@ -37,6 +37,7 @@ finally:
 #%%
 # retrieve data from previous scans
 directory = '../test_data/2d_scans_different_fields/set4'
+# directory = r'data_sets\2d_scans_different_fields\set3'
 
 # filenames = ['20_11_23_18-32-01_2d_scan_(1_0_0).csv',   # (100)   
 #             '20_11_23_18-43-38_2d_scan_(0_1_0).csv',    # (010) 

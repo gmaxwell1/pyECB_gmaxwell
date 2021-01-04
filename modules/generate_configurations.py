@@ -39,6 +39,10 @@ finally:
     from modules.general_functions import ensure_dir_exists
     from modules.analysis_tools import get_phi, get_theta
     from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
+<<<<<<< HEAD
+=======
+
+>>>>>>> a81a7624081bbf5abd530e7e1ca1c46f4d45ae23
 
 #%%
 # Part 1 --------------------------------------------------------
@@ -188,7 +192,7 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
             thetas.append(theta)
             phis.append(phi)
 
-    return np.array(ratios),  np.array(vectors), np.array(thetas), np.array(phis)
+    return np.array(ratios), np.array(vectors), np.array(thetas), np.array(phis)
 
 def generate_test_points_whole_sphere(n_sectors, magnitude):
     """
@@ -205,13 +209,13 @@ def generate_test_points_whole_sphere(n_sectors, magnitude):
     to set n_sectors to multiples of 4.
     - magnitude (float): magnitude of vectors that are generated
     """
-    _, vectors_upper, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
+    ratios1, vectors_upper, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
                                         upper=True, include_equator=True)
-    _, vectors_lower, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
+    ratios2, vectors_lower, _, _ = generate_configs_half_sphere(n_sectors, magnitude=magnitude, 
                                         upper=False, include_equator=False)
 
     # combine both hemispheres and return vectors
-    return np.append(vectors_upper, vectors_lower, axis=0)
+    return np.append(ratios1, ratios2, axis=0), np.append(vectors_upper, vectors_lower, axis=0)
 
 
 
@@ -296,12 +300,12 @@ def plot_vectors(vectors, magnitude = 1, phis= None, thetas=None, add_tiangulati
     ax.text(0, 0, 1.6*magnitude, 'z')
 
     # create a sphere
-    # u, v = np.mgrid[0:2*np.pi:16j, 0:np.pi:40j]
-    # x = magnitude * np.cos(u)*np.sin(v)
-    # y = magnitude * np.sin(u)*np.sin(v)
-    # z = magnitude * np.cos(v)
-    # ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
-    #                     alpha=0.05, antialiased=False, vmax=2)  
+    u, v = np.mgrid[0:2*np.pi:16j, 0:np.pi:40j]
+    x = magnitude * np.cos(u)*np.sin(v)
+    y = magnitude * np.sin(u)*np.sin(v)
+    z = magnitude * np.cos(v)
+    ax.plot_surface(x, y, z, color='k', rstride=1, cstride=1,
+                        alpha=0.05, antialiased=False, vmax=2)  
     
     # plot all vectors as red dots
     ax.scatter(vectors[:,0], vectors[:,1], vectors[:,2], color='r')
@@ -389,8 +393,6 @@ def plot_vectors_simple(vectors, magnitudes = 1):
 
 #         # save the combinations to csv file
 #     directory = r'.\config_files'
-    
-
 
 #     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
 #                         'ratio coil 2': unique_combinations[:,1], 
@@ -401,50 +403,38 @@ def plot_vectors_simple(vectors, magnitudes = 1):
 #     df.to_csv(data_filepath, index=False, header=True)
 
 # # %%
-# # Part 3 -----------------------------------------------------------
-# # generate configurations based on (approximately) equidistant 
-# # magnetic fields in upper half plane
+# Part 3 -----------------------------------------------------------
+# generate configurations based on (approximately) equidistant 
+# magnetic fields in upper half plane
 
-# if __name__ == '__main__':
-#     # generate configurations
-#     n_vectors = 150
-#     magnitude_range = [0,50]
-#     seed = 1234
-#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
+if __name__ == '__main__':
+    # generate configurations
+    n_vectors = 5000
+    magnitude_range = [0,70]
+    seed = 1414
+    vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
 
-#     # plot all considered vectors on a sphere 
-#     plot_vectors(vectors,50)
+    # plot all considered vectors on a sphere 
+    plot_vectors(vectors,50)
     
-#     plt.show()
+    plt.show()
 
-    # thetas_deg = thetas * 180/np.pi
-    # phis_deg = phis * 180/np.pi
-    # # save the combinations to csv file
-    # directory = 'config_files'
+    thetas_deg = thetas * 180/np.pi
+    phis_deg = phis * 180/np.pi
+    # save the combinations to csv file
+    directory = '../config_files/RNG_test_vectors'
         
-    # df = pd.DataFrame({ 'B_x': vectors[:,0], 
-    #                     'B_y': vectors[:,1], 
-    #                     'B_z': vectors[:,2],
-    #                     'B_mag': magnitudes,
-    #                     'theta (deg)': thetas_deg,
-    #                     'phi (deg)': phis_deg})
+    df = pd.DataFrame({ 'B_x': vectors[:,0], 
+                        'B_y': vectors[:,1], 
+                        'B_z': vectors[:,2],
+                        'B_mag': magnitudes,
+                        'theta (deg)': thetas_deg,
+                        'phi (deg)': phis_deg})
 
-    # output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
-    # data_filepath = os.path.join(directory, output_file_name)
-    # df.to_csv(data_filepath, index=False, header=True)
+    output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
+    data_filepath = os.path.join(directory, output_file_name)
+    df.to_csv(data_filepath, index=False, header=True)
 
-
-# # %%
-# if __name__ == '__main__':
-#     # estimate approximate duration
-#     duration_per_run = (3600 * 2 + 60* 18 + 40) / 88
-
-#     runs = [162, 252, 306, 365, 649]
-#     for r in runs:
-#         duration = r * duration_per_run
-#         print('{} runs: {} h {} min {} s'.format(r, int(duration // 3600), 
-#                                                     int( (duration % 3600)//60), 
-#                                                     int(duration % 60)))
 
 
 #%%
@@ -505,21 +495,38 @@ def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
     return grid_pts
 
 # %%
-if __name__ == '__main__':
+# if __name__ == '__main__':
     
-    # generate grid points
-    max_value = 2
-    points_per_dim = 51
-    grid_pts = generate_grid(max_value, points_per_dim, threshold_magnitude=np.inf)
+#     # generate grid points
+#     # max_value = 2
+#     # points_per_dim = 51
+#     # grid_pts = generate_grid(max_value, points_per_dim, threshold_magnitude=np.inf)
 
-    directory = './config_files/grid/'
-    output_file_name = f'walk_on_grid_max{max_value}_PointsPerDim{points_per_dim}.csv'     
-    ensure_dir_exists(directory)
-    data_filepath = os.path.join(directory, output_file_name)
+#     # directory = './config_files/grid/'
+#     # output_file_name = f'walk_on_grid_max{max_value}_PointsPerDim{points_per_dim}.csv'     
+#     # ensure_dir_exists(directory)
+#     # data_filepath = os.path.join(directory, output_file_name)
     
-    df = pd.DataFrame({ 'x': grid_pts[:, 0], 
-                        'y': grid_pts[:, 1], 
-                        'z': grid_pts[:, 2]})
+#     # df = pd.DataFrame({ 'x': grid_pts[:, 0], 
+#     #                     'y': grid_pts[:, 1], 
+#     #                     'z': grid_pts[:, 2]})
         
-    df.to_csv(data_filepath, index=False, header=True)
+#     # df.to_csv(data_filepath, index=False, header=True)
+    
+#     ratios,vectors = generate_test_points_whole_sphere(24, 50)
+    
+#     plot_vectors(vectors)
+#     plt.show()
+#     # save the combinations to csv files
+#     directory = r'.\config_files'
+    
+
+
+#     df = pd.DataFrame({ 'ratio coil 1': ratios[:,0], 
+#                         'ratio coil 2': ratios[:,1], 
+#                         'ratio coil 3': ratios[:,2]})
+
+#     output_file_name = 'configs_wholeSphere_length{}.csv'.format(len(ratios))
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
 

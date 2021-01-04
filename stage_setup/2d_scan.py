@@ -42,7 +42,7 @@ grid_number = 20
 
 # %%
 # initialize actuators
-init_pos = np.array([3, 13, 8.3])
+init_pos = np.array([4.8, 2.5, 8.3])
 # ports for Magnebotix PC
 COM_ports = ['COM4', 'COM5', 'COM6']
 CC_X, CC_Y, CC_Z = setup(init_pos, COM_ports=COM_ports)
@@ -68,7 +68,7 @@ limits_y = [1.2, 3.8]
 desCurrents = [0] * 8
 # set currents in coils
 openConnection()
-currentConfig = [1,1,1]
+currentConfig = [1,0,0]
 # integer value, mA
 currentStrength = 2000
 for i in range(len(currentConfig)):

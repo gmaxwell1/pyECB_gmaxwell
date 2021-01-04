@@ -24,7 +24,7 @@ from scipy.optimize import curve_fit
 from scipy.spatial.transform import Rotation as R
 
 from modules.general_functions import angle_wrt_z, inplane_angle_wrt_x
-from modules.interpolation_tools import find_start_of_saturation
+# from modules.interpolation_tools import find_start_of_saturation
 from modules.general_functions import estimate_RMS_error
 
 
