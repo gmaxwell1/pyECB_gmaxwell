@@ -29,6 +29,7 @@ repeatability_evaluation.py
 fitting_parameters/
 predictions_on_test_set/
 temperature_drift.py
+compare_regression_models.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -41,6 +41,7 @@ k = 3
 print(binom(3+k-1, k))
 
 
+
 #%%
 def fit_data(xdata, ydata, degree):
     """ 
@@ -465,7 +466,7 @@ A = read_fitting_parameters(filepath_fit_params)
 print(A)
 
 # read in test set
-filename_testset = 'vectors_rng1414_0-70mT_size5000'
+filename_testset = 'walk_on_grid_max10_PointsPerDim7'
 filepath_testset = f'../predictions_on_test_set/{filename_testset}.csv'
 test_vectors = read_test_set(filepath_testset)
 print(test_vectors.shape)
@@ -535,7 +536,7 @@ plt.show()
 
 # read in measurement results
 data_directory = '../predictions_on_test_set/measure_predictions'
-data_filename = '20_12_30_23-57-04_measure_predictions_degree3_B2I_vectors_rng2222_0-50mT_size2000_demagnet1A.csv'
+data_filename = '21_01_05_03-45-27_measure_predictions_degree3_B2I_vectors_rng2222_0-50mT_size2000_demagnet5A.csv'
 data_filepath = os.path.join(data_directory, data_filename)
 
 I, B_measured, B_measured_std, expected = extract_raw_data_from_file(data_filepath)
@@ -554,23 +555,51 @@ print('\nperformance of currently implemented model')
 evaluate_performance(B_measured, expected)
 
 # %%
-# plot angular errors as histogram
+# plot angular errors as histogram for all data and for the data >= 30 mT
 dot = np.array([np.dot(B_measured[i], test_vectors[i]) for i in range(len(B_measured))])
 norms_measured = np.linalg.norm(B_measured, axis=1)
 norms_test = np.linalg.norm(test_vectors, axis=1)
 alphas = np.degrees(np.arccos(dot / (norms_measured * norms_test)))
 
-n, bins, patches = plt.hist(alphas, 50)
-plt.xlabel('Angular Error, $\\alpha$ [°]')
-plt.ylabel('Counts')
-plt.text(1.5, 12.5, '$\\mu$ = {:.2f}°,\n'.format(np.mean(alphas))+ 
-                '$\\sigma$ = {:.2f}°,\n'.format(np.std(alphas))+ 
-                'min = {:.2f}°,\n'.format(np.min(alphas))+ 
-                'max = {:.2f}°,\n'.format(np.max(alphas))+ 
-                'median = {:.2f}°,\n'.format(np.median(alphas)))
+# generate histogram for all data
+fig, ax = plt.subplots()
+n, bins, patches = ax.hist(alphas, 50)
+ax.set_xlabel('Angular Error, $\\alpha$ [°]')
+ax.set_ylabel('Counts')
+ax.text(0.7, 0.55, f'$\\mu$ = {np.mean(alphas):.2f}°,\n'+ 
+                f'$\\sigma$ = {np.std(alphas):.2f}°,\n'+ 
+                f'median = {np.median(alphas):.2f}°\n'+
+                f'RMS $\\alpha$ = {estimate_RMS_error(alphas, np.zeros_like(alphas)):.2f}°\n'+
+                f'min = {np.min(alphas):.2f}°,\n'+ 
+                f'max = {np.max(alphas):.2f}°,\n', transform=ax.transAxes)
+
+image_file_name = f'{os.path.splitext(data_filename)[0]}_performance_histogram.png'
+image_path = os.path.join(data_directory, image_file_name)
+fig.savefig(image_path, dpi=300)
 plt.show()
 
 
+# only consider data >= 30 mT
+mask = norms_measured >= 30
+
+fig, ax = plt.subplots()
+n, bins, patches = ax.hist(alphas[mask], 50)
+ax.set_xlabel('Angular Error for |B| $\\geq$ 30 mT, $\\alpha$ [°]')
+ax.set_ylabel('Counts')
+ax.text(0.7, 0.55, f'$\\mu$ = {np.mean(alphas[mask]):.2f}°,\n'+ 
+                f'$\\sigma$ = {np.std(alphas[mask]):.2f}°,\n'+ 
+                f'median = {np.median(alphas[mask]):.2f}°\n'+
+                f'RMS $\\alpha$ = {estimate_RMS_error(alphas[mask], np.zeros_like(alphas[mask])):.2f}°\n'+
+                f'min = {np.min(alphas[mask]):.2f}°,\n'+ 
+                f'max = {np.max(alphas[mask]):.2f}°,\n', transform=ax.transAxes)
+
+image_file_name = f'{os.path.splitext(data_filename)[0]}_performance_histogram_30-50mT.png'
+image_path = os.path.join(data_directory, image_file_name)
+fig.savefig(image_path, dpi=300)
+plt.show()
+
+#%%
+print(np.linalg.norm([20,20,20]))
 #%%
 # plot angular error vs polar angle, azimuthal angle and field magnitude
 fig, axs = plt.subplots(3, figsize = (6,8))
@@ -587,6 +616,8 @@ axs[2].plot(np.linalg.norm(B_measured, axis=1), alphas, marker='.', linestyle=''
 axs[2].set_xlabel('measured B field, $B_{meas}$ [mT]')
 axs[2].set_ylabel('Angular Error, $\\alpha$ [°]')
 
+[axs[i].set_ylim(bottom=0) for i in range(len(axs))]
+
 plt.tight_layout()
 
 image_file_name = f'{os.path.splitext(data_filename)[0]}_performance.png'
@@ -596,17 +627,121 @@ plt.show()
 
 
 
+#  ---------------------------------------------------------------------------------------
+# create plots for sweeps along main axes
 #%%
-"""
-Measurements:
+# read in data 
+data_directory = '../predictions_on_test_set/measure_predictions'
+data_filename = '21_01_04_13-04-21_measure_predictions_degree3_B2I_sweep_z_axis_50mT_demagnet5A.csv'
+data_filepath = os.path.join(data_directory, data_filename)
 
-done - another z-rotation, 50mT, with demagnetization, but now with [5,5,5] A as start values
-done - test set with 1000 samples with demagnetization starting at 1 A
-done - test set with 1000 samples without demagnetization
-done - test set with 1000 samples with demagnetization starting at 5 A
+_, B_measured, B_measured_std, expected = extract_raw_data_from_file(data_filepath)
 
-done - test set with 200 samples with demagnetization starting at 5 A, predictions based on measurement with previous test set
-done - test set with 200 samples with demagnetization starting at 5 A, predictions based on fits of config_files folder
+sweep_axis = 2
+print('sweep along {} axis'.format(sweep_axis))
 
-"""
+# define which components should be plotted - only plot combinations containing sweep_axis!
+components = np.array([[sweep_axis, (sweep_axis+1) % 3], [sweep_axis, (sweep_axis+2) % 3]])
 
+# generate a plot of both rotations
+fig, axs = plt.subplots(ncols=2)
+fig.set_size_inches(8, 3)
+
+for i in range(2):
+    # plot components orthogonal to rotation axis 
+    # axs[i].plot(expected[:, components[i, 0]], expected[:, components[i, 1]], 
+    #                         linestyle='', marker='.', label = 'linear model')
+
+    axs[i].errorbar(B_measured[:, components[i, 0]], B_measured[:, components[i, 1]], 
+                            xerr = B_measured_std[:, components[i, 0]], 
+                            yerr = B_measured_std[:, components[i, 1]],
+                            linestyle='', marker='.', capsize = 2, 
+                            label = 'cubic model')
+
+    # set axis labels
+    labels_components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
+    axs[i].set_xlabel(labels_components[components[i, 0]])
+    axs[i].set_ylabel(labels_components[components[i, 1]])
+
+    # set aspect ratio to one, such that a circle actually looks round 
+    # axs[i].legend()
+
+# equalize the ranges
+xmin = np.min([axs[i].get_xlim()[0] for i in range(len(axs))])
+xmax = np.max([axs[i].get_xlim()[1] for i in range(len(axs))])
+ymin = np.min([axs[i].get_ylim()[0] for i in range(len(axs))])
+ymax = np.max([axs[i].get_ylim()[1] for i in range(len(axs))])
+for i in range(len(axs)):
+    axs[i].set_xlim(xmin, xmax)
+    axs[i].set_ylim(ymin, ymax)
+
+plt.tight_layout()
+
+sweep_ax_label = ['x', 'y', 'z'][sweep_axis]
+image_file_name = f'along_mainAxis_{sweep_ax_label}.png'
+image_path = os.path.join(data_directory, image_file_name)
+fig.savefig(image_path, dpi=300)
+
+plt.show()
+
+# %%
+# evaluate performance along main axes
+num = 100
+max_field = 50
+test_vectors = np.zeros((num, 3))
+test_vectors[:, sweep_axis] = np.linspace(-max_field, max_field, num)
+
+print('\nperformance of currently implemented model')
+evaluate_performance(B_measured, test_vectors)
+
+
+# estimate angular errors
+dot = np.array([np.dot(B_measured[i], test_vectors[i]) for i in range(len(B_measured))])
+norms_measured = np.linalg.norm(B_measured, axis=1)
+norms_test = np.linalg.norm(test_vectors, axis=1)
+alphas = np.degrees(np.arccos(dot / (norms_measured * norms_test)))
+
+# plot angular errors versus desired field strength along main axis 
+fig, ax = plt.subplots()
+ax.plot(test_vectors[:, sweep_axis], alphas, linestyle='', marker='.')
+
+
+labels_components = ['$B_x$ [mT]', '$B_y$ [mT]', '$B_z$ [mT]']
+ax.set_xlabel(f'desired field {labels_components[sweep_axis]}')
+ax.set_ylabel('Angular Error, $\\alpha$ [°]')
+ax.set_ylim(bottom=0, top=17)
+
+# add text containing statistics
+plt.text(0.05, 0.6, '$\\langle \\alpha \\rangle$ = {:.2f}°,\n'.format(np.mean(alphas))+ 
+                '$\\sigma (\\alpha)$ = {:.2f}°,\n'.format(np.std(alphas))+ 
+                'min ($\\alpha$) = {:.2f}°,\n'.format(np.min(alphas))+ 
+                'max ($\\alpha$) = {:.2f}°,\n'.format(np.max(alphas))+ 
+                'median ($\\alpha$) = {:.2f}°,\n'.format(np.median(alphas)), transform=ax.transAxes)
+
+plt.tight_layout()
+
+sweep_ax_label = ['x', 'y', 'z'][sweep_axis]
+image_file_name = f'along_mainAxis_{sweep_ax_label}_angular_error.png'
+image_path = os.path.join(data_directory, image_file_name)
+fig.savefig(image_path, dpi=300)
+
+plt.show()
+
+
+
+
+# %%
+
+import pickle
+
+filename = './fitting_parameters/new_model.sav'
+test_vectors = np.array([[0,0,50]])
+
+# load the model from disk
+[loaded_model, loaded_poly] = pickle.load(open(filename, 'rb'))
+
+# preprocess test vectors, st. they have correct shape for model
+test_vectors_ = loaded_poly.fit_transform(test_vectors) 
+
+# estimate prediction
+predictions_new_sweep = model.predict(test_vectors_)
