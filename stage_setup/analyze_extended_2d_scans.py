@@ -39,14 +39,6 @@ finally:
 directory = r'data_sets\2d_scans_different_fields\set6'
 # directory = r'data_sets\2d_scans_different_fields\set3'
 
-# filenames = ['20_11_23_18-32-01_2d_scan_(1_0_0).csv',   # (100)   
-#             '20_11_23_18-43-38_2d_scan_(0_1_0).csv',    # (010) 
-#             '20_11_24_08-35-21_2d_scan_(0_0_1).csv',    # (001)   
-#             '20_11_24_08-47-10_2d_scan_(1_1_1).csv']    # (111)  
-# filenames = ['20_11_23_17-10-07_2d_scan_(1_0_0).csv',   # (100)   
-#             '20_11_23_17-37-25_2d_scan_(0_1_0).csv',    # (010) 
-#             '20_11_23_17-56-46_2d_scan_(0_0_1).csv',    # (001)   
-#             '20_11_23_18-16-10_2d_scan_(1_1_1).csv']    # (111)  
 filenames = ['21_01_06_11-10-01_2d_scan_(1_0_0).csv',   # (100)   
             '21_01_06_11-54-45_2d_scan_(0_1_0).csv',    # (010) 
             '21_01_06_12-34-26_2d_scan_(0_0_1).csv',    # (001)   

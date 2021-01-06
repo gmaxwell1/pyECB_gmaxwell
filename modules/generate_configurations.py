@@ -377,8 +377,6 @@ def plot_vectors_simple(vectors, magnitudes = 1):
 
     return fig, ax
 
-
-#%%
 def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
     """
     Generate 3d rectangular grid with points_per_dim vertices per dimension, which 
@@ -435,24 +433,82 @@ def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
     
     return grid_pts
 
+
+#%%
+# Part 2 -----------------------------------------------------------
+# generate configurations based on equidistant current ratios 
+
+# if __name__ == '__main__':
+#     # set the number of values between (incl) -1 and 1 that should be considered 
+#     num_vals = 3
+
+#     # for num_vals in range(2,10):
+#         # generate the set
+#     unique_combinations = generate_unique_combinations(num_vals, remove_negative=False)
+
+#         # save the combinations to csv file
+#     directory = r'.\config_files'
+
+#     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
+#                         'ratio coil 2': unique_combinations[:,1], 
+#                         'ratio coil 3': unique_combinations[:,2]})
+
+#     output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
+
+# # %%
+# Part 3 -----------------------------------------------------------
+# generate configurations based on (approximately) equidistant 
+# magnetic fields in upper half plane
+
+# if __name__ == '__main__':
+#     # generate configurations
+#     n_vectors = 5000
+#     magnitude_range = [0,70]
+#     seed = 1414
+#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
+
+#     # plot all considered vectors on a sphere 
+#     plot_vectors(vectors,50)
+    
+#     plt.show()
+
+#     thetas_deg = thetas * 180/np.pi
+#     phis_deg = phis * 180/np.pi
+#     # save the combinations to csv file
+#     directory = '../config_files/RNG_test_vectors'
+        
+#     df = pd.DataFrame({ 'B_x': vectors[:,0], 
+#                         'B_y': vectors[:,1], 
+#                         'B_z': vectors[:,2],
+#                         'B_mag': magnitudes,
+#                         'theta (deg)': thetas_deg,
+#                         'phi (deg)': phis_deg})
+
+#     output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
+
+
 # %%
 if __name__ == '__main__':
     
-#     # generate grid points
-#     # max_value = 2
-#     # points_per_dim = 51
-#     # grid_pts = generate_grid(max_value, points_per_dim, threshold_magnitude=np.inf)
+    # generate grid points
+    max_value = 10
+    points_per_dim = 7
+    grid_pts = generate_grid(max_value, points_per_dim, threshold_magnitude=np.inf)
 
-#     # directory = './config_files/grid/'
-#     # output_file_name = f'walk_on_grid_max{max_value}_PointsPerDim{points_per_dim}.csv'     
-#     # ensure_dir_exists(directory)
-#     # data_filepath = os.path.join(directory, output_file_name)
+    directory = '../config_files/grid/'
+    output_file_name = f'walk_on_grid_max{max_value}_PointsPerDim{points_per_dim}.csv'     
+    ensure_dir_exists(directory)
+    data_filepath = os.path.join(directory, output_file_name)
     
-#     # df = pd.DataFrame({ 'x': grid_pts[:, 0], 
-#     #                     'y': grid_pts[:, 1], 
-#     #                     'z': grid_pts[:, 2]})
+    df = pd.DataFrame({ 'x': grid_pts[:, 0], 
+                        'y': grid_pts[:, 1], 
+                        'z': grid_pts[:, 2]})
         
-#     # df.to_csv(data_filepath, index=False, header=True)
+    df.to_csv(data_filepath, index=False, header=True)
     
     #field magnitudes
     array = [1,3,5,7,10,15,20,25,30,35,40,45,50]
@@ -493,57 +549,3 @@ if __name__ == '__main__':
     output_file_name = f'expvectors_wholeSphere_magnitude_1-50mT_size{len(vectors_all)}.csv'
     data_filepath = os.path.join(directory, output_file_name)
     df.to_csv(data_filepath, index=False, header=True)
-
-#%%
-# Part 2 -----------------------------------------------------------
-# generate configurations based on equidistant current ratios 
-
-#     # set the number of values between (incl) -1 and 1 that should be considered 
-#     num_vals = 3
-
-#     # for num_vals in range(2,10):
-#         # generate the set
-#     unique_combinations = generate_unique_combinations(num_vals, remove_negative=False)
-
-#         # save the combinations to csv file
-#     directory = r'.\config_files'
-
-#     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
-#                         'ratio coil 2': unique_combinations[:,1], 
-#                         'ratio coil 3': unique_combinations[:,2]})
-
-#     output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
-#     data_filepath = os.path.join(directory, output_file_name)
-#     df.to_csv(data_filepath, index=False, header=True)
-
-# # %%
-# Part 3 -----------------------------------------------------------
-# generate configurations based on (approximately) equidistant 
-# magnetic fields in upper half plane
-
-#     # generate configurations
-#     n_vectors = 5000
-#     magnitude_range = [0,70]
-#     seed = 1414
-#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
-
-#     # plot all considered vectors on a sphere 
-#     plot_vectors(vectors,50)
-    
-#     plt.show()
-
-#     thetas_deg = thetas * 180/np.pi
-#     phis_deg = phis * 180/np.pi
-#     # save the combinations to csv file
-#     directory = '../config_files/RNG_test_vectors'
-        
-#     df = pd.DataFrame({ 'B_x': vectors[:,0], 
-#                         'B_y': vectors[:,1], 
-#                         'B_z': vectors[:,2],
-#                         'B_mag': magnitudes,
-#                         'theta (deg)': thetas_deg,
-#                         'phi (deg)': phis_deg})
-
-#     output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
-#     data_filepath = os.path.join(directory, output_file_name)
-#     df.to_csv(data_filepath, index=False, header=True)
