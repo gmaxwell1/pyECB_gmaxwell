@@ -5,11 +5,14 @@ This script is meant to be used as an interface with the ECB 820. The user can c
 methods to set currents on the different channels ('coils' in Pantec's terminology) and thus communicate
 with the ECB. The standard interface for now is the command line, but the ultimate goal is to integrate this into
 QS3.
+Warning: the very interactive but simple nature of this code means there are lots of input prompts to replace a real UI.
+        I apologize to any programmers in advance.
 
 Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
 
 Date: 09.10.2020
+latest update: 06.01.2021
 """
 ########## Standard library imports ##########
 import numpy as np
@@ -134,12 +137,20 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             print('expected numerical value, defaulting to 200')
             steps = 200
 
-        node = MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=1)# as node:
+        # with MetrolabTHM1176Node(block_size=30, range='0.1 T', period=0.01, average=1) as node:
+        node = MetrolabTHM1176Node(block_size=30, range='0.1 T', period=0.01, average=1)
+
         gotoPosition()
         inp = input('Do grid sweep function? (y/n) ')
         # doing gridSweep
         if inp == 'y':
-            gridSweep(node, inpFile, datadir=datadir, current_val=start_val, demagnetize=True, today=False)
+            inp = input('Use current config or B vector file as input? (i/b) ')
+            if inp == 'b':
+                use_B_vectors_as_input = True
+            else:
+                use_B_vectors_as_input = False
+
+            gridSweep(node, inpFile, datadir=datadir, current_val=start_val, BField=use_B_vectors_as_input, demagnetize=True)
         else:
             with open(inpFile, 'r') as f:
                 contents = csv.reader(f)
@@ -406,82 +417,6 @@ def callGenerateVectorField():
     #             calibration(node, calibrate=True)
 
     generateMagneticField(magnitude, theta, phi, subdir=subdir)
-
-
-def callFunctionGen():
-    """
-    Setup function to call the utility function 'switchConfigsAndMeasure', see 'utility_functions.py'. Manages necessary inputs.
-    """
-
-    function = input('Function to generate (sqr or sin): ')
-
-    configs = []
-    char = ''
-    while char != 'x':
-        inp1 = input('configuration 1\nChannel 1: ')
-        inp2 = input('Channel 2: ')
-        inp3 = input('Channel 3: ')
-        try:
-            a1 = float(inp1)
-            b1 = float(inp2)
-            c1 = float(inp3)
-            configs.append(np.array([a1, b1, c1]))
-        except:
-            print('expected numerical value, defaulting to (0,0,1)')
-            configs.append(np.array([0, 0, 1]))
-
-        if function == 'sqr':
-            char = input('another config (enter x to end)')
-        else:
-            char = 'x'
-
-    inp7 = input('current level (in mA): ')
-    try:
-        amplitude = int(inp7)
-    except:
-        print('expected numerical value(s), defaulting to 0')
-        amplitude = 1000
-
-    if function == 'sqr':
-        inp8 = input('how many times to repeat: ')
-    else:
-        inp8 = input('Frequency: ')
-    try:
-        rounds = int(inp8)
-    except:
-        print('expected numerical value(s), defaulting to 10')
-        rounds = 10
-
-    if function == 'sin':
-        inp1 = input('Finesse value (divisions per second): ')
-        try:
-            finesse = int(inp1)
-        except:
-            print('expected numerical value(s), defaulting to 10')
-            finesse = 10
-    else:
-        finesse = 0
-
-    inp2 = input('Duration? ')
-    try:
-        duration = float(inp2)
-    except:
-        print('expected numerical value(s), defaulting to 10*pi')
-        duration = 10*np.pi
-
-    measure = input('Measure (y for yes): ')
-    if measure == 'y':
-        measure = True
-    else:
-        measure = False
-    if function == 'sin':
-        measDur = 1.1*duration
-    else:
-        measDur = rounds * duration
-
-    # functionGenerator(config1, config2, ampl=amplitude, function='sqr', duration=30, frequency=rounds, meas=True, measDur=2.05*rounds*30)
-    functionGenerator(configs, ampl=amplitude, function=function, frequency=rounds,
-                      finesse=finesse, duration=duration, meas=measure, measDur=measDur)
 
 
 def feedbackMode():

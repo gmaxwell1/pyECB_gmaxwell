@@ -15,8 +15,11 @@ for the three coils and the current ratios are estimated at the end.
 
 Author: Nicholas Meinhardt (QZabre)
         nmeinhar@student.ethz.ch
+Edited by Maxwell Guerne
+        gmaxwell at ethz.ch
         
 Date: 27.10.2020
+latest update: 06.01.2021
 """
 
 #%%
@@ -39,10 +42,6 @@ finally:
     from modules.general_functions import ensure_dir_exists
     from modules.analysis_tools import get_phi, get_theta
     from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
-<<<<<<< HEAD
-=======
-
->>>>>>> a81a7624081bbf5abd530e7e1ca1c46f4d45ae23
 
 #%%
 # Part 1 --------------------------------------------------------
@@ -160,7 +159,7 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
         latitudes[-1] -= elevation_factor_equator * (latitudes[-1] - latitudes[-2])
 
     # prepare lists to collect field vectors and current ratios
-    ratios = []
+    currents = []
     vectors = []
     thetas = []
     phis = []
@@ -184,15 +183,16 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
 
             # collect the ratios of the three currents, where at least one value has absolute value 1
             # and the current directions remain the same 
-            i_max = np.argmax(np.abs(I_coils))
-            ratios.append(I_coils / I_coils[i_max] * np.sign(I_coils[i_max]))
+            # i_max = np.argmax(np.abs(I_coils)) 
+            # / I_coils[i_max] * np.sign(I_coils[i_max])
+            currents.append(I_coils)
             vectors.append(B_vector)
 
             # collect angular configuration
             thetas.append(theta)
             phis.append(phi)
 
-    return np.array(ratios), np.array(vectors), np.array(thetas), np.array(phis)
+    return np.array(currents), np.array(vectors), np.array(thetas), np.array(phis)
 
 def generate_test_points_whole_sphere(n_sectors, magnitude):
     """
@@ -378,65 +378,6 @@ def plot_vectors_simple(vectors, magnitudes = 1):
     return fig, ax
 
 
-
-#%%
-# Part 2 -----------------------------------------------------------
-# generate configurations based on equidistant current ratios 
-
-# if __name__ == '__main__':
-#     # set the number of values between (incl) -1 and 1 that should be considered 
-#     num_vals = 3
-
-#     # for num_vals in range(2,10):
-#         # generate the set
-#     unique_combinations = generate_unique_combinations(num_vals, remove_negative=False)
-
-#         # save the combinations to csv file
-#     directory = r'.\config_files'
-
-#     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
-#                         'ratio coil 2': unique_combinations[:,1], 
-#                         'ratio coil 3': unique_combinations[:,2]})
-
-#     output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
-#     data_filepath = os.path.join(directory, output_file_name)
-#     df.to_csv(data_filepath, index=False, header=True)
-
-# # %%
-# Part 3 -----------------------------------------------------------
-# generate configurations based on (approximately) equidistant 
-# magnetic fields in upper half plane
-
-if __name__ == '__main__':
-    # generate configurations
-    n_vectors = 5000
-    magnitude_range = [0,70]
-    seed = 1414
-    vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
-
-    # plot all considered vectors on a sphere 
-    plot_vectors(vectors,50)
-    
-    plt.show()
-
-    thetas_deg = thetas * 180/np.pi
-    phis_deg = phis * 180/np.pi
-    # save the combinations to csv file
-    directory = '../config_files/RNG_test_vectors'
-        
-    df = pd.DataFrame({ 'B_x': vectors[:,0], 
-                        'B_y': vectors[:,1], 
-                        'B_z': vectors[:,2],
-                        'B_mag': magnitudes,
-                        'theta (deg)': thetas_deg,
-                        'phi (deg)': phis_deg})
-
-    output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
-    data_filepath = os.path.join(directory, output_file_name)
-    df.to_csv(data_filepath, index=False, header=True)
-
-
-
 #%%
 def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
     """
@@ -495,7 +436,7 @@ def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
     return grid_pts
 
 # %%
-# if __name__ == '__main__':
+if __name__ == '__main__':
     
 #     # generate grid points
 #     # max_value = 2
@@ -513,20 +454,96 @@ def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
         
 #     # df.to_csv(data_filepath, index=False, header=True)
     
-#     ratios,vectors = generate_test_points_whole_sphere(24, 50)
+    #field magnitudes
+    array = [1,3,5,7,10,15,20,25,30,35,40,45,50]
+    n_sectors = [20,20,20,16,16,16,16,16,16,16,16,16,16]
     
-#     plot_vectors(vectors)
-#     plt.show()
-#     # save the combinations to csv files
+    ratios_all = np.ndarray((1,3))
+    vectors_all = np.ndarray((1,3))
+
+    # concatenate all generated vectors/configurations
+    for i, el in enumerate(array):
+        magnitude = el
+        ratios, vectors = generate_test_points_whole_sphere(n_sectors[i], magnitude)
+        if i == 0:
+            ratios_all = ratios
+            vectors_all = vectors
+        else:
+            ratios_all = np.append(ratios_all, ratios, axis=0)
+            vectors_all = np.append(vectors_all, vectors, axis=0)
+        plot_vectors(vectors)
+        plt.show()
+    # save the combinations to csv files
+    directory = r'.\config_files\uniform_vectors_various_magnitudes'
+    
+
+
+    df = pd.DataFrame({ 'ratio coil 1': ratios_all[:,0], 
+                        'ratio coil 2': ratios_all[:,1], 
+                        'ratio coil 3': ratios_all[:,2]})
+
+    output_file_name = f'configs_wholeSphere_magnitude_1-50mT_size{len(ratios_all)}.csv'
+    data_filepath = os.path.join(directory, output_file_name)
+    df.to_csv(data_filepath, index=False, header=True)
+    
+    df = pd.DataFrame({ 'field component x': vectors_all[:,0], 
+                        'field component y': vectors_all[:,1], 
+                        'field component z': vectors_all[:,2]})
+
+    output_file_name = f'expvectors_wholeSphere_magnitude_1-50mT_size{len(vectors_all)}.csv'
+    data_filepath = os.path.join(directory, output_file_name)
+    df.to_csv(data_filepath, index=False, header=True)
+
+#%%
+# Part 2 -----------------------------------------------------------
+# generate configurations based on equidistant current ratios 
+
+#     # set the number of values between (incl) -1 and 1 that should be considered 
+#     num_vals = 3
+
+#     # for num_vals in range(2,10):
+#         # generate the set
+#     unique_combinations = generate_unique_combinations(num_vals, remove_negative=False)
+
+#         # save the combinations to csv file
 #     directory = r'.\config_files'
-    
 
+#     df = pd.DataFrame({ 'ratio coil 1': unique_combinations[:,0], 
+#                         'ratio coil 2': unique_combinations[:,1], 
+#                         'ratio coil 3': unique_combinations[:,2]})
 
-#     df = pd.DataFrame({ 'ratio coil 1': ratios[:,0], 
-#                         'ratio coil 2': ratios[:,1], 
-#                         'ratio coil 3': ratios[:,2]})
-
-#     output_file_name = 'configs_wholeSphere_length{}.csv'.format(len(ratios))
+#     output_file_name = 'configs_numvals{}_length{}.csv'.format(num_vals, len(unique_combinations))
 #     data_filepath = os.path.join(directory, output_file_name)
 #     df.to_csv(data_filepath, index=False, header=True)
 
+# # %%
+# Part 3 -----------------------------------------------------------
+# generate configurations based on (approximately) equidistant 
+# magnetic fields in upper half plane
+
+#     # generate configurations
+#     n_vectors = 5000
+#     magnitude_range = [0,70]
+#     seed = 1414
+#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
+
+#     # plot all considered vectors on a sphere 
+#     plot_vectors(vectors,50)
+    
+#     plt.show()
+
+#     thetas_deg = thetas * 180/np.pi
+#     phis_deg = phis * 180/np.pi
+#     # save the combinations to csv file
+#     directory = '../config_files/RNG_test_vectors'
+        
+#     df = pd.DataFrame({ 'B_x': vectors[:,0], 
+#                         'B_y': vectors[:,1], 
+#                         'B_z': vectors[:,2],
+#                         'B_mag': magnitudes,
+#                         'theta (deg)': thetas_deg,
+#                         'phi (deg)': phis_deg})
+
+#     output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
