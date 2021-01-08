@@ -9,6 +9,7 @@ Author: Nicholas Meinhardt, Maxwell Guerne-Kieferndorf (QZabre)
         nmeinhar@student.ethz.ch, gmaxwell@student.ethz.ch
 
 Date: 20.10.2020
+latest update: 06.01.2021
 """
 ########## Standard library imports ##########
 import numpy as np
@@ -67,7 +68,7 @@ def newMeasurementFolder(defaultDataDir='data_sets', sub_dir_base='z_field_meas'
     return sub_dirname, dataDir
 
 
-def gotoPosition(meas_height=8.3, meas_y=1.46, meas_x=4.28):
+def gotoPosition(meas_height=8.1, meas_y=6, meas_x=4.749):
     """
     move the stage into position to measure with the sensor.
     Note: Be sure that the position parameters here correspond to the actual setup
@@ -193,7 +194,7 @@ def timeResolvedMeasurement(block_size=20, period=0.01, average=5, duration=10):
         (x, y and z components of B field, times of measurements, temperature values 
         are dimensionless values between 0 and 64k)
     """
-    with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT') as node:
+    with MetrolabTHM1176Node(period=period, block_size=block_size, range='0.1 T', average=average, unit='MT') as node:
         # gotoPosition(node, meas_height=1.5)
     # node = MetrolabTHM1176Node(period=period, block_size=block_size, range='0.3 T', average=average, unit='MT')
         thread = threading.Thread(target=node.start_acquisition)
@@ -306,7 +307,7 @@ if __name__ == '__main__':
     # elif coil == '3':
     #     current_config = np.array([0,0,1])
         
-    # node = MetrolabTHM1176Node(**params)# as node:
+    # node = MetrolabTHM1176Node(**params) as node:
     # char = 0
     
     # while char != 'q':

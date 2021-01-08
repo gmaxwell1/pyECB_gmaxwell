@@ -319,9 +319,9 @@ def demagnetizeCoils(current_config=np.array([1000,1000,1000])):
     
     # print(ampl)
     tspan = np.linspace(0, 12*np.pi, 100)
-    func1 = 3 * current_config[0] * np.cos(tspan) * np.exp(-0.2*tspan)
-    func2 = 3 * current_config[1] * np.cos(tspan) * np.exp(-0.2*tspan)
-    func3 = 3 * current_config[2] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func1 = current_config[0] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func2 = current_config[1] * np.cos(tspan) * np.exp(-0.2*tspan)
+    func3 = current_config[2] * np.cos(tspan) * np.exp(-0.2*tspan)
 
     # print(func1)
     desCurrents = [0, 0, 0, 0, 0, 0, 0, 0]

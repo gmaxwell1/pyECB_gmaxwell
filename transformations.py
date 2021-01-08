@@ -1,7 +1,8 @@
 """ 
 filename: transfomations.py
 
-The following helper functions provide the calculation of magnetic fields and associated currents
+The following helper functions provide the calculation of magnetic fields and associated currents,
+using a cubic model for the relation between the current and magnetic field (and vice versa).
 
 Author: Moritz Reinders
         moritzr1@gmail.com
@@ -10,6 +11,7 @@ Edited by: Maxwell Guerne-Kieferndorf (QZabre)
            gmaxwell@student.ethz.ch
 
 Date: 09.10.2020
+latest update: 06.01.2021
 """
 
 ########## Standard library imports ##########
@@ -18,21 +20,94 @@ import numpy as np
 import pandas as pd
 
 # Lookup table for current/magnetic field values
-LookupTable = {}
-filepathLUT = r'data_sets\linearization_matrices\20_11_16_180159-86LUT.csv'
-
-def buildLUT(path=filepathLUT):
-    global LookupTable
+# LookupTable = {}
+# filepathLUT = r'data_sets\linearization_matrices\20_11_16_180159-86LUT.csv'
+# def buildLUT(path=filepathLUT):
+#     global LookupTable
     
-    dataLUT = pd.read_csv(path).to_numpy()
-    directionsB = dataLUT[:,0:3]
-    currentConfigs = dataLUT[:,3:6]
+#     dataLUT = pd.read_csv(path).to_numpy()
+#     directionsB = dataLUT[:,0:3]
+#     currentConfigs = dataLUT[:,3:6]
     
-    for i in range(len(directionsB)):
-        unit = np.around(directionsB[i]/20, 3)
-        unitCurrents = np.around(currentConfigs[i]/20, 3)
+#     for i in range(len(directionsB)):
+#         unit = np.around(directionsB[i]/20, 3)
+#         unitCurrents = np.around(currentConfigs[i]/20, 3)
         
-        LookupTable[f'direction {i+1}'] = (unit.tolist(), unitCurrents.tolist())
+#         LookupTable[f'direction {i+1}'] = (unit.tolist(), unitCurrents.tolist())
+        
+def read_fitting_parameters(filepath):
+    """
+    Extract fitting paramters A from file.
+    """
+    # extract data and convert to ndarray
+    A = pd.read_csv(filepath).to_numpy().T
+
+    return A
+
+
+def evaluate_fit(A, xdata):
+    """
+    Given the paramters A, estimate the outputs for the provided xdata.
+
+    Args:
+    - A (ndarray of shape (k,3)): fitting paramters for the three components individually. 
+    The size k of the first dimension depends on the fitting degree. Currently implemented are
+    k=3,9,19 only. 
+    - xdata (ndarray of shape (N,3)): Input data for which the corresponding output data should be computed.
+
+    Returns:
+    - fits (ndarray of shape (N,3)): Estimated outputs based on the inputs and fitting paramters
+    """
+    # initialize array for fits
+    fits = np.zeros_like(xdata)
+
+    # linear fit
+    if A.shape[1] == 3:
+        for i in range(len(xdata)):
+            fits[i] = A @ xdata[i]
+
+    elif A.shape[1] == 9:
+        # estimate expected fields based on fits 
+        
+        for i in range(len(xdata)):
+            # linear part
+            fits[i] = A[:,:3] @ xdata[i]
+
+            # quadratic part 
+            fits_quadratic = np.zeros(3)
+            for component in range(3):
+                A_tri = np.zeros((3, 3))
+                A_tri[np.triu_indices(3)] = A[component, 3:]
+                fits_quadratic[component] = xdata[i].reshape(1,3) @ A_tri @ xdata[i].reshape(3,1)
+
+            fits[i] += fits_quadratic
+
+    # cubic fit including cross terms
+    elif A.shape[1] == 19:
+        for i in range(len(xdata)):
+            # linear part
+            fits[i] = A[:,:3] @ xdata[i]
+
+            # quadratic part 
+            fits_quadratic = np.zeros(3)
+            for component in range(3):
+                A_tri = np.zeros((3, 3))
+                A_tri[np.triu_indices(3)] = A[component, 3:9]
+                fits_quadratic[component] = xdata[i].reshape(1,3) @ A_tri @ xdata[i].reshape(3,1)
+            fits[i] += fits_quadratic
+
+            # cubic part 
+            combis = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1], [0, 1, 2], 
+                [0, 2, 2], [1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]])
+            fits_cubic = np.zeros(3)
+            for component in range(3):
+                for k in range(10):
+                    fits_cubic[component] += A[component,k+9] * xdata[i, combis[k,0]] * \
+                                                xdata[i, combis[k,1]] *   \
+                                                xdata[i, combis[k,2]]
+            fits[i] += fits_cubic
+
+    return fits
     
 
 def computeMagneticFieldVector(magnitude, theta, phi):
@@ -70,58 +145,50 @@ def computeCoilCurrents(B_fieldVector, windings=508, resistance=0.5):
     Returns: 
     Vector of 3 current values, as a np.array, units: [mA]
     """
-    global LookupTable
-    buildLUT()
+    # global LookupTable
+    # buildLUT()
 
-    index = None
+    # index = None
     
-    magnitude = np.linalg.norm(B_fieldVector)
-    unitVector = np.around(B_fieldVector / magnitude, 3)
-    print(f'unit vector: ({unitVector[0]:.3f},{unitVector[1]:.3f},{unitVector[2]:.3f})')
+    # magnitude = np.linalg.norm(B_fieldVector)
+    # unitVector = np.around(B_fieldVector / magnitude, 3)
+    # print(f'unit vector: ({unitVector[0]:.3f},{unitVector[1]:.3f},{unitVector[2]:.3f})')
     
-    for key in LookupTable:
-        if LookupTable[key][0] == unitVector.tolist():
-            index = key
+    # for key in LookupTable:
+    #     if LookupTable[key][0] == unitVector.tolist():
+    #         index = key
 
-    if index is not None:
-        currVector = np.rint(magnitude * np.array(LookupTable[index][1]))
+    # if index is not None:
+    #     currVector = np.rint(magnitude * np.array(LookupTable[index][1]))
         
-    else:
-        actMatrix = np.zeros((3, 3))
-        # actMatrix[0, 0] = 0.051343
-        # actMatrix[0, 1] = 0
-        # actMatrix[0, 2] = -0.051343
-        # actMatrix[1, 0] = -0.029643
-        # actMatrix[1, 1] = 0.059286
-        # actMatrix[1, 2] = -0.029643
-        # actMatrix[2, 0] = 0.008820
-        # actMatrix[2, 1] = 0.008820
-        # actMatrix[2, 2] = -0.008820
-        
-        # actMatrix = actMatrix * windings
-
+        # actMatrix = np.zeros((3, 3))
         # These values are still just estimates in the current config. But based on measurements. (06.11.) ~1.5mm above poles
         # dB_x/dI_{1,2,3}
-        actMatrix[0, 0] = 44
-        actMatrix[0, 1] = -14
-        actMatrix[0, 2] = -34
+        # actMatrix[0, 0] = 44
+        # actMatrix[0, 1] = -14
+        # actMatrix[0, 2] = -34
         # dB_y/dI_{1,2,3}
-        actMatrix[1, 0] = -35
-        actMatrix[1, 1] = 50
-        actMatrix[1, 2] = -13
+        # actMatrix[1, 0] = -35
+        # actMatrix[1, 1] = 50
+        # actMatrix[1, 2] = -13
         # dB_z/dI_{1,2,3}
-        actMatrix[2, 0] = 29
-        actMatrix[2, 1] = -5
-        actMatrix[2, 2] = -13 # z-field is positive when I3 is negative and increases when I3 decreases
-
-        
-        actMatrix_inverse = np.linalg.inv(actMatrix)
+        # actMatrix[2, 0] = 29
+        # actMatrix[2, 1] = -5
+        # actMatrix[2, 2] = -13
+        # actMatrix_inverse = np.linalg.inv(actMatrix)
         # print('Inverse actuation matrix: \n', act_matrix_inverse)
-        currVector = actMatrix_inverse.dot(B_fieldVector)  # in amps
+        
+     # read in paramters from previous fits
+    # filename_fit_params = 'config_tests_20_12_19_degree3_B2I'
+    filename_fit_params = 'measure_predictions_degree3_B2I'
+    filepath_fit_params = f'fitting_parameters\\{filename_fit_params}.csv'
+    A = read_fitting_parameters(filepath_fit_params)
+    B_fieldVector_reshape = B_fieldVector.reshape((1,3))
+    currVector = evaluate_fit(A, B_fieldVector_reshape)  # in amps
 
-        currVector = currVector * 1000  # in milliamps
+    currVector = currVector.reshape(3) * 1000  # in milliamps
 
-        currVector = np.rint(currVector)  # round to nearest milliamp
+    currVector = np.rint(currVector)  # round to nearest milliamp
 
     return currVector
 
@@ -229,7 +296,7 @@ if __name__ == '__main__':
     # ------------------------Testing area--------------------------
     #
     # test the transformation functions
-    buildLUT()
+    # buildLUT()
     # print('Lookup table:')
     # for key in LookupTable:
     #     print(f'{key} = {LookupTable[key]}')
@@ -237,5 +304,4 @@ if __name__ == '__main__':
     print(f'{B1 = }')
     currents = computeCoilCurrents(B1)
     print(f'I1 = {currents[0]}, I2 = {currents[1]}, I3 = {currents[2]}')
-    A = rotationMatrix(psi=66,theta=42,alpha=10.1)
-    print(A)
+

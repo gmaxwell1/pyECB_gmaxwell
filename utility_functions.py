@@ -10,6 +10,7 @@ Author: Maxwell Guerne-Kieferndorf (QZabre)
         gmaxwell@student.ethz.ch
 
 Date: 15.12.2020
+latest update: 06.01.2021
 """
 
 ########## Standard library imports ##########
@@ -159,7 +160,7 @@ class timerThread(threading.Thread):
             sleep(0.096)
 
 
-def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5, today=True):
+def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datadir='config_tests', start_val=0, end_val=1, steps=5, demagnetize=False, today=True):
     """
     sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
     and stores the measured values in various arrays
@@ -175,6 +176,8 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
         start_val (int, optional): start ramp at. Defaults to 0.
         end_val (int, optional): end ramp at. Defaults to 1.
         steps (int, optional): number of steps. Defaults to 5.
+        demagnetize (bool, optional): If true, demagnetization protocol will run at the end. default: False
+        today (bool, optional): today's date will be included in the output file name. default: 0
     """
     global currDirectParam
     global desCurrents
@@ -246,7 +249,8 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
         stdd_values[i] = std_data
         expected_fields[i] = B_expected
 
-    demagnetizeCoils(current_direction)
+    if demagnetize:
+        demagnetizeCoils(current_direction)
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -255,22 +259,20 @@ def sweepCurrents(node: MetrolabTHM1176Node, config_list=None, config='z', datad
     
 
 def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2_length4.csv', datadir='config_tests',
-              current_val=0, demagnetize=False, today=True):
+              current_val=0, BField=False, demagnetize=False, today=True):
     """
-    sweeps all currents in the (1,1,1) or (1,0,-1) configuration, meaning we have either a z field or an x-y-plane field, measures magnetic field 
-    and stores the measured values in various arrays
+    sweeps through current configurations in a csv file, depending on the file the configurations need to be multiplied by a current,
+    otherwise current_val can be 1000 (or 1 if values are given in mA) and the actual numbers will be set as current on each coil. Optionally, a file with a list of B field
+    vectors can be read in and currents will be computed with the model that we created (for this case, set current_val to 1).
 
     Args:
-        config_list (numpy array of size 3, optional): current configuration entered by user, Defaults to np.array([0,0,1])
-        config (str, optional): Choose from multiple possible 'configurations' (coil1, coil2, coil3) of currents. Possible values:
-            - 'r': randomly generated configuration.
-            - 'z': (1,1,1)
-            - 'y': (0,1,0)
-        Defaults to 'z'.
-        datadir (str): directory to save measurements in
-        start_val (int, optional): start ramp at. Defaults to 0.
-        end_val (int, optional): end ramp at. Defaults to 1.
-        steps (int, optional): number of steps. Defaults to 5.
+        node (MetrolabTHM1176Node): an instance of the MetrolabTHM1176Node class.
+        inpFile (str): file path to the csv file with a list of current configs/magnetic field vectors to be read in.
+        datadir (str): directory where results will be saved.
+        current_val (int, optional): factor to multiply current configs by. Defaults to 1.
+        BField (bool, optional): if the csv file being read in contains a list of B vectors, this should be true. default: False
+        demagnetize (bool, optional): If true, demagnetization protocol will run after each vector is tested. default: False
+        today (bool, optional): today's date will be included in the output directory name. default: True
     """
     global currDirectParam
     global desCurrents
@@ -288,17 +290,21 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
         contents = csv.reader(f)
         next(contents)
         for i, row in enumerate(contents):
-            demagnetizeCoils(current_config = 5000*np.ones(3))
+            if demagnetize:
+                demagnetizeCoils(current_config = 5000*np.ones(3))
             
             config = np.array(
-                [float(row[0]), float(row[1]), float(row[2])])
+                    [float(row[0]), float(row[1]), float(row[2])])
             
+            if BField:
+                B_vector = np.array(
+                    [float(row[0]), float(row[1]), float(row[2])])
+                config = tr.computeCoilCurrents(B_vector)
+                
             for k in range(3):
                 desCurrents[k] = config[k]*current_val
             all_curr_vals.append(config*current_val)
             
-            #  tentative estimation of resulting B field
-            B_expected = tr.computeMagField(config*current_val, windings)
             setCurrents(desCurrents, currDirectParam)
             # Let the field stabilize
             sleep(0.5)
@@ -308,7 +314,13 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
             mean_data, std_data = measure(node, N=7, average=True)
             mean_values.append(mean_data)
             stdd_values.append(std_data)
-            expected_fields.append(B_expected)
+            # we already know the expected field values
+            if BField:
+                expected_fields.append(B_vector)
+            else:
+                # estimate of resulting B field
+                B_expected = tr.computeMagField(config*current_val, windings)
+                expected_fields.append(B_expected)
  
     # create subdirectory to save measurements
     fileprefix = 'field_meas'
@@ -321,7 +333,7 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
 
 
     if demagnetize:
-        demagnetizeCoils()
+        demagnetizeCoils(all_curr_vals[-1])
     # end of measurements
     disableCurrents()
     # saving data section (prepared for plotting)
@@ -495,8 +507,6 @@ def rampVectorField(node: MetrolabTHM1176Node, theta=90, phi=0, start_mag=20, fi
             mean_values[i+r*steps] = mean_data
             stdd_values[i+r*steps] = std_data
             expected_fields[i+r*steps] = B_expected
-            
-            
 
     if demagnetize:
         demagnetizeCoils()
@@ -560,48 +570,31 @@ def runCurrents(config_list, t=[], direct=b'1', subdir='serious_measurements_for
                         desCurrents[i] = 0
 
                 setCurrents(desCurrents, currDirectParam)
+########################### ONLY WITH METROLAB SENSOR ###########################
+#############################################################################################################################
             elif c1 == 's':
-            #     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
-                test_thread = inputThread(1)
-                test_thread.start()
-                sleep(0.1)
-                while flags[0]:
-            #             newBMeasurement = sensor_to_magnet_coordinates(
-            #                 np.array(node.measureFieldmT()))
-                    newBMeasurement = np.random.randn((3)) * 10
-                    B_magnitude = np.linalg.norm(newBMeasurement)
-                    theta = np.degrees(
-                        np.arccos(newBMeasurement[2]/B_magnitude))
-                    phi = np.degrees(np.arctan2(
-                        newBMeasurement[1], newBMeasurement[0]))
-                    if flags[0]:
-                        print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
-                                f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
-                                f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
-                    sleep(0.5)
+                with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
+                    test_thread = inputThread(1)
+                    test_thread.start()
+                    sleep(0.1)
+                    while flags[0]:
+                        newBMeasurement = sensor_to_magnet_coordinates(
+                            np.array(node.measureFieldmT()))
+                        # newBMeasurement = np.random.randn((3)) * 10
+                        B_magnitude = np.linalg.norm(newBMeasurement)
+                        theta = np.degrees(
+                            np.arccos(newBMeasurement[2]/B_magnitude))
+                        phi = np.degrees(np.arctan2(
+                            newBMeasurement[1], newBMeasurement[0]))
+                        if flags[0]:
+                            print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
+                                    f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
+                                    f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
+                        sleep(0.5)
 
                 threadLock.acquire()
                 flags.insert(0, 1)
                 threadLock.release()
-
-            # elif c1 == 's':
-            #     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
-            #         test_thread = inputThread(1)
-            #         test_thread.start()
-            #         while flags[0]:
-            #             newBMeasurement = sensor_to_magnet_coordinates(
-            #                 np.array(node.measureFieldmT()))
-            #             B_magnitude = np.linalg.norm(newBMeasurement)
-            #             theta = np.degrees(
-            #                 np.arccos(newBMeasurement[2]/B_magnitude))
-            #             phi = np.degrees(np.arctan2(
-            #                 newBMeasurement[1], newBMeasurement[0]))
-            #             if flags[0]:
-            #                 print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
-            #                       f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
-            #                       f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
-
-            #         flags.insert(0, 1)
 
             # elif c1 == 'f':
             #     try:
@@ -726,26 +719,27 @@ def generateMagneticField(vectors, t=[], subdir='serious_measurements_for_LUT', 
                 print(
                     f'Currents on each channel: ({desCurrents[0]}, {desCurrents[1]}, {desCurrents[2]})')
                 setCurrents(desCurrents, currDirectParam)
-
+########################### ONLY WITH METROLAB SENSOR ###########################
+#############################################################################################################################
             elif c1 == 's':
-            #     with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
-                test_thread = inputThread(1)
-                test_thread.start()
-                sleep(0.1)
-                while flags[0]:
-            #             newBMeasurement = sensor_to_magnet_coordinates(
-            #                 np.array(node.measureFieldmT()))
-                    newBMeasurement = np.random.randn((3)) * 10
-                    B_magnitude = np.linalg.norm(newBMeasurement)
-                    theta = np.degrees(
-                        np.arccos(newBMeasurement[2]/B_magnitude))
-                    phi = np.degrees(np.arctan2(
-                        newBMeasurement[1], newBMeasurement[0]))
-                    if flags[0]:
-                        print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
-                                f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
-                                f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
-                    sleep(0.5)
+                with MetrolabTHM1176Node(period=0.05, range='0.3 T', average=20) as node:
+                    test_thread = inputThread(1)
+                    test_thread.start()
+                    sleep(0.1)
+                    while flags[0]:
+                        newBMeasurement = sensor_to_magnet_coordinates(
+                            np.array(node.measureFieldmT()))
+                        # newBMeasurement = np.random.randn((3)) * 10
+                        B_magnitude = np.linalg.norm(newBMeasurement)
+                        theta = np.degrees(
+                            np.arccos(newBMeasurement[2]/B_magnitude))
+                        phi = np.degrees(np.arctan2(
+                            newBMeasurement[1], newBMeasurement[0]))
+                        if flags[0]:
+                            print(f'\rMeasured B field: ({newBMeasurement[0]:.2f}, {newBMeasurement[1]:.2f}, '
+                                    f'{newBMeasurement[2]:.2f}) / In polar coordinates: ({B_magnitude:.2f}, '
+                                    f'{theta:.2f}°, {phi:.2f}°)    ', sep='', end='', flush=True)
+                        sleep(0.5)
 
                 threadLock.acquire()
                 flags.insert(0, 1)
@@ -765,6 +759,8 @@ def generateMagneticField(vectors, t=[], subdir='serious_measurements_for_LUT', 
 
             #     faden.join()
             #     strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
+
+#############################################################################################################################
     else:
         for index, timer in enumerate(t):
             B_Field = vectors[index]
@@ -967,91 +963,14 @@ def callTempFieldMeasurement(demagnetize=True, today=False, demagnet_current=100
             df.to_csv(file_path, index=False, header=True)
     
     
-    
-# def functionGenerator(config_list, ampl=1000, function='sin', frequency=1, finesse=10, duration=10*np.pi, meas=False, measDur=0):
-    # """
-    # Switch quickly between two current configurations and keep track of the measured fields over time. The time in each state is dt.
-
-
-    # Args:
-    #     config_list (list(s)): List of configurations to change between if function is 'sqr'. Otherwise only the first config
-    #                                    will be used.
-    #     ampl (int, optional): amplitude of the current to be applied in any configuration
-    #     function (str, optional): Either periodically changing between constant current ('sqr') or a sinusoidal current. Defaults to 'sin'.
-    #     frequency (int, optional): sin wave frequency if 'sin' is the function chosen, otherwise the number of times to repeat the cycle.
-    #     finesse (int, optional): Only for 'sin'. How many segments each second is divided into. Defaults to 10.
-    #     duration (int, optional): Duration for which currents are on in sinusoidal mode. Time to stay constant in each state when 'sqr'
-    #                               is chosen. Defaults to 10*pi.
-    #     meas (bool, optional): Flag for starting a measurement. Defaults to False.
-    # """
-    # global currDirectParam
-    # global desCurrents
-
-    # if meas:
-    #     params = {'block_size': 30, 'period': 1e-2,
-    #               'duration': measDur, 'averaging': 5}
-    #     faden = myMeasThread(1, **params)
-
-    # enableCurrents()
-
-    # if meas:
-    #     faden.start()
-
-    # if function == 'sin':
-    #     steps = int(duration) * finesse + 1
-    #     tspan = np.linspace(0, duration, steps)
-    #     # dt = round(tspan[1] - tspan[0], 2)
-    #     # channel 1 values
-    #     func1 = ampl * config_list[0][0] * np.sin(2*np.pi*frequency * tspan)
-    #     # channel 2 values
-    #     func2 = ampl * config_list[0][1] * np.sin(2*np.pi*frequency * tspan)
-    #     # channel 3 values
-    #     func3 = ampl * config_list[0][2] * np.sin(2*np.pi*frequency * tspan)
-
-    #     sleep(1/finesse - time() * finesse % 1 / finesse)
-    #     for j in range(len(tspan)):
-    #         desCurrents[0] = int(func1[j])
-    #         desCurrents[1] = int(func2[j])
-    #         desCurrents[2] = int(func3[j])
-
-    #         _setCurrents_(desCurrents, currDirectParam)
-
-    #         sleep(1/finesse - time() * finesse % 1 / finesse)
-
-    # elif function == 'sqr':
-    #     num = len(config_list)
-    #     steps = num * frequency
-    #     # tspan = np.linspace(0, duration, steps)
-    #     # dt = duration/steps
-    #     funcs = [ampl * config for config in config_list]
-
-    #     sleep(duration - time() % duration)
-    #     for j in range(steps):
-
-    #         desCurrents[0] = int(funcs[j % num][0])
-    #         desCurrents[1] = int(funcs[j % num][1])
-    #         desCurrents[2] = int(funcs[j % num][2])
-
-    #         setCurrents(desCurrents, currDirectParam)
-
-    #         sleep(duration - time() % duration)
-
-    # demagnetizeCoils()
-
-    # if meas:
-    #     faden.join()
-
-    # disableCurrents()
-
-
 if __name__ == "__main__":
-    # params = {'block_size': 40, 'period': 0.01, 'duration': 40, 'averaging': 1}
+    params = {'block_size': 40, 'period': 0.01, 'duration': 40, 'averaging': 1}
   
-    # faden = myMeasThread(1, **params)
-    # faden.start()
-    countdown = timerThread(0, 7200)
-    countdown.start()
-    countdown.join()
+    faden = myMeasThread(1, **params)
+    faden.start()
+    # countdown = timerThread(0, 7200)
+    # countdown.start()
+    # countdown.join()
 
     # # magnitude = 100
     # # theta = 120
@@ -1065,15 +984,15 @@ if __name__ == "__main__":
     # #                         block_size=block_size, duration=duration)
     # sleep(10)
 
-    # # openConnection()
-    # # enableCurrents()
-    # sleep(10)
-    # # demagnetizeCoils()
-    
-    # faden.join()
+    openConnection()
+    enableCurrents()
+    sleep(10)
+    demagnetizeCoils()
+    disableCurrents()
+    faden.join()
 
-    # # closeConnection()
+    closeConnection()
     
     # # print(returnDict)
 
-    # strm(returnDict, r'data_sets\noise_measurements', 'zero_field_close_withoutECB', now=True)
+    strm(returnDict, r'data_sets\noise_test_THM', 'zero_field_close_withoutECB', now=True)

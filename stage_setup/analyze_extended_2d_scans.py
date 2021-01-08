@@ -36,13 +36,13 @@ finally:
 
 #%%
 # retrieve data from previous scans
-directory = '../test_data/2d_scans_different_fields/set4'
+directory = r'data_sets\2d_scans_different_fields\set6'
 # directory = r'data_sets\2d_scans_different_fields\set3'
 
-filenames = ['20_12_18_16-13-48_2d_scan_(1_0_0).csv',   # (100)   
-            '20_12_18_15-32-08_2d_scan_(0_1_0).csv',    # (010) 
-            '20_12_18_15-12-32_2d_scan_(0_0_1).csv',    # (001)   
-            '20_12_18_14-45-50_2d_scan_(1_1_1).csv']    # (111)  
+filenames = ['21_01_06_11-10-01_2d_scan_(1_0_0).csv',   # (100)   
+            '21_01_06_11-54-45_2d_scan_(0_1_0).csv',    # (010) 
+            '21_01_06_12-34-26_2d_scan_(0_0_1).csv',    # (001)   
+            '21_01_06_13-14-02_2d_scan_(1_1_1).csv']    # (111)  
 
 coils = []
 positions_all = []
