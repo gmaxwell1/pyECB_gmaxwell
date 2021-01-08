@@ -3,6 +3,8 @@ data_sets/
 test_data/
 config_files/
 current_measurements/
+fitting_parameters/
+predictions_on_test_set/
 0_measurement.py
 analysis.py
 update_old_data_files.py
@@ -26,10 +28,11 @@ oscilloscope.py
 estimate_derivatives.py
 demagnetization_effect_on_rotation.py
 repeatability_evaluation.py
-fitting_parameters/
-predictions_on_test_set/
 temperature_drift.py
 compare_regression_models.py
+fitting_stuff.py
+compare_training_sets.py
+evaluate_model_performance.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

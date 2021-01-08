@@ -35,14 +35,6 @@ finally:
 
 
 #%%
-# estimate number of independent entries in partial derivative tensors, 
-# since symmetry of partial derivatives yields symmetric tensors
-k = 3
-print(binom(3+k-1, k))
-
-
-
-#%%
 def fit_data(xdata, ydata, degree):
     """ 
     Fit the provided data with a tri-linear or tri-quadratic polynomial and 
@@ -292,6 +284,7 @@ def read_test_set(filepath):
 
     return test_vectors[:,:3]
 
+<<<<<<< HEAD
 
 #  apply fitting to entire dataset ----------------------------------------------------
 #%%
@@ -745,3 +738,5 @@ test_vectors_ = loaded_poly.fit_transform(test_vectors)
 
 # estimate prediction
 predictions_new_sweep = loaded_model.predict(test_vectors_)
+=======
+>>>>>>> 3437d1cbf7ad0ee8d468fd9b07dec123a88cfdff

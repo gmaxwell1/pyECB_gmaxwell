@@ -15,11 +15,8 @@ for the three coils and the current ratios are estimated at the end.
 
 Author: Nicholas Meinhardt (QZabre)
         nmeinhar@student.ethz.ch
-Edited by Maxwell Guerne
-        gmaxwell at ethz.ch
         
 Date: 27.10.2020
-latest update: 06.01.2021
 """
 
 #%%
@@ -42,6 +39,7 @@ finally:
     from modules.general_functions import ensure_dir_exists
     from modules.analysis_tools import get_phi, get_theta
     from modules.interpolation_tools import delaunay_triangulation_spherical_surface, add_triangles_to_3dplot
+    from modules.fitting_dataset import *
 
 #%%
 # Part 1 --------------------------------------------------------
@@ -159,7 +157,7 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
         latitudes[-1] -= elevation_factor_equator * (latitudes[-1] - latitudes[-2])
 
     # prepare lists to collect field vectors and current ratios
-    currents = []
+    ratios = []
     vectors = []
     thetas = []
     phis = []
@@ -183,16 +181,15 @@ def generate_configs_half_sphere(n_sectors, windings = 508, resistance = 0.47,
 
             # collect the ratios of the three currents, where at least one value has absolute value 1
             # and the current directions remain the same 
-            # i_max = np.argmax(np.abs(I_coils)) 
-            # / I_coils[i_max] * np.sign(I_coils[i_max])
-            currents.append(I_coils)
+            i_max = np.argmax(np.abs(I_coils))
+            ratios.append(I_coils / I_coils[i_max] * np.sign(I_coils[i_max]))
             vectors.append(B_vector)
 
             # collect angular configuration
             thetas.append(theta)
             phis.append(phi)
 
-    return np.array(currents), np.array(vectors), np.array(thetas), np.array(phis)
+    return np.array(ratios), np.array(vectors), np.array(thetas), np.array(phis)
 
 def generate_test_points_whole_sphere(n_sectors, magnitude):
     """
@@ -462,33 +459,33 @@ def generate_grid(max_value, points_per_dim, threshold_magnitude = np.inf):
 # generate configurations based on (approximately) equidistant 
 # magnetic fields in upper half plane
 
-# if __name__ == '__main__':
-#     # generate configurations
-#     n_vectors = 5000
-#     magnitude_range = [0,70]
-#     seed = 1414
-#     vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
+if __name__ == '__main__':
+    # generate configurations
+    n_vectors = 5000
+    magnitude_range = [0,50]
+    seed = 1414
+    vectors,magnitudes,thetas,phis = rng_test_points_whole_sphere(n_vectors, magnitude_range=magnitude_range, seed=seed)
 
-#     # plot all considered vectors on a sphere 
-#     plot_vectors(vectors,50)
+    # plot all considered vectors on a sphere 
+    plot_vectors(vectors,50)
     
-#     plt.show()
+    plt.show()
 
-#     thetas_deg = thetas * 180/np.pi
-#     phis_deg = phis * 180/np.pi
-#     # save the combinations to csv file
-#     directory = '../config_files/RNG_test_vectors'
+    thetas_deg = thetas * 180/np.pi
+    phis_deg = phis * 180/np.pi
+    # save the combinations to csv file
+    directory = '../config_files/RNG_test_vectors'
         
-#     df = pd.DataFrame({ 'B_x': vectors[:,0], 
-#                         'B_y': vectors[:,1], 
-#                         'B_z': vectors[:,2],
-#                         'B_mag': magnitudes,
-#                         'theta (deg)': thetas_deg,
-#                         'phi (deg)': phis_deg})
+    df = pd.DataFrame({ 'B_x': vectors[:,0], 
+                        'B_y': vectors[:,1], 
+                        'B_z': vectors[:,2],
+                        'B_mag': magnitudes,
+                        'theta (deg)': thetas_deg,
+                        'phi (deg)': phis_deg})
 
-#     output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
-#     data_filepath = os.path.join(directory, output_file_name)
-#     df.to_csv(data_filepath, index=False, header=True)
+    output_file_name = f'vectors_rng{seed}_{magnitude_range[0]}-{magnitude_range[1]}mT_size{len(vectors)}.csv'
+    data_filepath = os.path.join(directory, output_file_name)
+    # df.to_csv(data_filepath, index=False, header=True)
 
 
 # %%
@@ -508,44 +505,195 @@ if __name__ == '__main__':
                         'y': grid_pts[:, 1], 
                         'z': grid_pts[:, 2]})
         
-    df.to_csv(data_filepath, index=False, header=True)
+    # df.to_csv(data_filepath, index=False, header=True)
     
-    #field magnitudes
-    array = [1,3,5,7,10,15,20,25,30,35,40,45,50]
-    n_sectors = [20,20,20,16,16,16,16,16,16,16,16,16,16]
+#     ratios,vectors = generate_test_points_whole_sphere(24, 50)
     
-    ratios_all = np.ndarray((1,3))
-    vectors_all = np.ndarray((1,3))
+#     plot_vectors(vectors)
+#     plt.show()
 
-    # concatenate all generated vectors/configurations
-    for i, el in enumerate(array):
-        magnitude = el
-        ratios, vectors = generate_test_points_whole_sphere(n_sectors[i], magnitude)
-        if i == 0:
-            ratios_all = ratios
-            vectors_all = vectors
-        else:
-            ratios_all = np.append(ratios_all, ratios, axis=0)
-            vectors_all = np.append(vectors_all, vectors, axis=0)
-        plot_vectors(vectors)
-        plt.show()
-    # save the combinations to csv files
-    directory = r'.\config_files\uniform_vectors_various_magnitudes'
+#     # save the combinations to csv files
+#     directory = r'.\config_files'
     
 
 
-    df = pd.DataFrame({ 'ratio coil 1': ratios_all[:,0], 
-                        'ratio coil 2': ratios_all[:,1], 
-                        'ratio coil 3': ratios_all[:,2]})
+#     df = pd.DataFrame({ 'ratio coil 1': ratios[:,0], 
+#                         'ratio coil 2': ratios[:,1], 
+#                         'ratio coil 3': ratios[:,2]})
 
-    output_file_name = f'configs_wholeSphere_magnitude_1-50mT_size{len(ratios_all)}.csv'
-    data_filepath = os.path.join(directory, output_file_name)
-    df.to_csv(data_filepath, index=False, header=True)
-    
-    df = pd.DataFrame({ 'field component x': vectors_all[:,0], 
-                        'field component y': vectors_all[:,1], 
-                        'field component z': vectors_all[:,2]})
+#     output_file_name = 'configs_wholeSphere_length{}.csv'.format(len(ratios))
+#     data_filepath = os.path.join(directory, output_file_name)
+#     df.to_csv(data_filepath, index=False, header=True)
 
-    output_file_name = f'expvectors_wholeSphere_magnitude_1-50mT_size{len(vectors_all)}.csv'
-    data_filepath = os.path.join(directory, output_file_name)
-    df.to_csv(data_filepath, index=False, header=True)
+#%%
+# generate files for sweeps along axes and rotations
+if __name__ == '__main__':
+    # settings
+    num = 100
+    axes = np.arange(3)
+    radius = 50
+
+    for ax in axes:
+        # generate vectors for rotation
+        test_vectors = np.zeros((num, 3))
+        angles = np.linspace(0, 2*np.pi, num)
+        if ax == 0:
+            test_vectors[:,1] = radius*np.cos(angles)
+            test_vectors[:,2] = radius*np.sin(angles)
+        elif ax == 1:
+            test_vectors[:,0] = radius*np.cos(angles)
+            test_vectors[:,2] = radius*(-np.sin(angles))
+        elif ax == 2:
+            test_vectors[:,0] = radius*np.cos(angles)
+            test_vectors[:,1] = radius*np.sin(angles)
+
+        # save field vectors of rotations
+        df = pd.DataFrame({ 'Bx [mT]': test_vectors[:, 0], 
+                            'By [mT]': test_vectors[:, 1], 
+                            'Bz [mT]': test_vectors[:, 2]})
+        rot_axis_label = ['x','y','z'][ax]
+        filepath_fields = f'./config_files/rotation_{rot_axis_label}_{radius}mT_size{num}.csv'
+        df.to_csv(filepath_fields, index=False, header=True)
+
+        # generate vectors for sweeps along axes
+        test_vectors = np.zeros((num, 3))
+        test_vectors[:, ax] = np.linspace(-radius, radius, num)
+
+        # save field vectors of sweeps along axes
+        df = pd.DataFrame({ 'Bx [mT]': test_vectors[:, 0], 
+                            'By [mT]': test_vectors[:, 1], 
+                            'Bz [mT]': test_vectors[:, 2]})
+        sweep_axis_label = ['x','y','z'][ax]
+        filepath_sweeps = f'./config_files/sweep_{sweep_axis_label}_{radius}mT_size{num}.csv'
+        df.to_csv(filepath_sweeps, index=False, header=True)
+
+#%%
+# generate grid in correct order
+if __name__ == '__main__':
+    max_value = 10
+    points_per_dim = 7
+
+    grid_desired = np.zeros((points_per_dim, points_per_dim, points_per_dim,3))
+    values = np.linspace(-max_value, max_value, points_per_dim)
+    for i in range(points_per_dim):
+        for j in range(points_per_dim):
+            for k in range(points_per_dim):
+                grid_desired[i,j,k, 0] =  values[i]
+                grid_desired[i,j,k, 1] =  values[j]
+                grid_desired[i,j,k, 2] =  values[k]
+    grid_desired = grid_desired.reshape(-1, 3)
+
+    # save the ordered grid file
+    df = pd.DataFrame({ 'x': grid_desired[:, 0], 
+                        'y': grid_desired[:, 1], 
+                        'z': grid_desired[:, 2]})
+    directory = './config_files/grid/'
+    output_file_name = f'grid_max{max_value}_PointsPerDim{points_per_dim}.csv'
+    filepath = os.path.join(directory, output_file_name)
+    # df.to_csv(filepath, index=False, header=True)
+
+# %%
+# reorder previous measurements, where grid was created by only changing one index by 1 per step,
+# st. the order corresponds the one of three convoluted for-loops
+if __name__ == '__main__':
+    # frid measurement data
+    data_filename = '21_01_08_08-20-13_grid_max30_PointsPerDim13_demag5A.csv'
+    data_directory = './test_data/B_field_on_grid'
+    data_filepath = os.path.join(data_directory, data_filename)
+    raw_data = pd.read_csv(data_filepath).to_numpy()
+    print(raw_data.shape)
+
+    # read in test set
+    filename_testset = 'grid_max30_PointsPerDim13'
+    filepath_testset = f'./config_files/grid/{filename_testset}.csv'
+    grid_currents = read_test_set(filepath_testset)
+    print(grid_currents.shape)
+
+    # generate grid in desired order
+    max_value = 30
+    points_per_dim = 13 
+    grid_desired = np.zeros((points_per_dim, points_per_dim, points_per_dim, 3))
+    values = np.linspace(-max_value, max_value, points_per_dim)
+    for i in range(points_per_dim):
+        for j in range(points_per_dim):
+            for k in range(points_per_dim):
+                grid_desired[i,j,k, 0] =  values[i]
+                grid_desired[i,j,k, 1] =  values[j]
+                grid_desired[i,j,k, 2] =  values[k]
+
+    grid_desired = grid_desired.reshape(-1, 3)
+
+    # find array of indices that brings grid_currents to same order as grid_desired
+    indices_reordered = np.zeros(len(grid_desired), dtype=int)
+    for i in range(len(grid_desired)):
+        indices_reordered[i] = np.argmin(np.linalg.norm(grid_currents-grid_desired[i], axis=1))
+
+    print(np.all(np.isclose(grid_currents[indices_reordered], grid_desired)))
+
+    # save the ordered grid file
+    df = pd.DataFrame({ 'x': grid_desired[:, 0], 
+                        'y': grid_desired[:, 1], 
+                        'z': grid_desired[:, 2]})
+    directory = './config_files/grid/'
+    output_file_name = f'grid_max{max_value}_PointsPerDim{points_per_dim}_reordered_zyx.csv'
+    filepath = os.path.join(directory, output_file_name)
+    # df.to_csv(filepath, index=False, header=True)
+
+    # reorder the measurements and save them 
+    raw_data_reordered = raw_data[indices_reordered]
+    df = pd.DataFrame({'channel 1 [A]': raw_data_reordered[:, 0],
+                    'channel 2 [A]': raw_data_reordered[:, 1],
+                    'channel 3 [A]': raw_data_reordered[:, 2],
+                    'mean Bx [mT]': raw_data_reordered[:, 3],
+                    'mean By [mT]': raw_data_reordered[:, 4],
+                    'mean Bz [mT]': raw_data_reordered[:, 5],
+                    'std Bx [mT]': raw_data_reordered[:, 6],
+                    'std By [mT]': raw_data_reordered[:, 7],
+                    'std Bz [mT]': raw_data_reordered[:, 8],
+                    'expected Bx [mT]': raw_data_reordered[:, 9],
+                    'expected By [mT]': raw_data_reordered[:, 10],
+                    'expected Bz [mT]': raw_data_reordered[:, 11]})
+
+    output_file_name = f'{os.path.splitext(data_filename)[0]}_reordered_zyx.csv'
+    file_path = os.path.join(data_directory, output_file_name)
+    # df.to_csv(file_path, index=False, header=True)
+
+
+#%%
+# plot measured grid points to check whether they are actually on a grid
+# data random measurement set 3
+if __name__ == '__main__':
+    data_filename = '21_01_08_08-20-13_grid_max30_PointsPerDim13_demag5A.csv'
+    data_filepath = os.path.join('./test_data/B_field_on_grid', data_filename)
+    _, B_measured, _, _ = extract_raw_data_from_file(data_filepath)
+
+    # generate figure with 3d-axis
+    fig = plt.figure(figsize = 1.5*plt.figaspect(1.))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # plot arrows for x, y, z axis
+    magnitude = 10
+    length_axes = 2.8 * magnitude 
+    ax.quiver(length_axes/2, 0, 0, length_axes, 0, 0, color='k',
+            arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
+    ax.quiver(0, length_axes/2, 0, 0, length_axes, 0, color='k',
+            arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
+    ax.quiver(0, 0, length_axes/2, 0, 0, length_axes, color='k',
+            arrow_length_ratio=0.08, pivot='tip', linewidth=1.1)
+    ax.text(1.6*magnitude, 0, 0, 'x')
+    ax.text(0, 1.65*magnitude, 0, 'y')
+    ax.text(0, 0, 1.6*magnitude, 'z')
+
+
+    # plot all field vectors as red dots
+    ax.scatter(B_measured[:,0], B_measured[:,1], B_measured[:,2], color='r')
+
+    ax.set_xlabel('$B_x$ [mT]')
+    ax.set_ylabel('$B_y$ [mT]')
+    ax.set_zlabel('$B_z$ [mT]')
+
+    ax.view_init(30, 45)
+
+    plt.show()
+
+# %%
