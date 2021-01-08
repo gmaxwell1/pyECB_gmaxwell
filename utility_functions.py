@@ -284,45 +284,69 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
     expected_fields = []
     all_curr_vals = []
     
+    # initialize temperature sensor and measurement routine and start measuring
+    arduino = ArduinoUno('COM7')
+    measure_temp = threading.Thread(target=arduino.getTemperatureMeasurements)
+    measure_temp.start()
+       
     enableCurrents()
-
+    ##########################################################################
+    input_list = []
     with open(inpFile, 'r') as f:
         contents = csv.reader(f)
         next(contents)
-        for i, row in enumerate(contents):
-            if demagnetize:
-                demagnetizeCoils(current_config = 5000*np.ones(3))
+        input_list = list(contents)
+
+    meas_duration = 22
+    if not demagnetize:
+        meas_duration = 0.5
+    time_estimate = len(input_list) * meas_duration
+
+    for i, row in enumerate(input_list):
+        if demagnetize:
+            demagnetizeCoils(current_config = 5000*np.ones(3))
+        
+        config = np.array(
+                [float(row[0]), float(row[1]), float(row[2])])
+        
+        if BField:
+            B_vector = np.array(
+                [float(row[0]), float(row[1]), float(row[2])])
+            config = tr.computeCoilCurrents(B_vector)
             
-            config = np.array(
-                    [float(row[0]), float(row[1]), float(row[2])])
-            
-            if BField:
-                B_vector = np.array(
-                    [float(row[0]), float(row[1]), float(row[2])])
-                config = tr.computeCoilCurrents(B_vector)
-                
-            for k in range(3):
-                desCurrents[k] = config[k]*current_val
-            all_curr_vals.append(config*current_val)
-            
-            setCurrents(desCurrents, currDirectParam)
-            # Let the field stabilize
-            sleep(0.5)
-            # collect measured and expected magnetic field (of the specified sensor in measurements)
-            print('measurement nr. ', i+1)
-            # see measurements.py for more details
-            mean_data, std_data = measure(node, N=7, average=True)
-            mean_values.append(mean_data)
-            stdd_values.append(std_data)
-            # we already know the expected field values
-            if BField:
-                expected_fields.append(B_vector)
-            else:
-                # estimate of resulting B field
-                B_expected = tr.computeMagField(config*current_val, windings)
-                expected_fields.append(B_expected)
- 
-    # create subdirectory to save measurements
+        for k in range(3):
+            desCurrents[k] = config[k]*current_val
+        all_curr_vals.append(config*current_val)
+        
+        setCurrents(desCurrents, currDirectParam)
+        # Let the field stabilize
+        sleep(0.5)
+        
+        time_estimate = time_estimate - 22
+        print(f'\rmeasurement nr. {i+1}; approx. time remaining: {time_estimate//3600} hours, {time_estimate//60 % 60} '
+                f'minutes and {time_estimate%60:.0f} seconds', end='', sep='', flush=False)
+        
+        # collect measured and expected magnetic field (of the specified sensor in measurements)
+        # see measurements.py for more details
+        mean_data, std_data = measure(node, N=7, average=True)
+        mean_values.append(mean_data)
+        stdd_values.append(std_data)
+        # we already know the expected field values
+        if BField:
+            expected_fields.append(B_vector)
+        else:
+            # estimate of resulting B field
+            B_expected = tr.computeMagField(config*current_val, windings)
+            expected_fields.append(B_expected)
+    ##########################################################################
+    # save temperature measurements
+    arduino.stop = True
+    measure_temp.join()
+    saveTempData(arduino.data_stack,
+                 directory=r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\temperature_measurements',
+                 filename_suffix='temp_meas_during_gridsweep')
+    ##########################################################################
+    # create/find subdirectory to save measurements
     fileprefix = 'field_meas'
     # folder,
     if today:
@@ -330,7 +354,6 @@ def gridSweep(node: MetrolabTHM1176Node, inpFile=r'config_files\configs_numvals2
         filePath = f'data_sets\{datadir}_{now}'
     else:
         filePath = f'data_sets\{datadir}'
-
 
     if demagnetize:
         demagnetizeCoils(all_curr_vals[-1])
@@ -611,6 +634,10 @@ def runCurrents(config_list, t=[], direct=b'1', subdir='serious_measurements_for
             #     faden.join()
             #     strm(returnDict, r'.\data_sets\{}'.format(subdir), now=True)
     else:
+        # initialize temperature sensor and measurement routine and start measuring
+        arduino = ArduinoUno('COM7')
+        measure_temp = threading.Thread(target=arduino.getTemperatureMeasurements)
+        measure_temp.start()
         for index, timer in enumerate(t):
             channels = config_list[index]
             for i in range(len(channels)):
@@ -632,6 +659,11 @@ def runCurrents(config_list, t=[], direct=b'1', subdir='serious_measurements_for
                     sleep(pause)
                     getCurrents()
                 countdown.join()
+                
+        arduino.stop = True
+        arduino.saveTempData(arduino.data_stack,
+                             directory=r'C:\Users\Magnebotix\Desktop\Qzabre_Vector_Magnet\1_Version_1_Vector_Magnet\2_ECB_Control_Code\ECB_Main_Comm_Measurement\temperature_measurements',
+                             filename_suffix='temp_meas_timed_const_fields')
       
     if demagnetize:
         demagnetizeCoils()

@@ -150,7 +150,7 @@ def callCurrentSweep(mode='m', datadir='test_measurements'):
             else:
                 use_B_vectors_as_input = False
 
-            gridSweep(node, inpFile, datadir=datadir, current_val=start_val, BField=use_B_vectors_as_input, demagnetize=True)
+            gridSweep(node, inpFile, datadir=datadir, current_val=start_val, BField=use_B_vectors_as_input, demagnetize=True, today=False)
         else:
             with open(inpFile, 'r') as f:
                 contents = csv.reader(f)
@@ -390,33 +390,38 @@ def callGenerateVectorField():
     """
     Setup function to call the utility function 'generateMagneticField', see 'utility_functions.py'. Manages necessary inputs.
     """
-    inp1 = input('magnitude: ')
-    inp2 = input('polar angle (theta): ')
-    inp3 = input('azimuthal angle (phi): ')
-    subdir = input('Which subdirectory should measurements be saved to? ')
-    try:
-        magnitude = float(inp1)
-    except:
-        print('expected numerical value, defaulting to 0')
-        magnitude = 0
-    try:
-        theta = float(inp2)
-    except:
-        print('expected numerical value, defaulting to 0')
-        theta = 0
-    try:
-        phi = float(inp3)
-    except:
-        print('expected numerical value, defaulting to 0')
-        phi = 0
+    inp0 = input('timed mode? (y/n) ')
+    vector = []
+    timers = []
+    char = ''
+    while char != 'x':
+        inp1 = input('configuration 1\nmagnitude: ')
+        inp2 = input('polar angle (theta): ')
+        inp3 = input('azimuthal angle (phi): ')
+        inp4 = input('timer duration: ')
+        try:
+            a1 = float(inp1)
+            b1 = float(inp2)
+            c1 = float(inp3)
+            vector.append(np.array([a1, b1, c1]))
+            timers.append(float(inp4))
+        except:
+            print('expected numerical value, defaulting to (0,0,10)')
+            vector.append(np.array([0, 0, 10]))
+            timers.append(0)
 
-    # with MetrolabTHM1176Node(block_size=20, range='0.3 T', period=0.01, average=5) as node:
-    #         # node = MetrolabTHM1176Node(block_size=20, sense_range_upper="0.3 T", period=0.001)
-    #         char = input('Calibrate Metrolab sensor? (y/n): ')
-    #         if char == 'y':
-    #             calibration(node, calibrate=True)
+        if inp0 == 'y':
+            char = input('another config (enter x to end)')
+        else:
+            char = 'x'
+            
+    inp5 = input('demagnetize afterwards? (y/n) ')
+    
+    subdir = r'data_sets\nothing'
+    if inp0 == '':
+        subdir = input('Which subdirectory should measurements be saved to? ')
 
-    generateMagneticField(magnitude, theta, phi, subdir=subdir)
+    generateMagneticField(vector, timers, subdir, (inp5=='y'))
 
 
 def feedbackMode():

@@ -744,4 +744,4 @@ test_vectors = np.array([[0,0,50]])
 test_vectors_ = loaded_poly.fit_transform(test_vectors) 
 
 # estimate prediction
-predictions_new_sweep = model.predict(test_vectors_)
+predictions_new_sweep = loaded_model.predict(test_vectors_)
