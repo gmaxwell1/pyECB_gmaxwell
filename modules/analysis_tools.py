@@ -1689,6 +1689,7 @@ def evaluate_performance(measured, fitted):
     print('min / max angular error: {:.2f}° / {:.2f}°'.format(np.min(alphas), np.max(alphas)))
     print('median angular error: {:.2f}°'.format(np.median(alphas)))
 
+
 def collectAndExtract(directory, B_min, remove_saturation = True,
                         verbose=False, fraction_cutoff = 0.02,
                         affine_fct = lambda x, a, b: a*x + b):
